@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package lumen.tokenomics.module.v1;
+
+import "cosmos/app/v1alpha1/module.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/tokenomics/types";
+
+message Module {
+  option (cosmos.app.v1alpha1.module) = {go_import: "lumen/x/tokenomics"};
+
+  string authority = 1 [(gogoproto.jsontag) = "authority,omitempty"];
+}
+

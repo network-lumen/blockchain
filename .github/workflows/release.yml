@@ -1,0 +1,226 @@
+name: CI (full, blockchain-grade)
+
+on:
+  push:
+    branches: ["master"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["master"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: "-mod=readonly"
+
+jobs:
+  build-and-tests:
+    name: Build + Unit + Preflight + Sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Prepare Go cache dirs
+        shell: bash
+        run: |
+          sudo rm -rf ~/.cache/go-build ~/go/pkg/mod || true
+          mkdir -p ~/.cache/go-build ~/go/pkg/mod
+      - name: Cache Go build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: go vet
+        run: make govet
+
+      - name: Build
+        run: make build
+
+      - name: Unit tests (full)
+        run: make test-unit
+
+      - name: Preflight tests
+        run: make preflight
+
+      - name: Sanity (includes PQC scan)
+        run: make sanity
+
+      - name: "Guard: PQC backends"
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          if ! command -v strings >/dev/null; then
+            echo "binutils 'strings' missing"; exit 1
+          fi
+          if strings ./build/lumend | grep -qiE '(pqc_testonly|\bnoop\b.*pqc)'; then
+            echo "Found unapproved PQC backend"
+            exit 1
+          fi
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumend-linux-amd64
+          path: build/lumend
+          if-no-files-found: error
+
+  e2e:
+    name: End-to-End
+    runs-on: ubuntu-latest
+    needs: build-and-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Prepare Go cache dirs
+        shell: bash
+        run: |
+          sudo rm -rf ~/.cache/go-build ~/go/pkg/mod || true
+          mkdir -p ~/.cache/go-build ~/go/pkg/mod
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Build (ensure binary ready)
+        run: make build
+      - name: Run E2E suite
+        run: make e2e
+      - name: Upload E2E logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            **/*.log
+            **/testdata/**/*
+            artifacts/**/*
+          if-no-files-found: ignore
+
+  simulate-network:
+    name: Simulate Network
+    runs-on: ubuntu-latest
+    needs: build-and-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Prepare Go cache dirs
+        shell: bash
+        run: |
+          sudo rm -rf ~/.cache/go-build ~/go/pkg/mod || true
+          mkdir -p ~/.cache/go-build ~/go/pkg/mod
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Build
+        run: make build
+      - name: Run simulate-network
+        run: make simulate-network
+      - name: Normalize artifact permissions
+        if: always()
+        run: |
+          if [ -d artifacts ]; then
+            sudo chown -R "$USER":"$USER" artifacts
+          fi
+      - name: Upload simulate logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simnet-logs
+          path: |
+            **/*.log
+            artifacts/**/*
+          if-no-files-found: ignore
+
+  security:
+    name: Static & Vuln Scan
+    runs-on: ubuntu-latest
+    needs: build-and-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Prepare Go cache dirs
+        shell: bash
+        run: |
+          sudo rm -rf ~/.cache/go-build ~/go/pkg/mod || true
+          mkdir -p ~/.cache/go-build ~/go/pkg/mod
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Install staticcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="2024.1.1"
+          module="honnef.co/go/tools"
+          tool="cmd/staticcheck"
+          modwork="$(mktemp -d)"
+          gomodcache="$(mktemp -d)"
+          printf 'module tmpstaticcheck\n\ngo 1.25\n' > "${modwork}/go.mod"
+          (
+            cd "${modwork}"
+            GOMODCACHE="${gomodcache}" go mod download "${module}@${version}"
+          )
+          module_dir="$(cd "${modwork}" && GOMODCACHE="${gomodcache}" go list -m -f '{{.Dir}}' "${module}@${version}")"
+          if [ -z "${module_dir}" ]; then
+            echo "could not locate downloaded module sources"
+            exit 1
+          fi
+          tools_version="$(grep -E 'golang.org/x/tools' "${module_dir}/go.mod" | awk '{print $2}' | head -n 1)"
+          if [ -z "${tools_version}" ]; then
+            echo "could not detect golang.org/x/tools version"
+            exit 1
+          fi
+          GOMODCACHE="${gomodcache}" go mod download "golang.org/x/tools@${tools_version}"
+          chmod -R u+w "${gomodcache}"
+          patched=0
+          while IFS= read -r -d '' f; do
+            echo "patching $f"
+            chmod u+w "$f"
+            tmpfile="$(mktemp)"
+            sed 's/var _ \[-delta \* delta\]int/var _ [1]int \/\/ patched for go1.25/' "$f" > "$tmpfile"
+            cat "$tmpfile" > "$f"
+            rm -f "$tmpfile"
+            patched=1
+          done < <(find "${gomodcache}" -path '*golang.org/x/tools@*/internal/tokeninternal/tokeninternal.go' -print0)
+          if [ "$patched" -eq 0 ]; then
+            echo "failed to patch tokeninternal; files not found"
+            exit 1
+          fi
+          GOMODCACHE="${gomodcache}" go install "${module}/${tool}@${version}"
+          chmod -R u+w "${modwork}" "${gomodcache}"
+          rm -rf "${modwork}" "${gomodcache}"
+      - name: staticcheck (filtered)
+        run: make staticcheck
+      - name: govulncheck (hardened)
+        run: make vulncheck

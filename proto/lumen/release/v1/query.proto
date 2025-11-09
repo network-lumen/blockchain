@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package lumen.release.v1;
+
+option go_package = "lumen/x/release/types";
+
+import "google/api/annotations.proto";
+import "lumen/release/v1/types.proto";
+import "lumen/release/v1/params.proto";
+
+service Query {
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http) = { get: "/lumen/release/params" };
+  }
+
+  rpc Release(QueryReleaseRequest) returns (QueryReleaseResponse) {
+    option (google.api.http) = { get: "/lumen/release/id/{id}" };
+  }
+
+  rpc ReleaseByID(QueryReleaseByIDRequest) returns (QueryReleaseResponse) {
+    option (google.api.http) = {
+      get: "/lumen/release/release/{id}"
+      additional_bindings: { get: "/lumen/release/{id}" }
+    };
+  }
+
+  rpc Releases(QueryReleasesRequest) returns (QueryReleasesResponse) {
+    option (google.api.http) = { get: "/lumen/release/releases" };
+  }
+
+  rpc Latest(QueryLatestRequest) returns (QueryReleaseResponse) {
+    option (google.api.http) = {
+      get: "/lumen/release/latest"
+    };
+  }
+
+  rpc LatestCanon(QueryLatestRequest) returns (QueryReleaseResponse) {
+    option (google.api.http) = { get: "/lumen/release/latest/{channel}/{platform}/{kind}" };
+  }
+
+  rpc ByVersion(QueryByVersionRequest) returns (QueryReleaseResponse) {
+    option (google.api.http) = { get: "/lumen/release/by_version/{version}" };
+  }
+}
+
+message QueryParamsRequest {}
+message QueryParamsResponse { Params params = 1; }
+
+message QueryReleaseRequest { uint64 id = 1; }
+message QueryReleaseByIDRequest { uint64 id = 1; }
+message QueryReleaseResponse { Release release = 1; }
+
+message QueryReleasesRequest { uint64 page = 1; uint64 limit = 2; }
+message QueryReleasesResponse { repeated Release releases = 1; uint64 total = 2; }
+
+message QueryLatestRequest { string channel = 1; string platform = 2; string kind = 3; }
+
+message QueryByVersionRequest { string version = 1; }
+

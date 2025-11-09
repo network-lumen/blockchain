@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package lumen.tokenomics.v1;
+
+option go_package = "lumen/x/tokenomics/types";
+
+import "lumen/tokenomics/v1/params.proto";
+
+message GenesisState {
+  Params params = 1;
+  string total_minted_ulmn = 2;
+}
+

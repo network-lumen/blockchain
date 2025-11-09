@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package lumen.tokenomics.v1;
+
+import "google/api/annotations.proto";
+import "gogoproto/gogo.proto";
+import "lumen/tokenomics/v1/params.proto";
+
+option go_package = "lumen/x/tokenomics/types";
+
+service Query {
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/lumen/tokenomics/v1/params";
+  }
+}
+
+message QueryParamsRequest {}
+
+message QueryParamsResponse {
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+

@@ -1,0 +1,18 @@
+syntax = "proto3";
+package lumen.release.v1;
+
+option go_package = "lumen/x/release/types";
+
+message Bundle {
+  uint64 id = 1;
+  string index = 2;
+  string version = 3;
+  string os = 4;
+  string arch = 5;
+  string cid = 6;
+  string sha_256 = 7;
+  uint64 size_bytes = 8;
+  uint64 created_at_unix = 9;
+  string creator = 10;
+}
+

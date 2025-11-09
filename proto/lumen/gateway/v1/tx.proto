@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package lumen.gateway.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+import "google/protobuf/wrappers.proto";
+import "lumen/gateway/v1/types.proto";
+import "lumen/gateway/v1/params.proto";
+
+option go_package = "lumen/x/gateways/types";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+  rpc RegisterGateway(MsgRegisterGateway) returns (MsgRegisterGatewayResponse);
+  rpc UpdateGateway(MsgUpdateGateway) returns (MsgUpdateGatewayResponse);
+  rpc CreateContract(MsgCreateContract) returns (MsgCreateContractResponse);
+  rpc ClaimPayment(MsgClaimPayment) returns (MsgClaimPaymentResponse);
+  rpc CancelContract(MsgCancelContract) returns (MsgCancelContractResponse);
+  rpc FinalizeContract(MsgFinalizeContract) returns (MsgFinalizeContractResponse);
+}
+
+message MsgRegisterGateway {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string payout = 2 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string metadata = 3;
+}
+message MsgRegisterGatewayResponse {
+  uint64 id = 1;
+}
+
+message MsgUpdateGateway {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 gateway_id = 2;
+  google.protobuf.StringValue payout = 3;
+  google.protobuf.StringValue metadata = 4;
+  google.protobuf.BoolValue active = 5;
+}
+message MsgUpdateGatewayResponse {}
+
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "lumen/x/gateways/MsgUpdateParams";
+
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  Params params = 2 [(gogoproto.nullable) = false, (amino.dont_omitempty) = true];
+}
+message MsgUpdateParamsResponse {}
+
+message MsgCreateContract {
+  option (cosmos.msg.v1.signer) = "client";
+  string client = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 gateway_id = 2;
+  uint64 price_ulmn = 3;
+  uint64 storage_gb_per_month = 4;
+  uint64 network_gb_per_month = 5;
+  uint32 months_total = 6;
+  string metadata = 7;
+}
+message MsgCreateContractResponse {
+  uint64 contract_id = 1;
+}
+
+message MsgClaimPayment {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 contract_id = 2;
+}
+message MsgClaimPaymentResponse {
+  string paid_ulmn = 1;
+}
+
+message MsgCancelContract {
+  option (cosmos.msg.v1.signer) = "client";
+  string client = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 contract_id = 2;
+}
+message MsgCancelContractResponse {
+  string refunded_ulmn = 1;
+}
+
+message MsgFinalizeContract {
+  option (cosmos.msg.v1.signer) = "finalizer";
+  string finalizer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 contract_id = 2;
+}
+message MsgFinalizeContractResponse {
+  string reward_ulmn = 1;
+}
+
+
+

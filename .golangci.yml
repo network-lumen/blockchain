@@ -1,0 +1,18 @@
+run:
+  timeout: 5m
+  tests: true
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gofmt
+    - goimports
+    - ineffassign
+    - unused
+    - misspell
+issues:
+  exclude-rules:
+    - path: ".*_pb\\.go"
+      linters: [staticcheck, govet, ineffassign, unused]
+    - path: ".*_pb\\.gw\\.go"
+      linters: [staticcheck, govet, ineffassign, unused]

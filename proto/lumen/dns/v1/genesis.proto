@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package lumen.dns.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+import "lumen/dns/v1/auction.proto";
+import "lumen/dns/v1/domain.proto";
+import "lumen/dns/v1/params.proto";
+
+option go_package = "lumen/x/dns/types";
+
+message GenesisState {
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+  repeated Domain domain_map = 2 [(gogoproto.nullable) = false];
+  repeated Auction auction_map = 3 [(gogoproto.nullable) = false];
+}
+

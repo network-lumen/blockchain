@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package lumen.tokenomics.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/tokenomics/types";
+
+message Params {
+  option (amino.name) = "lumen/x/tokenomics/Params";
+  option (gogoproto.equal) = true;
+
+  string tx_tax_rate = 1;
+  uint64 initial_reward_per_block_lumn = 2;
+  uint64 halving_interval_blocks = 3;
+  uint64 supply_cap_lumn = 4;
+  uint32 decimals = 5;
+  uint64 min_send_ulmn = 6;
+  string denom = 7;
+  uint64 distribution_interval_blocks = 8;
+}

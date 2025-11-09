@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package lumen.release.v1;
+
+option go_package = "lumen/x/release/types";
+
+message Signature {
+  string key_id = 1;  // label/hex ID (info only v1)
+  string algo   = 2;  // e.g. "ed25519" (v1)
+  bytes sig     = 3;  // raw bytes; JSON base64
+}
+
+message Artifact {
+  string platform  = 1;  // e.g., "linux-amd64"
+  string kind      = 2;  // e.g., "daemon", "cli", "bundle"
+  string cid       = 3;  // optional IPFS CID
+  string sha256_hex = 4; // required
+  uint64 size      = 5;  // bytes
+  repeated string urls = 6; // http(s)/ipfs gateways mirrors
+  repeated Signature signatures = 7;
+}
+
+message Release {
+  uint64 id = 1;
+  string version = 2; // semver
+  string channel = 3; // stable/beta/nightly
+  repeated Artifact artifacts = 4; // 1..N
+  string publisher = 5; // bech32 of signer
+  string notes = 6; // short (bounded)
+  int64 created_at = 7; // unix time (block)
+  bool yanked = 8;
+  repeated uint64 supersedes = 9;
+  enum ReleaseStatus {
+    PENDING = 0;
+    VALIDATED = 1;
+    REJECTED = 2;
+    EXPIRED = 3;
+  }
+  ReleaseStatus status = 10;
+  bool emergency_ok = 11;
+  int64 emergency_until = 12; // unix time until which emergency_ok applies
+}
+
+

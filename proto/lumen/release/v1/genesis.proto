@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package lumen.release.v1;
+
+option go_package = "lumen/x/release/types";
+
+import "lumen/release/v1/types.proto";
+import "lumen/release/v1/params.proto";
+
+message GenesisState {
+  Params params = 1;
+  repeated Release releases = 2;
+  uint64 bundle_count = 3; // auto-increment counter for IDs
+}
+

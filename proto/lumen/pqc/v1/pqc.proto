@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package lumen.pqc.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/pqc/types";
+
+message AccountPQC {
+  string addr = 1 [(gogoproto.moretags) = "yaml:\"addr\""];
+  string scheme = 2 [(gogoproto.moretags) = "yaml:\"scheme\""];
+  bytes pub_key = 3 [(gogoproto.moretags) = "yaml:\"pub_key\""];
+  int64 added_at = 4 [(gogoproto.moretags) = "yaml:\"added_at\""];
+}
+
+message PQCSignatureEntry {
+  string addr = 1;
+  string scheme = 2;
+  bytes signature = 3;
+}
+
+message PQCSignatures {
+  repeated PQCSignatureEntry signatures = 1 [(gogoproto.nullable) = false];
+}

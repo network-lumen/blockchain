@@ -1,0 +1,150 @@
+syntax = "proto3";
+package lumen.dns.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "lumen/dns/v1/auction.proto";
+import "lumen/dns/v1/domain.proto";
+import "lumen/dns/v1/params.proto";
+
+option go_package = "lumen/x/dns/types";
+
+service Query {
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/params";
+  }
+
+  rpc Resolve(QueryResolveRequest) returns (QueryResolveResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/resolve/{domain}/{ext}/{records}/{expire_at}/{status}";
+  }
+
+  rpc DomainsByOwner(QueryDomainsByOwnerRequest) returns (QueryDomainsByOwnerResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/domains_by_owner/{owner}";
+  }
+
+  rpc AuctionStatus(QueryAuctionStatusRequest) returns (QueryAuctionStatusResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/auction_status/{domain}/{ext}/{end}/{highest_bid}/{bidder}";
+  }
+
+  rpc BaseFeeDns(QueryBaseFeeDnsRequest) returns (QueryBaseFeeDnsResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/base_fee_dns/{t}/{alpha}/{floor}/{ceiling}";
+  }
+
+  rpc GetDomain(QueryGetDomainRequest) returns (QueryGetDomainResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/domain/{index}";
+  }
+
+  rpc ListDomain(QueryAllDomainRequest) returns (QueryAllDomainResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/domain";
+  }
+
+  rpc GetAuction(QueryGetAuctionRequest) returns (QueryGetAuctionResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/auction/{index}";
+  }
+
+  rpc ListAuction(QueryAllAuctionRequest) returns (QueryAllAuctionResponse) {
+    option (google.api.http).get = "/lumen/dns/v1/auction";
+  }
+}
+
+message QueryParamsRequest {}
+
+message QueryParamsResponse {
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+message QueryResolveRequest {
+  string domain = 1;
+  string ext = 2;
+  string records = 5;
+  uint64 expire_at = 6;
+  string status = 7;
+}
+
+message QueryResolveResponse {
+  string owner = 1;
+  repeated Record records = 4;
+  uint64 expire_at = 5;
+  string status = 6; // "active" | "grace" | "auction" | "free"
+}
+
+message QueryDomainsByOwnerRequest {
+  string owner = 1;
+}
+
+message QueryDomainsByOwnerResponse {
+  repeated string domains = 1;
+}
+
+
+
+message QueryAuctionStatusRequest {
+  string domain = 1;
+  string ext = 2;
+  uint64 end = 3;
+  string highest_bid = 4;
+  string bidder = 5;
+}
+
+message QueryAuctionStatusResponse {
+  uint64 start = 1;
+  uint64 end = 2;
+  string highest_bid = 3;
+  string bidder = 4;
+}
+
+message QueryBaseFeeDnsRequest {
+  uint64 t = 1;
+  string alpha = 2;
+  string floor = 3;
+  string ceiling = 4;
+}
+
+message QueryBaseFeeDnsResponse {
+  string base_fee_dns = 1;
+  uint64 t = 2;
+  string alpha = 3;
+  string floor = 4;
+  string ceiling = 5;
+}
+
+message QueryGetDomainRequest {
+  string index = 1;
+}
+
+message QueryGetDomainResponse {
+  Domain domain = 1 [(gogoproto.nullable) = false];
+}
+
+message QueryAllDomainRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryAllDomainResponse {
+  repeated Domain domain = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryGetAuctionRequest {
+  string index = 1;
+}
+
+message QueryGetAuctionResponse {
+  Auction auction = 1 [(gogoproto.nullable) = false];
+}
+
+message QueryAllAuctionRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryAllAuctionResponse {
+  repeated Auction auction = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+

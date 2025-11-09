@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package lumen.pqc.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/pqc/types";
+
+enum PqcPolicy {
+  PQC_POLICY_DISABLED = 0;
+  PQC_POLICY_OPTIONAL = 1;
+  PQC_POLICY_REQUIRED = 2;
+}
+
+message Params {
+  PqcPolicy policy = 1 [(gogoproto.moretags) = "yaml:\"policy\""];
+  reserved 2;
+  reserved "exempt_msg_types";
+  string min_scheme = 3 [(gogoproto.moretags) = "yaml:\"min_scheme\""];
+  bool allow_account_rotate = 4 [(gogoproto.moretags) = "yaml:\"allow_account_rotate\""];
+}

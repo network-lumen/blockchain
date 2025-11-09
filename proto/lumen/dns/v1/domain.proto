@@ -1,0 +1,20 @@
+syntax = "proto3";
+package lumen.dns.v1;
+
+option go_package = "lumen/x/dns/types";
+
+message Record {
+  string key = 1;
+  string value = 2;
+  uint64 ttl = 3;
+}
+
+message Domain {
+  string index = 1;
+  string name = 2;
+  string owner = 3;
+  repeated Record records = 6;
+  uint64 expire_at = 7;
+  string creator = 8;
+  uint64 updated_at = 9;
+}

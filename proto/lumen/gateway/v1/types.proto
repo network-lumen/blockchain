@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package lumen.gateway.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/gateways/types";
+
+enum ContractStatus {
+  CONTRACT_STATUS_UNSPECIFIED = 0;
+  CONTRACT_STATUS_PENDING = 1;
+  CONTRACT_STATUS_ACTIVE = 2;
+  CONTRACT_STATUS_CANCELED = 3;
+  CONTRACT_STATUS_COMPLETED = 4;
+  CONTRACT_STATUS_FINALIZED = 5;
+}
+
+message Gateway {
+  uint64 id = 1;
+  string operator = 2; // signer address
+  string payout = 3;   // distribution address
+  bool active = 4;
+  string metadata = 5;
+  uint64 created_at = 6; // unix seconds
+  uint32 active_clients = 7;
+  uint32 cancellations = 8;
+}
+
+message Contract {
+  uint64 id = 1;
+  string client = 2;      // cosmos address of customer
+  uint64 gateway_id = 3;
+  uint64 price_ulmn = 4;
+  uint64 storage_gb_per_month = 5;
+  uint64 network_gb_per_month = 6;
+  uint32 months_total = 7;
+  uint64 start_time = 8;      // unix seconds
+  string escrow_ulmn = 9;     // sdk.Int encoded
+  uint32 claimed_months = 10;
+  ContractStatus status = 11;
+  string metadata = 12;
+  uint64 next_payout_time = 13; // unix seconds
+}
+

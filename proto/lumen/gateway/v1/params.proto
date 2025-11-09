@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package lumen.gateway.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/gateways/types";
+
+message Params {
+  option (amino.name) = "lumen/x/gateways/Params";
+  option (gogoproto.equal) = true;
+
+  uint32 platform_commission_bps = 1;
+  uint64 month_seconds = 2;
+  uint32 finalize_delay_months = 3;
+  uint32 finalizer_reward_bps = 4;
+  uint64 min_price_ulmn_per_month = 5;
+  uint32 max_active_contracts_per_gateway = 6;
+  uint64 action_fee_ulmn = 7;
+  uint64 register_gateway_fee_ulmn = 8;
+}

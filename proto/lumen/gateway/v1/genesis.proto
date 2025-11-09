@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package lumen.gateway.v1;
+
+option go_package = "lumen/x/gateways/types";
+
+import "lumen/gateway/v1/types.proto";
+import "lumen/gateway/v1/params.proto";
+
+message GenesisState {
+  Params params = 1;
+  repeated Gateway gateways = 2;
+  repeated Contract contracts = 3;
+  uint64 gateway_count = 4;
+  uint64 contract_count = 5;
+}
+

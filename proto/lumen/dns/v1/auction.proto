@@ -1,0 +1,15 @@
+syntax = "proto3";
+package lumen.dns.v1;
+
+option go_package = "lumen/x/dns/types";
+
+message Auction {
+  string index = 1;
+  string name = 2;
+  uint64 start = 3;
+  uint64 end = 4;
+  string highest_bid = 5;
+  string bidder = 6;
+  string creator = 7;
+}
+

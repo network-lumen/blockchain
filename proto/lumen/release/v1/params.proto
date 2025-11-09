@@ -1,0 +1,24 @@
+syntax = "proto3";
+package lumen.release.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/release/types";
+
+message Params {
+  option (amino.name) = "lumen/x/release/Params";
+  option (gogoproto.equal) = true;
+  repeated string allowed_publishers = 1; // bech32 authorized
+  repeated string channels = 2;          // allowed channels
+  uint32 max_artifacts = 3;
+  uint32 max_urls_per_art = 4;
+  uint32 max_sigs_per_art = 5;
+  uint32 max_notes_len = 6;
+  uint64 publish_fee_ulmn = 7;           // escrowed on publish
+  uint64 max_pending_ttl = 8;            // seconds until pending expires
+  repeated string dao_publishers = 9;    // accounts allowed to set emergency_ok
+  uint32 reject_refund_bps = 10;         // refund percent on reject (0..10000)
+  bool require_validation_for_stable = 11; // stable must be VALIDATED
+}
+

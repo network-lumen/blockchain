@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package lumen.gateway.v1;
+
+option go_package = "lumen/x/gateways/types";
+
+import "google/api/annotations.proto";
+import "lumen/gateway/v1/types.proto";
+import "lumen/gateway/v1/params.proto";
+
+service Query {
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/params" };
+  }
+
+  rpc Authority(QueryAuthorityRequest) returns (QueryAuthorityResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/authority" };
+  }
+
+  rpc ModuleAccounts(QueryModuleAccountsRequest) returns (QueryModuleAccountsResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/module_accounts" };
+  }
+
+  rpc Gateways(QueryGatewaysRequest) returns (QueryGatewaysResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/gateways" };
+  }
+
+  rpc Gateway(QueryGatewayRequest) returns (QueryGatewayResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/gateways/{id}" };
+  }
+
+  rpc Contracts(QueryContractsRequest) returns (QueryContractsResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/contracts" };
+  }
+
+  rpc Contract(QueryContractRequest) returns (QueryContractResponse) {
+    option (google.api.http) = { get: "/lumen/gateway/v1/contracts/{id}" };
+  }
+}
+
+message QueryParamsRequest {}
+message QueryParamsResponse { Params params = 1; }
+
+message QueryGatewaysRequest {
+  uint64 offset = 1;
+  uint64 limit = 2; // Defaults to 50, capped at 200.
+}
+message QueryGatewaysResponse { repeated Gateway gateways = 1; uint64 total = 2; }
+
+message QueryGatewayRequest { uint64 id = 1; }
+message QueryGatewayResponse { Gateway gateway = 1; }
+
+message QueryContractsRequest {
+  string status = 1;
+  string client = 2;
+  uint64 offset = 3;
+  uint64 limit = 4; // Defaults to 50, capped at 200.
+  uint64 gateway_id = 5;
+}
+message QueryContractsResponse { repeated Contract contracts = 1; uint64 total = 2; }
+
+message QueryContractRequest { uint64 id = 1; }
+message QueryContractResponse { Contract contract = 1; }
+
+message QueryModuleAccountsRequest {}
+message QueryModuleAccountsResponse { string escrow = 1; string treasury = 2; }
+
+message QueryAuthorityRequest {}
+message QueryAuthorityResponse { string address = 1; }

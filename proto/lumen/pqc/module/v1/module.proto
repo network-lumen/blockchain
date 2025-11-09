@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package lumen.pqc.module.v1;
+
+import "cosmos/app/v1alpha1/module.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/pqc/types";
+
+message Module {
+  option (cosmos.app.v1alpha1.module) = {go_import: "lumen/x/pqc"};
+}
+

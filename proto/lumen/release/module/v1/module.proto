@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package lumen.release.module.v1;
+
+import "cosmos/app/v1alpha1/module.proto";
+
+option go_package = "lumen/x/release/types";
+
+message Module {
+  option (cosmos.app.v1alpha1.module) = {go_import: "lumen/x/release"};
+
+  string authority = 1;
+}
+
+

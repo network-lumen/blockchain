@@ -1,0 +1,13 @@
+syntax = "proto3";
+package lumen.dns.module.v1;
+
+import "cosmos/app/v1alpha1/module.proto";
+
+option go_package = "lumen/x/dns/types";
+
+message Module {
+  option (cosmos.app.v1alpha1.module) = {go_import: "lumen/x/dns"};
+
+  string authority = 1;
+}
+

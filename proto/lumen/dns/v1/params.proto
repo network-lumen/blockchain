@@ -1,0 +1,39 @@
+syntax = "proto3";
+package lumen.dns.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "lumen/x/dns/types";
+
+message Params {
+  option (amino.name) = "lumen/x/dns/Params";
+  option (gogoproto.equal) = true;
+
+  string base_fee_dns = 1;
+  string alpha = 2;
+  string floor = 3;
+  string ceiling = 4;
+  uint64 t = 5;
+  uint64 grace_days = 6;
+  uint64 auction_days = 7;
+  reserved 8, 9, 10, 11;
+
+  uint64 transfer_fee_ulmn = 12;
+  uint64 bid_fee_ulmn = 13;
+  uint64 update_rate_limit_seconds = 14;
+  uint32 update_pow_difficulty = 15;
+  repeated LengthTier domain_tiers = 16;
+  repeated LengthTier ext_tiers = 17;
+  uint64 min_price_ulmn_per_month = 18;
+}
+
+// LengthTier defines a multiplier (in basis points) that applies when the
+// domain or extension length is ≤ max_len. The last tier must set max_len = 0
+// to denote an open upper bound.
+message LengthTier {
+  option (gogoproto.equal) = true;
+
+  uint32 max_len = 1;
+  uint32 multiplier_bps = 2;
+}
