@@ -59,6 +59,16 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 
 > The REST path for tokenomics queries follows the usual gRPC-Gateway convention once the service is registered; use `lumend q tokenomics params` for AutoCLI output.
 
+### `x/pqc`
+
+`GET /lumen/pqc/v1/params`
+
+- `policy` – enforced as `REQUIRED`
+- `min_scheme` – minimum accepted Dilithium variant
+- `allow_account_rotate` – opt-in flag for key rotation
+- `min_balance_for_link` – spendable ULUMEN threshold required before linking
+- `pow_difficulty_bits` – difficulty target for `sha256(pubkey || nonce)`
+
 ## Environment Variables
 
 The application consults a small set of process-level variables at startup:

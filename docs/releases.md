@@ -6,13 +6,13 @@ Lumen uses a conventional Git-based release flow augmented by on-chain metadata 
 
 Run the scripted checks instead of reimplementing them manually:
 
-1. `bash devtools/scripts/pre_release_check.sh`  
+1. `make pre-release`  
    Runs `go mod tidy`, `go vet`, `go test ./...`, `make preflight`, lint/staticcheck, govulncheck, and builds `./build/lumend`
-   with the PQC guard. Use `--fast` to skip the clean-tree check or `--no-vuln` to skip the vuln scan.
-2. `bash devtools/tests/test_all.sh`  
+   with the PQC guard. Append `ARGS="--fast"` to skip the clean-tree check or `ARGS="--no-vuln"` to skip the vuln scan.
+2. `HOME=$(mktemp -d) make e2e`  
    Executes the unit suite plus every E2E flow (DNS, Gateways, Release, PQC). This mirrors the CI pipeline and must pass
    before tagging.
-3. (Recommended) `bash devtools/scripts/simulate_network.sh --fast --clean`  
+3. (Recommended) `make simulate-network ARGS="--fast --clean"`  
    Boots the Docker simulator, links PQC keys, exercises DNS/Gateways/Release flows end-to-end, and exports logs/artifacts.
 4. Update [`CHANGELOG.md`](../CHANGELOG.md) and any relevant operator docs.
 
@@ -27,7 +27,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 
 # Produce artifacts locally if needed
-bash devtools/scripts/build_release.sh
+make build-release
 ls dist/vX.Y.Z
 ```
 

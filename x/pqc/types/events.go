@@ -6,8 +6,10 @@ const (
 	EventTypeMissing      = "pqc.missing"
 	EventTypeVerifyFailed = "pqc.verify_failed"
 
-	AttributeKeyAddress    = "address"
-	AttributeKeyScheme     = "scheme"
-	AttributeKeyPubKeyHash = "pubkey_hash"
-	AttributeKeyReason     = "reason"
+	AttributeKeyAddress        = "address"
+	AttributeKeyScheme         = "scheme"
+	AttributeKeyPubKeyHash     = "pubkey_hash"
+	AttributeKeyReason         = "reason"
+	AttributeKeyMinBalanceUsed = "min_balance"
+	AttributeKeyPowDifficulty  = "pow_difficulty"
 )

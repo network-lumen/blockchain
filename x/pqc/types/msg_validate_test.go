@@ -10,9 +10,10 @@ import (
 
 func TestMsgLinkAccountPQCSchemeLimit(t *testing.T) {
 	msg := MsgLinkAccountPQC{
-		Creator: sdk.AccAddress(make([]byte, 20)).String(),
-		Scheme:  "dilithium3",
-		PubKey:  make([]byte, 64),
+		Creator:  sdk.AccAddress(make([]byte, 20)).String(),
+		Scheme:   "dilithium3",
+		PubKey:   make([]byte, 64),
+		PowNonce: []byte{0x01},
 	}
 	require.NoError(t, msg.ValidateBasic())
 

@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"testing"
 	"time"
 
@@ -255,6 +256,7 @@ type pqcTestEnv struct {
 	pqc       mockPQCKeeper
 	scheme    dilithium.Scheme
 	privKeys  map[string]dilithium.PrivateKey
+	pubKeys   map[string][]byte
 	addresses []sdk.AccAddress
 }
 
@@ -277,6 +279,7 @@ func newPQCTestEnv(t *testing.T) *pqcTestEnv {
 		pqc:      mockPQCKeeper{accounts: make(map[string]pqctypes.AccountPQC), scheme: scheme},
 		scheme:   scheme,
 		privKeys: make(map[string]dilithium.PrivateKey),
+		pubKeys:  make(map[string][]byte),
 	}
 
 	for i := 0; i < 2; i++ {
@@ -294,11 +297,13 @@ func newPQCTestEnv(t *testing.T) *pqcTestEnv {
 		pub, priv, err := scheme.GenerateKey(bytes.Repeat([]byte{byte(i + 1)}, 32))
 		require.NoError(t, err)
 		env.privKeys[addr.String()] = priv
+		env.pubKeys[addr.String()] = pub
+		hash := sha256.Sum256(pub)
 		env.pqc.accounts[addr.String()] = pqctypes.AccountPQC{
-			Addr:    addr.String(),
-			Scheme:  pqctypes.SchemeDilithium3,
-			PubKey:  pub,
-			AddedAt: env.ctx.BlockTime().Unix(),
+			Addr:       addr.String(),
+			Scheme:     pqctypes.SchemeDilithium3,
+			PubKeyHash: hash[:],
+			AddedAt:    env.ctx.BlockTime().Unix(),
 		}
 	}
 
@@ -348,9 +353,10 @@ func (env *pqcTestEnv) decorator(params pqctypes.Params) PQCDualSignDecorator {
 
 func (env *pqcTestEnv) msg(addr sdk.AccAddress) sdk.Msg {
 	return &pqctypes.MsgLinkAccountPQC{
-		Creator: addr.String(),
-		Scheme:  pqctypes.SchemeDilithium3,
-		PubKey:  []byte{0x01},
+		Creator:  addr.String(),
+		Scheme:   pqctypes.SchemeDilithium3,
+		PubKey:   []byte{0x01},
+		PowNonce: []byte{0x01},
 	}
 }
 
@@ -418,6 +424,7 @@ func (env *pqcTestEnv) makeSignatures(decorator PQCDualSignDecorator, txRaw *txv
 			Addr:      addr.String(),
 			Scheme:    pqctypes.SchemeDilithium3,
 			Signature: sig,
+			PubKey:    env.pubKeys[addr.String()],
 		}
 	}
 	return out
@@ -432,6 +439,7 @@ func defaultParams() pqctypes.Params {
 		Policy:             pqctypes.PqcPolicy_PQC_POLICY_REQUIRED,
 		MinScheme:          pqctypes.SchemeDilithium3,
 		AllowAccountRotate: false,
+		MinBalanceForLink:  pqctypes.DefaultMinBalanceForLink,
 	}
 }
 

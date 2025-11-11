@@ -176,6 +176,7 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 			Addr:      addrStr,
 			Scheme:    opts.Scheme,
 			Signature: signature,
+			PubKey:    append([]byte(nil), keyRecord.PublicKey...),
 		}
 		signatureEntries = append(signatureEntries, entry)
 	}

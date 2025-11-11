@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # Environment variables:
-# - API (default http://127.0.0.1:1317): REST endpoint queried by the smoke test.
-# - RPC (default http://127.0.0.1:26657): Tendermint RPC endpoint used for tx polling.
+# - API (default http://127.0.0.1:2327): REST endpoint queried by the smoke test.
+# - RPC (default http://127.0.0.1:27657): Tendermint RPC endpoint used for tx polling.
 # - PD (default 0): When set to a small positive integer, the script may try to register
 #   a DNS domain through the disabled REST handler for quick smoke coverage.
 # - INDEX (default codex-auc.lumen): DNS name used when probing optional endpoints.
 
-API=${API:-http://127.0.0.1:1317}
-RPC=${RPC:-http://127.0.0.1:26657}
+API=${API:-http://127.0.0.1:2327}
+RPC=${RPC:-http://127.0.0.1:27657}
 PD=${PD:-0}
 
 require() { command -v "$1" >/dev/null || { echo "Missing dependency: $1" >&2; exit 0; }; }
@@ -63,5 +63,4 @@ if [ -n "${RID:-}" ] && [ "$RID" != "null" ]; then
 else
   log "release 1.0.1 not present; skip by-id"
 fi
-
 

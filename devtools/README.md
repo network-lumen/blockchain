@@ -2,6 +2,9 @@
 
 Everything needed to build, test, and package the chain lives here. Use this guide as the entry point when hacking on automation, CI, or local release tooling.
 
+> ℹ️ **Recommended entrypoint:** All examples now invoke `make <target>` wrappers (e.g. `make simulate-network`).
+> The underlying `.sh` scripts still live in `devtools/scripts` and `devtools/tests` for direct use when needed.
+
 ## Layout
 
 ```
@@ -30,7 +33,7 @@ devtools/
 
 ## Tools & Scripts
 
-### `scripts/simulate_network.sh` — Docker network simulator
+### `make simulate-network` (wraps `scripts/simulate_network.sh`) — Docker network simulator
 
 Spins up a seed node, configurable validator/full-node set, and a runner container that drives end-to-end traffic (PQC link/negative path, bank tax assertion, DNS register→auction→settle, gateway contracts, release publish, per-account and global rate-limit bursts). Requirements: Docker, Go, and `jq`. Artifacts (logs, genesis, node data, snapshots, PQC keys) land in `artifacts/sim/{logs,nodes,genesis,keys,snapshots}`.
 
@@ -43,9 +46,13 @@ make simulate-network              # defaults: 2 validators, 1 full node
 LUMEN_RL_GLOBAL_MAX=50 make simulate-network ARGS="--clean --timeout 600"
 ```
 
-The script honours `LUMEN_RL_*`, `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, and `IMAGE_TAG` overrides. See also [`docs/simulation.md`](../docs/simulation.md).
+The simulator binds the seed’s RPC/API/P2P endpoints to `localhost:27657/2327/27656` so it can run alongside the Docker
+devnet. Override these with `SIM_HOST_RPC_PORT`, `SIM_HOST_API_PORT`, or `SIM_HOST_P2P_PORT` if you need different host
+ports.
 
-### `tests/test_all.sh` — unit + E2E orchestrator
+The target honours `LUMEN_RL_*`, `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, and `IMAGE_TAG` overrides. See also [`docs/simulation.md`](../docs/simulation.md).
+
+### `make e2e` (wraps `tests/test_all.sh`) — unit + E2E orchestrator
 
 Builds `./build/lumend` once, exports `SKIP_BUILD=1`, and runs:
 
@@ -55,7 +62,7 @@ Builds `./build/lumend` once, exports `SKIP_BUILD=1`, and runs:
 
 Logs land in `artifacts/test-logs/*.log` and a JSON summary in `artifacts/test-report.json`.
 
-### `scripts/build_release.sh` — cross-platform release artifacts
+### `make build-release` (wraps `scripts/build_release.sh`) — cross-platform release artifacts
 
 Produces trimmed binaries for `linux/amd64`, `linux/arm64`, and `darwin/arm64`, places them under `dist/<git-describe>/<GOOS>-<GOARCH>/lumend`, and emits `SHA256SUMS`. Each build embeds the git version/commit via `-ldflags`.
 
@@ -99,7 +106,7 @@ Override the Go toolchain via `--build-arg GO_VERSION=<1.2x>` when needed. The b
 - `jq`, `curl`, `sed`, `awk`, `find`, `tar`
 - `make` (optional, used by build scripts when present)
 - `git`
-- `sudo` (only for `install_service.sh` when not using `--print-unit`)
+- `sudo` (only for `make install-service` when not using `ARGS="--print-unit"`)
 - Docker ≥ 24.0 (for `--ignorefile` in the builder workflow)
 
 E2E scripts spin up a temporary HOME (`mktemp -d -t lumen-e2e-XXXXXX`) and remove it on exit; set `DEBUG_KEEP=1` to retain the directory for debugging.
@@ -110,17 +117,18 @@ E2E scripts spin up a temporary HOME (`mktemp -d -t lumen-e2e-XXXXXX`) and remov
 
 | Variable | Default | Affecting | Notes |
 |----------|---------|-----------|-------|
-| `SKIP_BUILD` | `0` | E2E suites | Reuse an existing `./build/lumend`. |
-| `MODE` | `prod` | `tests/e2e_dns_auction.sh` | `prod` (default) mirrors production fee routing; `dev` enables the historical proposer-direct env. |
-| `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, `IMAGE_TAG` | `0`, `0`, `0`, `600`, `lumen-node:sim` | `scripts/simulate_network.sh` | Skip heavy spam, force cleanup, retain containers, change timeout/image tag. |
-| `DEBUG` | `0` | `tests/e2e_send_tax.sh` | Enables `set -x` before boot. |
-| `RPC_HOST`, `RPC_PORT`, `API_HOST`, `API_PORT`, `GRPC_HOST`, `GRPC_PORT` | Localhost defaults | All E2E + service installer | Override bind addresses without editing scripts. |
-| `RPC_LADDR`, `API_ADDR`, `GRPC_ADDR` | Derived | All E2E + service installer | Use when you need full endpoint control. |
+| `SKIP_BUILD` | `0` | E2E make targets | Reuse an existing `./build/lumend`. |
+| `MODE` | `prod` | `make e2e-dns-auction` | `prod` (default) mirrors production fee routing; `dev` enables the historical proposer-direct env. |
+| `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, `IMAGE_TAG` | `0`, `0`, `0`, `600`, `lumen-node:sim` | `make simulate-network` | Skip heavy spam, force cleanup, retain containers, change timeout/image tag. |
+| `SIM_HOST_RPC_PORT`, `SIM_HOST_API_PORT`, `SIM_HOST_P2P_PORT` | `27657`, `2327`, `27656` | `make simulate-network` | Host bindings for the simulator seed; adjust when 27657/2327/27656 are already in use. |
+| `DEBUG` | `0` | `make e2e-send-tax` | Enables `set -x` before boot. |
+| `RPC_HOST`, `RPC_PORT`, `API_HOST`, `API_PORT`, `GRPC_HOST`, `GRPC_PORT` | `127.0.0.1` / `27657`, `2327`, `9190` | All E2E make targets + `make install-service` | Override bind addresses without editing scripts. |
+| `RPC_LADDR`, `API_ADDR`, `GRPC_ADDR` | Derived | All E2E make targets + `make install-service` | Use when you need full endpoint control. |
 | `GRPC_WEB_ENABLE` | `1` | Node start scripts + service installer | Set to `0` to disable gRPC-Web. |
 | `LOG_FILE` | `/tmp/lumen.log` | E2E suites | Node stdout/stderr destination. |
-| `NETWORK_DIR` | unset | `scripts/build_native.sh` | Copies build artifacts to this path when set. |
+| `NETWORK_DIR` | unset | `make build-native` | Copies build artifacts to this path when set. |
 | `LUMEN_TAX_DIRECT_TO_PROPOSER`, `LUMEN_AUCTION_DIRECT_TO_PROPOSER` | unset | Relevant E2E suites | On/off switches consumed by the app at boot. |
-| `LUMEN_RL_PER_BLOCK`, `LUMEN_RL_PER_WINDOW`, `LUMEN_RL_WINDOW_SEC`, `LUMEN_RL_GLOBAL_MAX` | `5`, `20`, `10`, `300` | `scripts/install_service.sh`, `scripts/simulate_network.sh`, `tests/e2e_gateways.sh` | Clamp the ante decorators; scripts only allow tightening (lower numbers). |
+| `LUMEN_RL_PER_BLOCK`, `LUMEN_RL_PER_WINDOW`, `LUMEN_RL_WINDOW_SEC`, `LUMEN_RL_GLOBAL_MAX` | `5`, `20`, `10`, `300` | `make install-service`, `make simulate-network`, `make e2e-gateways` | Clamp the ante decorators; targets only allow tightening (lower numbers). |
 | `DEBUG_KEEP` | `0` | E2E suites | Keep the temporary `$HOME` for debugging. |
 
 ## Common Workflows
@@ -128,15 +136,15 @@ E2E scripts spin up a temporary HOME (`mktemp -d -t lumen-e2e-XXXXXX`) and remov
 ### Build (local developer)
 
 ```bash
-bash devtools/scripts/build_native.sh
+make build-native
 # optionally copy to another folder
-NETWORK_DIR=artifacts/bin bash devtools/scripts/build_native.sh
+NETWORK_DIR=artifacts/bin make build-native
 ```
 
 ### Build (release artifacts)
 
 ```bash
-bash devtools/scripts/build_release.sh
+make build-release
 ls dist/$(git describe --tags --dirty --always)
 ```
 
@@ -144,11 +152,11 @@ ls dist/$(git describe --tags --dirty --always)
 
 ```bash
 # Full run: unit tests + all E2E flows + smoke test
-HOME=$(mktemp -d) bash devtools/tests/test_all.sh
+HOME=$(mktemp -d) make e2e
 
 # Individual flows (skip rebuild after the first run)
-bash devtools/tests/e2e_send_tax.sh --skip-build
-bash devtools/tests/e2e_dns_auction.sh --skip-build --mode prod
+make e2e-send-tax ARGS="--skip-build"
+make e2e-dns-auction ARGS="--skip-build --mode prod"
 ```
 
 ### Documentation / OpenAPI
@@ -163,10 +171,10 @@ This regenerates Swagger assets under `artifacts/docs/` and stamps `docs/static/
 
 ```bash
 # dry run (no sudo required)
-devtools/scripts/install_service.sh --print-unit
+make install-service ARGS="--print-unit"
 
 # install to /etc/systemd/system/lumend.service (requires sudo)
-sudo devtools/scripts/install_service.sh
+sudo make install-service
 ```
 
 ## Notes & Caveats

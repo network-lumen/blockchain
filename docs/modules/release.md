@@ -19,12 +19,12 @@ chain so clients can verify downloads. Publishers are allowlisted via params and
 - `set-emergency [on|off]` – Authority-only; toggles the emergency switch used to pause publishing flows.
 - `update-params --authority …` – Governance updates the parameter set below.
 
-All transactions accept AutoCLI JSON payloads; see `devtools/tests/e2e_release.sh` for end-to-end examples.
+All transactions accept AutoCLI JSON payloads; see `make e2e-release` (wraps `devtools/tests/e2e_release.sh`) for end-to-end examples.
 
 ## Queries
 
 ```sh
-API=http://127.0.0.1:1317
+API=http://127.0.0.1:2327
 
 curl -s "$API/lumen/release/params" | jq
 curl -s "$API/lumen/release/releases?page=1&limit=10" | jq

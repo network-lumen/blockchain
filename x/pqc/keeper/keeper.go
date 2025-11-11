@@ -2,7 +2,9 @@ package keeper
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 
 	"cosmossdk.io/collections"
 	corestore "cosmossdk.io/core/store"
@@ -21,6 +23,8 @@ type Keeper struct {
 	Schema   collections.Schema
 	Params   collections.Item[types.Params]
 	Accounts collections.Map[string, types.AccountPQC]
+
+	bank types.BankKeeper
 }
 
 func NewKeeper(
@@ -48,6 +52,14 @@ func (k Keeper) Scheme() dilithium.Scheme {
 	return k.scheme
 }
 
+func (k *Keeper) SetBankKeeper(bank types.BankKeeper) {
+	k.bank = bank
+}
+
+func (k Keeper) BankKeeper() types.BankKeeper {
+	return k.bank
+}
+
 func (k Keeper) GetParams(ctx context.Context) types.Params {
 	params, err := k.Params.Get(ctx)
 	if err != nil {
@@ -70,6 +82,10 @@ func (k Keeper) SetParams(ctx context.Context, params types.Params) error {
 
 func (k Keeper) SetAccountPQC(ctx context.Context, addr sdk.AccAddress, info types.AccountPQC) error {
 	info.Addr = addr.String()
+	if len(info.PubKeyHash) != sha256.Size {
+		return fmt.Errorf("pub_key_hash must be %d bytes", sha256.Size)
+	}
+	info.PubKeyHash = append([]byte(nil), info.PubKeyHash...)
 	return k.Accounts.Set(ctx, info.Addr, info)
 }
 
@@ -81,10 +97,30 @@ func (k Keeper) GetAccountPQC(ctx context.Context, addr sdk.AccAddress) (types.A
 		}
 		return types.AccountPQC{}, false, err
 	}
-	return info, true, nil
+	normalized, err := k.ensureAccountHash(ctx, addr, info)
+	if err != nil {
+		return types.AccountPQC{}, false, err
+	}
+	return normalized, true, nil
 }
 
 func (k Keeper) HasAccountPQC(ctx context.Context, addr sdk.AccAddress) (bool, error) {
 	_, found, err := k.GetAccountPQC(ctx, addr)
 	return found, err
+}
+
+func (k Keeper) ensureAccountHash(ctx context.Context, addr sdk.AccAddress, info types.AccountPQC) (types.AccountPQC, error) {
+	if len(info.PubKeyHash) == sha256.Size {
+		info.PubKeyHash = append([]byte(nil), info.PubKeyHash...)
+		return info, nil
+	}
+	if len(info.PubKeyHash) == 0 {
+		return info, nil
+	}
+	hash := sha256.Sum256(info.PubKeyHash)
+	info.PubKeyHash = append([]byte(nil), hash[:]...)
+	if err := k.Accounts.Set(ctx, addr.String(), info); err != nil {
+		return types.AccountPQC{}, err
+	}
+	return info, nil
 }

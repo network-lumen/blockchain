@@ -3,6 +3,11 @@ package types
 import (
 	"fmt"
 	"strings"
+
+	sdkmath "cosmossdk.io/math"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	tokenomicstypes "lumen/x/tokenomics/types"
 )
 
 const (
@@ -12,17 +17,26 @@ const (
 	DefaultPolicy             = PqcPolicy_PQC_POLICY_REQUIRED
 	DefaultMinScheme          = SchemeDilithium3
 	DefaultAllowAccountRotate = false
+
+	DefaultPowDifficultyBits uint32 = 21
 )
 
 func SupportedSchemes() []string {
 	return []string{SchemeDilithium3}
 }
 
+var DefaultMinBalanceForLink = sdk.NewCoin(
+	tokenomicstypes.DefaultDenom,
+	sdkmath.NewIntFromUint64(tokenomicstypes.DefaultMinSendUlmn),
+)
+
 func DefaultParams() Params {
 	return Params{
 		Policy:             DefaultPolicy,
 		MinScheme:          DefaultMinScheme,
 		AllowAccountRotate: DefaultAllowAccountRotate,
+		MinBalanceForLink:  DefaultMinBalanceForLink,
+		PowDifficultyBits:  DefaultPowDifficultyBits,
 	}
 }
 
@@ -39,5 +53,22 @@ func (p Params) Validate() error {
 		return fmt.Errorf("unsupported min_scheme %q", p.MinScheme)
 	}
 
+	if err := validateMinBalance(p.MinBalanceForLink); err != nil {
+		return err
+	}
+	if p.PowDifficultyBits > 256 {
+		return fmt.Errorf("pow_difficulty_bits must be <= 256")
+	}
+
+	return nil
+}
+
+func validateMinBalance(coin sdk.Coin) error {
+	if !coin.IsValid() {
+		return fmt.Errorf("min_balance_for_link must be a valid coin")
+	}
+	if !coin.IsPositive() {
+		return fmt.Errorf("min_balance_for_link must be > 0")
+	}
 	return nil
 }

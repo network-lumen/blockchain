@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"context"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/spf13/cobra"
 
 	"lumen/crypto/pqc/dilithium"
@@ -65,7 +69,21 @@ func LinkAccountPQCCmd() *cobra.Command {
 				return fmt.Errorf("public key must be %d bytes", backend.PublicKeySize())
 			}
 
+			query := types.NewQueryClient(clientCtx)
+			paramsResp, err := query.Params(cmd.Context(), &types.QueryParamsRequest{})
+			if err != nil {
+				return err
+			}
+			if err := ensureMinBalance(cmd.Context(), clientCtx, paramsResp.Params.GetMinBalanceForLink()); err != nil {
+				return err
+			}
+			powNonce, err := computePowNonce(pubKey, paramsResp.Params.PowDifficultyBits)
+			if err != nil {
+				return err
+			}
+
 			msg := types.NewMsgLinkAccountPQC(clientCtx.GetFromAddress(), schemeName, pubKey)
+			msg.PowNonce = powNonce
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -78,4 +96,53 @@ func LinkAccountPQCCmd() *cobra.Command {
 	cmd.Flags().String("pubkey", "", "PQC public key in hex or base64")
 	flags.AddTxFlagsToCmd(cmd)
 	return cmd
+}
+
+func computePowNonce(pubKey []byte, bits uint32) ([]byte, error) {
+	if bits == 0 {
+		return []byte{0x00}, nil
+	}
+	nonce := make([]byte, 8)
+	var counter uint64
+	for {
+		binary.BigEndian.PutUint64(nonce, counter)
+		digest := types.ComputePowDigest(pubKey, nonce)
+		if types.LeadingZeroBits(digest[:]) >= int(bits) {
+			return append([]byte(nil), nonce...), nil
+		}
+		counter++
+		if counter == 0 {
+			return nil, fmt.Errorf("pow search exhausted")
+		}
+	}
+}
+
+func ensureMinBalance(ctx context.Context, clientCtx client.Context, coin sdk.Coin) error {
+	if strings.TrimSpace(coin.Denom) == "" {
+		return nil
+	}
+	if !coin.IsValid() || !coin.Amount.IsPositive() {
+		return nil
+	}
+
+	query := banktypes.NewQueryClient(clientCtx)
+	resp, err := query.Balance(ctx, &banktypes.QueryBalanceRequest{
+		Address: clientCtx.GetFromAddress().String(),
+		Denom:   coin.Denom,
+	})
+	if err != nil {
+		return err
+	}
+	balance := resp.GetBalance()
+	if balance == nil || balance.Amount.LT(coin.Amount) {
+		current := "0"
+		if balance != nil {
+			current = balance.Amount.String()
+		}
+		return fmt.Errorf(
+			"PQC link requires at least %s%s (current %s%s)",
+			coin.Amount.String(), coin.Denom, current, coin.Denom,
+		)
+	}
+	return nil
 }

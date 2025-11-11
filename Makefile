@@ -17,6 +17,10 @@ ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=$(APPNAME) \
 	-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 	-X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT)
 
+.PHONY: help
+help: ## Show all documented make targets
+	@grep -h '^[a-zA-Z0-9_-]\+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS=":.*## "}; {printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2}'
+
 BUILD_FLAGS := -ldflags '$(ldflags)'
 
 ##############
@@ -54,9 +58,15 @@ all: build
 VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo dev)
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
-build:
+build: ## Build lumend for the current platform (Go build)
 	@echo "--> building lumend (local platform)"
 	@go build -trimpath -ldflags "-s -w $(ldflags)" -o build/lumend ./cmd/lumend
+
+build-native: ## Build lumend via devtools/scripts/build_native.sh (NETWORK_DIR optional)
+	@bash devtools/scripts/build_native.sh $(ARGS)
+
+build-release: ## Produce cross-platform release archives (wraps devtools/scripts/build_release.sh)
+	@bash devtools/scripts/build_release.sh $(ARGS)
 
 test:
 	@go test ./...
@@ -67,11 +77,14 @@ preflight:
 doc-check:
 	@go test ./tests/preflight -run TestDocs -count=1
 
-pre-release:
+pre-release: ## Run release readiness checks (devtools/scripts/pre_release_check.sh)
 	@bash devtools/scripts/pre_release_check.sh
 
-simulate-network:
+simulate-network: ## Launch the Docker simulator (devtools/scripts/simulate_network.sh)
 	@bash devtools/scripts/simulate_network.sh $(ARGS)
+
+install-service: ## Generate/install the systemd unit (devtools/scripts/install_service.sh)
+	@bash devtools/scripts/install_service.sh $(ARGS)
 
 sanity:
 	@bash -c 'set -euo pipefail; \
@@ -86,16 +99,35 @@ sanity:
 		  echo "OK: release binary clean"; \
 		fi'
 
-e2e:
-	@bash devtools/tests/test_all.sh
+e2e: ## Run the full test orchestrator (devtools/tests/test_all.sh)
+	@bash devtools/tests/test_all.sh $(ARGS)
 
-e2e-pqc:
-	@BIN=./build/lumend bash devtools/tests/e2e_pqc.sh
+e2e-pqc: ## Run the dedicated PQC e2e flow (devtools/tests/e2e_pqc.sh)
+	@BIN=./build/lumend bash devtools/tests/e2e_pqc.sh $(ARGS)
+
+e2e-dns: ## Legacy DNS CLI flow (devtools/tests/e2e_dns.sh)
+	@bash devtools/tests/e2e_dns.sh $(ARGS)
+
+e2e-dns-auction: ## Auction lifecycle flow (devtools/tests/e2e_dns_auction.sh)
+	@bash devtools/tests/e2e_dns_auction.sh $(ARGS)
+
+e2e-gateways: ## Gateways happy-path suite (devtools/tests/e2e_gateways.sh)
+	@bash devtools/tests/e2e_gateways.sh $(ARGS)
+
+e2e-release: ## Release publisher workflow (devtools/tests/e2e_release.sh)
+	@bash devtools/tests/e2e_release.sh $(ARGS)
+
+e2e-send-tax: ## Send-tax ante/post handler suite (devtools/tests/e2e_send_tax.sh)
+	@bash devtools/tests/e2e_send_tax.sh $(ARGS)
+
+smoke-rest: ## Lightweight REST/RPC smoke test (devtools/tests/smoke_rest.sh)
+	@bash devtools/tests/smoke_rest.sh $(ARGS)
 
 clean:
 	@rm -rf build/ dist/ artifacts/
 
-.PHONY: build test preflight doc-check pre-release simulate-network sanity e2e e2e-pqc clean
+.PHONY: build build-native build-release test preflight doc-check pre-release simulate-network install-service sanity \
+	e2e e2e-pqc e2e-dns e2e-dns-auction e2e-gateways e2e-release e2e-send-tax smoke-rest clean
 
 docs:
 	@mkdir -p artifacts/docs

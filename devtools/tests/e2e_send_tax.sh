@@ -4,9 +4,9 @@ set -euo pipefail
 # Environment variables (overridable):
 #   SKIP_BUILD       Skip rebuilding the binary (default 0)
 #   DEBUG            Enable bash tracing before starting the node (default 0)
-#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:26657)
-#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:1317)
-#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9090)
+#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:27657)
+#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:2327)
+#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9190)
 #   GRPC_WEB_ENABLE  Enable gRPC-Web (default 1)
 #   NODE             Tendermint RPC URL (defaults to rpc laddr)
 #   LOG_FILE         Node log destination (default /tmp/lumen.log)
@@ -25,15 +25,15 @@ BIN="$DIR/build/lumend"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-26657}"
+RPC_PORT="${RPC_PORT:-27657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-1317}"
+API_PORT="${API_PORT:-2327}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-9090}"
+GRPC_PORT="${GRPC_PORT:-9190}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
 NODE=${NODE:-$RPC_LADDR}
@@ -170,9 +170,9 @@ send() {
   local res hash code tries=15 tx_json total_b64 rate_b64
   while [ $tries -gt 0 ]; do
     if [ -n "$memo" ]; then
-      res=$("$BIN" tx bank send "$from_name" "$to_addr" "$amount" --note "$memo" --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json 2>/dev/null || true)
+      res=$("$BIN" tx bank send "$from_name" "$to_addr" "$amount" --note "$memo" --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json 2>/dev/null || true)
     else
-      res=$("$BIN" tx bank send "$from_name" "$to_addr" "$amount" --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json 2>/dev/null || true)
+      res=$("$BIN" tx bank send "$from_name" "$to_addr" "$amount" --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json 2>/dev/null || true)
     fi
     echo "$res" | jq
     hash=$(echo "$res" | jq -r .txhash 2>/dev/null)

@@ -11,4 +11,7 @@ var (
 	ErrPQCVerifyFailed         = errorsmod.Register(ModuleName, 6, "pqc signature verification failed")
 	ErrInvalidScheme           = errorsmod.Register(ModuleName, 7, "invalid pqc scheme")
 	ErrMissingExtension        = errorsmod.Register(ModuleName, 8, "missing pqc signature extension")
+	ErrInsufficientBalanceLink = errorsmod.Register(ModuleName, 9, "insufficient balance for pqc link")
+	ErrInvalidPow              = errorsmod.Register(ModuleName, 10, "invalid pqc proof-of-work")
+	ErrInvalidPubKeyFormat     = errorsmod.Register(ModuleName, 11, "invalid pqc public key format")
 )

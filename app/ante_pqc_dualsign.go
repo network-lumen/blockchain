@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -170,6 +171,14 @@ func (d PQCDualSignDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 			return ctx, errorsmod.Wrapf(pqctypes.ErrInvalidScheme, "signer %s provided scheme %s requires %s", signer.String(), entry.Scheme, params.MinScheme)
 		}
 
+		if len(entry.PubKey) != scheme.PublicKeySize() {
+			return ctx, errorsmod.Wrapf(pqctypes.ErrInvalidPubKeyFormat, "signer %s provided pubkey length %d expected %d", signer.String(), len(entry.PubKey), scheme.PublicKeySize())
+		}
+		pubKeyHash := sha256.Sum256(entry.PubKey)
+		if len(accountPQC.PubKeyHash) != sha256.Size || !bytes.Equal(pubKeyHash[:], accountPQC.PubKeyHash) {
+			return ctx, errorsmod.Wrapf(pqctypes.ErrPQCVerifyFailed, "signer %s pubkey hash mismatch", signer.String())
+		}
+
 		sigData, ok := sigV2s[idx].Data.(*signingtypes.SingleSignatureData)
 		if !ok {
 			return ctx, fmt.Errorf("pqc: unsupported signature data for signer %s", signer.String())
@@ -188,15 +197,11 @@ func (d PQCDualSignDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 			pqcDebugLogSigner(txHashBytes, signer, "verifying", "")
 		}
 
-		if len(accountPQC.PubKey) != scheme.PublicKeySize() {
-			return ctx, errorsmod.Wrapf(pqctypes.ErrPQCVerifyFailed, "signer %s pubkey length mismatch", signer.String())
-		}
-
 		if len(entry.Signature) != scheme.SignatureSize() {
 			return ctx, errorsmod.Wrapf(pqctypes.ErrPQCVerifyFailed, "signer %s signature length mismatch", signer.String())
 		}
 
-		if !scheme.Verify(accountPQC.PubKey, signBytes, entry.Signature) {
+		if !scheme.Verify(entry.PubKey, signBytes, entry.Signature) {
 			if pqcDebugEnabled() {
 				pqcDebugLogSigner(txHashBytes, signer, "verify_failed", "signature_verify_failed")
 			}
@@ -318,10 +323,11 @@ func pendingLinkForSigner(msgs []sdk.Msg, signer sdk.AccAddress) (pqctypes.Accou
 		if !strings.EqualFold(link.Creator, signerStr) {
 			continue
 		}
+		hash := sha256.Sum256(link.PubKey)
 		account := pqctypes.AccountPQC{
-			Addr:   signerStr,
-			Scheme: link.Scheme,
-			PubKey: append([]byte(nil), link.PubKey...),
+			Addr:       signerStr,
+			Scheme:     link.Scheme,
+			PubKeyHash: append([]byte(nil), hash[:]...),
 		}
 		return account, true
 	}

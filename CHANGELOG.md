@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-11-11
+
+Major dev milestone introducing PQC hardening, on-chain footprint reduction, and unified Make-based workflows.
+
+### 🧩 Core chain & PQC
+- **Hash-only storage:** the `x/pqc` module now stores only the SHA-256 hash of the public key (`pub_key_hash`), removing full PQC keys from state.
+- **PoW requirement:** `MsgLinkAccountPQC` now requires a proof-of-work (`pow_nonce`) computed client-side; difficulty adjustable via the new param `pow_difficulty_bits`.
+- **Economic guard:** a new param `min_balance_for_link` ensures an account must hold a minimal spendable balance before linking its PQC key.
+- **Ante verification:** PQC ante-handler now validates `sha256(pubkey)` equality, key size, and signature correctness against the provided PQC key.
+- **CLI improvements:** automatic PoW mining when linking, clear errors for invalid PoW or insufficient balance.
+- **Events & params:** enriched events (`pow_difficulty`, `min_balance`) and extended param validation.
+- **Breaking proto change:**
+  - `AccountPQC`: field `pub_key` replaced by `pub_key_hash` (bytes, 32 B).
+  - `PQCSignatureEntry`: new field `pub_key` (bytes).
+  - `Params`: added `min_balance_for_link (Coin)` and `pow_difficulty_bits (uint32)`.
+
+### ⚙️ Devtools & E2E
+- **Unified ports:** defaults switched to RPC `27657`, API `2327`, gRPC `9190`.
+- **Simulator:** `devtools/scripts/simulate_network.sh` now exposes host ports via `SIM_HOST_*` and waits for node readiness through `HOST_RPC_URL`.
+- **E2E tests:** 
+  - Negative tests added for PQC link failure (no balance / invalid PoW).
+  - All E2E suites (`dns`, `auction`, `gateways`, `release`, `send-tax`) updated with `--node` propagation and environment consistency.
+- **Minor fix:** added default `NODE=${NODE:-$RPC_LADDR}` in `e2e_gateways.sh` to prevent undefined variable errors.
+
+### 🧰 Makefile & DX
+- **Make-first workflow:** all `.sh` invocations replaced by `make <target>` equivalents across docs.
+- **New/updated targets:**  
+  `simulate-network`, `e2e-dns`, `e2e-dns-auction`, `e2e-gateways`, `e2e-pqc`, `e2e-release`, `e2e-send-tax`, `smoke-rest`, and `help`.
+- **Aliases:** optional `test-e2e-*` aliases available for CI/dev ergonomics.
+- **Docs updated:** full replacement of `.sh` examples with `make`, plus unified table of environment variables.
+
+### 📘 Documentation
+- `pqc.md`: updated to describe hash-based linking, PoW workflow, and minimum balance enforcement.
+- `params.md`: documents new PQC parameters.
+- `devtools/README.md` and root `README.md`: reflect new Make targets, port defaults, and environment overrides.
+- Added quickstart section using only `make` commands for local dev.
+
+---
+
 ## [0.9.0] - 2025-11-09
 
 First public milestone for the Lumen blockchain. Highlights:

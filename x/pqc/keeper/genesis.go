@@ -35,8 +35,8 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 	accounts := make([]types.AccountPQC, 0, 16)
 
 	err := k.Accounts.Walk(ctx, nil, func(_ string, value types.AccountPQC) (bool, error) {
-		copyPub := append([]byte(nil), value.PubKey...)
-		value.PubKey = copyPub
+		copyHash := append([]byte(nil), value.PubKeyHash...)
+		value.PubKeyHash = copyHash
 		accounts = append(accounts, value)
 		return false, nil
 	})

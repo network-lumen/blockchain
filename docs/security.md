@@ -15,7 +15,7 @@
 
 - **Release spam:** only addresses listed in `Params.allowed_publishers` (or `dao_publishers`) may publish or mirror releases. Tune `publish_fee_ulmn`, `max_pending_ttl`, and `reject_refund_bps` to discourage abusive submissions.
 
-- **REST exposure:** place a TLS-enabled reverse proxy with per-IP rate limiting in front of `:1317` if the API is exposed to the public internet.
+- **REST exposure:** place a TLS-enabled reverse proxy with per-IP rate limiting in front of `:2327` if the API is exposed to the public internet.
 
 - **Keys:** avoid the test keyring backend on production nodes. Prefer OS keyrings, KMS, or HSM integration for validator and publisher keys.
 
@@ -46,7 +46,7 @@
   - `go vet`, unit tests, static analysis, vuln scan, and preflight tests.
 
 ## Node hardening (prod)
-- Do not expose `:1317` directly; put TLS reverse proxy + IP rate-limits in front.
+- Do not expose `:2327` directly; put TLS reverse proxy + IP rate-limits in front.
 - Avoid the test keyring in production; prefer OS keyrings/KMS/HSM for validators & publishers.
 - Keep defaults and param changes versioned; review governance updates before rollout.
 

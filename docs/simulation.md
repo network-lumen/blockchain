@@ -2,11 +2,7 @@
 
 This document explains how to spin up a small Lumen network (seed + validators + full nodes), exercise PQC, DNS, Gateways, Release flows, and stress the rate-limit logic using Docker.
 
-The orchestrator lives at:
-
-```
-devtools/scripts/simulate_network.sh
-```
+The orchestrator is exposed via `make simulate-network` (wrapping `devtools/scripts/simulate_network.sh`).
 
 ## Requirements
 - Docker (with permission to access `/var/run/docker.sock`)
@@ -29,19 +25,19 @@ devtools/scripts/simulate_network.sh
 quick run, cleans artifacts, shorter spam tests
 
 ```
-bash devtools/scripts/simulate_network.sh --fast --clean
+make simulate-network ARGS="--fast --clean"
 ```
 
 larger run with more validators/fullnodes
 
 ```
-bash devtools/scripts/simulate_network.sh --validators 3 --fullnodes 2 --timeout 900 --clean
+make simulate-network ARGS="--validators 3 --fullnodes 2 --timeout 900 --clean"
 ```
 
 preserve containers for inspection
 
 ```
-bash devtools/scripts/simulate_network.sh --keep
+make simulate-network ARGS="--keep"
 ```
 
 ## Environment knobs (rate-limit)
@@ -54,7 +50,7 @@ The script passes these ENV variables into nodes (sane defaults provided):
 Example:
 
 ```
-LUMEN_RL_GLOBAL_MAX=50 bash devtools/scripts/simulate_network.sh --clean
+LUMEN_RL_GLOBAL_MAX=50 make simulate-network ARGS="--clean"
 ```
 
 ## Artifacts & Logs
@@ -65,7 +61,7 @@ LUMEN_RL_GLOBAL_MAX=50 bash devtools/scripts/simulate_network.sh --clean
 A GitHub workflow can invoke:
 
 ```
-bash devtools/scripts/simulate_network.sh --fast --timeout 300 --clean
+make simulate-network ARGS="--fast --timeout 300 --clean"
 ```
 
 This provides smoke coverage of the full runtime without exposing ports publicly.

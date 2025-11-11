@@ -40,6 +40,10 @@ DNS_NAME="codexnet"
 DNS_EXT="lumen"
 DNS_MIN_BID_ULMN=0
 DNS_HIGH_BID_ULMN=0
+HOST_RPC_PORT="${SIM_HOST_RPC_PORT:-27657}"
+HOST_P2P_PORT="${SIM_HOST_P2P_PORT:-27656}"
+HOST_API_PORT="${SIM_HOST_API_PORT:-2327}"
+HOST_RPC_URL="http://127.0.0.1:${HOST_RPC_PORT}"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -346,11 +350,11 @@ stop_and_rm() {
 
 start_seed() {
 	stop_and_rm "$SEED_NAME"
-	run "docker run -d --name $SEED_NAME --network $NET_NAME -p 26657:26657 -p 26656:26656 \
-		-e LUMEN_RL_PER_BLOCK=$RL_PER_BLOCK \
-		-e LUMEN_RL_PER_WINDOW=$RL_PER_WINDOW \
-		-e LUMEN_RL_WINDOW_SEC=$RL_WINDOW_SEC \
-		-e LUMEN_RL_GLOBAL_MAX=$RL_GLOBAL_MAX \
+run "docker run -d --name $SEED_NAME --network $NET_NAME -p ${HOST_RPC_PORT}:26657 -p ${HOST_P2P_PORT}:26656 -p ${HOST_API_PORT}:1317 \
+	-e LUMEN_RL_PER_BLOCK=$RL_PER_BLOCK \
+	-e LUMEN_RL_PER_WINDOW=$RL_PER_WINDOW \
+	-e LUMEN_RL_WINDOW_SEC=$RL_WINDOW_SEC \
+	-e LUMEN_RL_GLOBAL_MAX=$RL_GLOBAL_MAX \
 		-v \"$SEED_HOME\":/root/.lumen \
 		${IMAGE_TAG} start \
 		--home /root/.lumen \
@@ -644,7 +648,7 @@ simulate() {
 	done
 
 	ok "Waiting for blocks..."
-	wait_http_json_field "http://localhost:26657/status" '.result.sync_info.latest_block_height|tonumber' '[[ ${VALUE:-0} -ge 1 ]]' 120 || die "seed RPC not ready"
+wait_http_json_field "${HOST_RPC_URL}/status" '.result.sync_info.latest_block_height|tonumber' '[[ ${VALUE:-0} -ge 1 ]]' 120 || die "seed RPC not ready"
 
 	stop_and_rm "$RUNNER_NAME"
 	run "docker run -d --name $RUNNER_NAME --network $NET_NAME --entrypoint /bin/bash ${IMAGE_TAG} -lc \"sleep infinity\" >/dev/null"
@@ -835,8 +839,8 @@ EOF"
 	fi
 
 	ok "Final status checks"
-	wait_http_json_field "http://localhost:26657/status" '.result.sync_info.latest_block_height|tonumber' '[[ ${VALUE:-0} -ge 20 ]]' "$TIMEOUT" || die "height did not advance"
-	wait_http_json_field "http://localhost:26657/net_info" '.result.n_peers|tonumber' '[[ ${VALUE:-0} -ge 1 ]]' 60 || die "no peers connected"
+wait_http_json_field "${HOST_RPC_URL}/status" '.result.sync_info.latest_block_height|tonumber' '[[ ${VALUE:-0} -ge 20 ]]' "$TIMEOUT" || die "height did not advance"
+wait_http_json_field "${HOST_RPC_URL}/net_info" '.result.n_peers|tonumber' '[[ ${VALUE:-0} -ge 1 ]]' 60 || die "no peers connected"
 
 	docker logs "$SEED_NAME" >"$LOGS_DIR/${SEED_NAME}.log" 2>&1 || true
 	for i in $(seq 1 "$VALIDATORS"); do docker logs "val-$i" >"$LOGS_DIR/val-$i.log" 2>&1 || true; done

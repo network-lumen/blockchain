@@ -74,6 +74,7 @@ func TestInjectPQCPostSignAddsExtension(t *testing.T) {
 
 	builder := encCfg.TxConfig.NewTxBuilder()
 	msg := pqctypes.NewMsgLinkAccountPQC(addr, dilithium.Default().Name(), pub)
+	msg.PowNonce = []byte{0x01}
 	require.NoError(t, builder.SetMsgs(msg))
 
 	secp := secp256k1.GenPrivKey()
@@ -100,6 +101,7 @@ func TestInjectPQCPostSignAddsExtension(t *testing.T) {
 	require.Len(t, payload.Signatures, 1)
 	require.Equal(t, addr.String(), payload.Signatures[0].Addr)
 	require.Equal(t, dilithium.Default().Name(), payload.Signatures[0].Scheme)
+	require.Equal(t, []byte(pub), payload.Signatures[0].PubKey)
 
 	txBytes, err := encCfg.TxConfig.TxEncoder()(builder.GetTx())
 	require.NoError(t, err)

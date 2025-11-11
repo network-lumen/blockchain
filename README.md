@@ -44,12 +44,15 @@ The codebase is organised as a standard Go module (`module lumen`) and relies on
 
 ## Building
 
+> ℹ️ **Workflow note:** Documentation now references `make <target>` wrappers (e.g. `make build-native`). The underlying
+> `.sh` helpers remain in `devtools/scripts` and `devtools/tests` for direct use when needed.
+
 ```bash
 # Local developer build (produces build/lumend)
-bash devtools/scripts/build_native.sh
+make build-native
 
 # Optional: copy binaries to a custom directory
-NETWORK_DIR=artifacts/bin bash devtools/scripts/build_native.sh
+NETWORK_DIR=artifacts/bin make build-native
 ```
 
 The canonical binary entry point lives in `cmd/lumend`.
@@ -64,7 +67,7 @@ The canonical binary entry point lives in `cmd/lumend`.
 go test ./...
 
 # Full suite: unit tests + end-to-end flows + REST smoke checks
-HOME=$(mktemp -d) bash devtools/tests/test_all.sh
+HOME=$(mktemp -d) make e2e
 
 # PQC flow only (Dilithium3 dual-signing)
 make e2e-pqc
@@ -76,7 +79,9 @@ make lint
 make vulncheck
 ```
 
-Individual E2E flows can be invoked directly from `devtools/tests/` (e.g., `e2e_dns_auction.sh`, `e2e_send_tax.sh`). Most scripts rebuild the binary unless `SKIP_BUILD=1` is exported.
+Individual flows are exposed via dedicated make targets (wrapping the scripts under `devtools/tests/`), e.g.
+`make e2e-dns-auction`, `make e2e-send-tax`, `make e2e-gateways`, or `make e2e-release`. Most targets rebuild the
+binary unless `SKIP_BUILD=1` is exported.
 
 The PQC client injector is enabled by default; pass `--pqc-enable=false` on any `lumend tx` command to intentionally
 omit Dilithium signatures (useful for negative tests such as the `e2e_pqc` flow).
@@ -85,7 +90,7 @@ You can run all end-to-end tests with:
 
 ```bash
 make e2e-pqc
-HOME=$(mktemp -d) bash devtools/tests/test_all.sh
+HOME=$(mktemp -d) make e2e
 ```
 
 All E2E scripts now enforce PQC dual-signing by default.
@@ -94,7 +99,7 @@ For a focused gate before opening PRs, run `make preflight`. To spin up a short-
 DNS, gateways, releases, and rate limits end-to-end, use:
 
 ```bash
-bash devtools/scripts/simulate_network.sh --fast --clean
+make simulate-network ARGS="--fast --clean"
 ```
 
 ## Fees & Mempool
@@ -140,8 +145,8 @@ A multi-stage builder lives in `devtools/docker/builder/`. Usage for both the bu
 
 ## Simulation (Docker)
 
-End-to-end network simulation (seed, validators, full nodes, and a control runner) lives in
-[`devtools/scripts/simulate_network.sh`](devtools/scripts/simulate_network.sh). It exercises PQC linking + the negative
+End-to-end network simulation (seed, validators, full nodes, and a control runner) lives behind `make simulate-network`
+(wrapping [`devtools/scripts/simulate_network.sh`](devtools/scripts/simulate_network.sh)). It exercises PQC linking + the negative
 path, bank tax enforcement, DNS register→auction→settle, gateway contract create/claim/finalize, release publish, and
 per-account/global rate-limit clamps. Logs and snapshots land under `artifacts/sim/`.
 
@@ -151,6 +156,10 @@ per-account/global rate-limit clamps. Logs and snapshots land under `artifacts/s
 ```bash
 make simulate-network              # defaults: 2 validators, 1 full node
 ```
+
+The seed node’s RPC/API bindings default to `localhost:27657` / `localhost:2327` (with `27656` for P2P). Override them with
+`SIM_HOST_RPC_PORT`, `SIM_HOST_API_PORT`, or `SIM_HOST_P2P_PORT` if those ports are already in use (for example, when you
+keep the Docker devnet online while running the simulator).
 
 **Heavier run (cleanup + stronger global clamp signal):**
 ```bash
@@ -173,7 +182,7 @@ See also:
 Cross-platform release artifacts (Linux amd64/arm64, macOS arm64) can be produced locally with:
 
 ```bash
-bash devtools/scripts/build_release.sh
+make build-release
 ```
 
 The script emits binaries plus `SHA256SUMS`; verify the checksums before distributing artifacts.

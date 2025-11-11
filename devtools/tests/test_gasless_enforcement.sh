@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Environment variables:
 # - CHAIN_ID (default lumen-local): target chain ID.
-# - NODE (default http://127.0.0.1:26657): RPC endpoint used for tx submission.
+# - NODE (default http://127.0.0.1:27657): RPC endpoint used for tx submission.
 # - DENOM (default ulmn): fee denom for MsgCreateContract.
 # - KEYRING (default test): keyring backend for CLI commands.
 # - FROM / FROM_ADDR: gateway account name/address (address auto-derived when unset).
@@ -14,7 +14,7 @@ set -euo pipefail
 # - LCD (default http://127.0.0.1:1317): optional REST endpoint for helper queries.
 
 CHAIN_ID="${CHAIN_ID:-lumen-local}"
-NODE="${NODE:-http://127.0.0.1:26657}"
+NODE="${NODE:-http://127.0.0.1:27657}"
 DENOM="${DENOM:-ulmn}"
 KEYRING="${KEYRING:-test}"
 FROM="${FROM:-alice}"

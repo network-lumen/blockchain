@@ -164,6 +164,7 @@ func New(
 
 	app.DnsKeeper.SetBankKeeper(app.BankKeeper)
 	app.DnsKeeper.SetAccountKeeper(app.AuthKeeper)
+	app.PqcKeeper.SetBankKeeper(app.BankKeeper)
 	baseAppOptions = append(baseAppOptions, baseapp.SetOptimisticExecution())
 
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)

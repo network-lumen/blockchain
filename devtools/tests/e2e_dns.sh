@@ -5,9 +5,9 @@ set -euo pipefail
 #   SKIP_BUILD       Skip rebuilding the binary (default 0)
 #   GRACE_DAYS       Override grace period in genesis (default 0)
 #   AUCTION_DAYS     Override auction period in genesis (default 0)
-#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:26657)
-#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:1317)
-#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9090)
+#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:27657)
+#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:2327)
+#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9190)
 #   GRPC_WEB_ENABLE  Enable gRPC-Web (default 1)
 #   LOG_FILE         Node log destination (default /tmp/lumen.log)
 #   DEBUG_KEEP       Set to 1 to keep the temporary HOME directory on exit
@@ -21,17 +21,18 @@ BIN="$DIR/build/lumend"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-26657}"
+RPC_PORT="${RPC_PORT:-27657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-1317}"
+API_PORT="${API_PORT:-2327}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-9090}"
+GRPC_PORT="${GRPC_PORT:-9190}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
+NODE=${NODE:-$RPC_LADDR}
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
 GRACE_DAYS=${GRACE_DAYS:-0}
 AUCTION_DAYS=${AUCTION_DAYS:-0}
@@ -172,7 +173,7 @@ sign_and_broadcast() {
 fund_owner() {
   local owner="$1"; local amt="$2"
   local res hash
-  res=$("$BIN" tx bank send "$FARMER_NAME" "$owner" "$amt" --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
+  res=$("$BIN" tx bank send "$FARMER_NAME" "$owner" "$amt" --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" -y -o json)
   echo "$res" | jq
   hash=$(echo "$res" | jq -r .txhash)
   [ -n "$hash" ] && [ "$hash" != "null" ] && wait_tx_commit "$hash"
@@ -182,7 +183,7 @@ update_domain_expire() {
   local index="$1"; local name="$2"; local owner="$3"; local expire_at="$4"
   local res hash
   res=$("$BIN" tx dns update-domain "$index" "$name" "$owner" "{}" "$expire_at" \
-    --from "$FARMER_NAME" --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
+    --from "$FARMER_NAME" --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" -y -o json)
   echo "$res" | jq
   hash=$(echo "$res" | jq -r .txhash)
   [ -n "$hash" ] && [ "$hash" != "null" ] && wait_tx_commit "$hash"
@@ -215,17 +216,17 @@ echo "tx_code=${CODE:-?}"
 curl -s "$API/cosmos/auth/v1beta1/accounts/$OWNER1" | jq
 
 step "Verify domain listed"
-"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
+"$BIN" query dns list-domain -o json --home "$HOME_DIR" --node "$NODE" | jq
 
 step "Update via CLI (owner1)"
 UPD=$("$BIN" tx dns update "$NAME" "$EXT" "[]" \
-  --from owner1 --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
+  --from owner1 --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" -y -o json)
 echo "$UPD" | jq
 HASH=$(echo "$UPD" | jq -r .txhash)
 wait_tx_commit "$HASH"
 
 step "Verify domain updated"
-"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
+"$BIN" query dns list-domain -o json --home "$HOME_DIR" --node "$NODE" | jq
 
 step "Fund owner1 for paid update"
 fund_owner "$OWNER1" 100000ulmn
@@ -260,6 +261,3 @@ step "Verify ownership transferred to owner2 "
 "$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
 
 echo "\nAll steps completed."
-
-
-

@@ -42,6 +42,12 @@ func (m *MsgLinkAccountPQC) ValidateBasic() error {
 	if len(m.GetPubKey()) > PQCPubKeyMaxLen {
 		return sdkerrors.ErrInvalidPubKey.Wrapf("public key too large: %d > %d", len(m.GetPubKey()), PQCPubKeyMaxLen)
 	}
+	if len(m.GetPowNonce()) == 0 {
+		return errorsmod.Wrap(ErrInvalidPow, "pow nonce must be provided")
+	}
+	if len(m.GetPowNonce()) > PQCPowNonceMaxLen {
+		return errorsmod.Wrapf(ErrInvalidPow, "pow nonce too large: %d > %d", len(m.GetPowNonce()), PQCPowNonceMaxLen)
+	}
 	return nil
 }
 

@@ -11,9 +11,14 @@ parameters remain for backwards compatibility but are clamped in-memory).
 ## Account Registry
 
 - Each account may register a single Dilithium key via `MsgLinkAccountPQC`.
-- The stored record contains the scheme identifier (currently `dilithium3`), the raw public key, and the timestamp
-  (`added_at`) of the block that linked it.
+- The stored record contains the scheme identifier (currently `dilithium3`), the SHA-256 hash of the public key, and the
+  timestamp (`added_at`). Full keys never live on-chain; they are provided alongside signatures and
+  hashed/verified on demand.
 - Rotation is disabled by default to avoid silent key churn; governance can flip the `allow_account_rotate` parameter.
+- Linking is gated by two guards:
+  1. `min_balance_for_link` – required spendable ULUMEN balance before broadcasting `MsgLinkAccountPQC`.
+  2. `pow_difficulty_bits` – the transaction must include a nonce such that `sha256(pubkey || nonce)` has at least this
+     many leading zero bits.
 
 Events emitted on successful linkage include the account address, scheme, and SHA-256 hash of the public key so that
 operators can index registry updates without storing full keys on-chain.
@@ -21,7 +26,7 @@ operators can index registry updates without storing full keys on-chain.
 ### CLI
 
 ```bash
-# Link the Dilithium3 key for the --from account
+# Link the Dilithium3 key for the --from account (min-balance + PoW enforced automatically)
 lumen tx pqc link-account --scheme dilithium3 --pubkey <hex|base64>
 
 # Query the registered key for an address
@@ -31,8 +36,9 @@ lumen q pqc account <bech32-address>
 lumen q pqc params
 ```
 
-The CLI validates that the provided scheme matches the active backend (`crypto/pqc/dilithium.Default()`) and that the
-public key size matches the backend’s expectations.
+The CLI validates that the provided scheme matches the active backend (`crypto/pqc/dilithium.Default()`), refuses to
+link if the account balance is below `min_balance_for_link`, and mines an appropriate nonce to satisfy
+`pow_difficulty_bits` before broadcasting.
 
 ## Module Parameters
 
@@ -41,8 +47,11 @@ public key size matches the backend’s expectations.
 | `policy` | `REQUIRED` | Runtime policy is forced to REQUIRED; other enum values are ignored and rejected in SetParams. |
 | `min_scheme` | `dilithium3` | Minimum scheme identifier accepted for incoming signatures. |
 | `allow_account_rotate` | `false` | Allows accounts to overwrite an existing PQC key when set to `true`. |
+| `min_balance_for_link` | `1000ulmn` | Accounts must hold at least this spendable balance before linking. |
+| `pow_difficulty_bits` | `21` | Required number of leading zero bits for `sha256(pubkey || nonce)` during link. |
 
-Parameter updates are validated against the list of supported schemes exposed by the active backend.
+Parameter updates are validated against the list of supported schemes exposed by the active backend. The PoW guard uses
+big-endian encodings of the nonce bytes; clients increment the nonce until the digest carries enough leading zeros.
 
 ## Dual-Sign Ante Enforcement
 
@@ -58,6 +67,7 @@ contains any EOA signatures, all of them must pass the PQC checks. For each sign
      string addr      = 1; // bech32 signer address
      string scheme    = 2; // e.g. "dilithium3"
      bytes signature  = 3; // Dilithium signature over the PQC payload
+     bytes pub_key    = 4; // Raw Dilithium public key (hash checked against registry)
    }
    ```
 
@@ -136,10 +146,10 @@ established via `keys pqc-link`. When `--pqc-enable=false`, the CLI omits the PQ
 
 ```bash
 make build
-HOME=$(mktemp -d) bash devtools/tests/test_all.sh
+HOME=$(mktemp -d) make e2e
 
 # or run the single flow
-BIN=./build/lumend bash devtools/tests/e2e_pqc.sh
+make e2e-pqc
 ```
 
 This script generates a Dilithium3 key via CIRCL, imports it into the local PQC keystore, links the key on-chain,

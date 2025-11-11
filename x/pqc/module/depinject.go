@@ -25,6 +25,7 @@ type ModuleInputs struct {
 	Config       *types.Module
 	StoreService store.KVStoreService
 	Cdc          codec.Codec
+	BankKeeper   types.BankKeeper
 }
 
 type ModuleOutputs struct {
@@ -36,6 +37,7 @@ type ModuleOutputs struct {
 
 func ProvideModule(in ModuleInputs) ModuleOutputs {
 	k := keeper.NewKeeper(in.StoreService, in.Cdc)
+	k.SetBankKeeper(in.BankKeeper)
 	m := NewAppModule(in.Cdc, k)
 	return ModuleOutputs{PqcKeeper: k, Module: m}
 }

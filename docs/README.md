@@ -5,8 +5,8 @@ and API references. All pages are plain Markdown so you can read them on GitHub 
 
 ## Quick Start
 
-- **Build:** `make` (or `bash devtools/scripts/build_native.sh`) → `build/lumend`
-- **Tests:** `go test ./...` or `bash devtools/tests/test_all.sh` (unit + E2E)
+- **Build:** `make build-native` → `build/lumend`
+- **Tests:** `go test ./...` or `HOME=$(mktemp -d) make e2e` (unit + E2E suite)
 - **OpenAPI:** `make docs` → inspect `artifacts/docs/openapi.swagger.json`
 
 ## Architecture Highlights
@@ -15,7 +15,7 @@ and API references. All pages are plain Markdown so you can read them on GitHub 
 - **Block cadence:** CometBFT tuned for ~4s (4s propose + 4s commit)
 - **Binary:** single entry point `cmd/lumend`
 - **Storage:** Cosmos `collections` for typed key/value access
-- **APIs:** gRPC `:9090`, REST gRPC-Gateway `:1317`, OpenAPI served via `docs.RegisterOpenAPIService`
+- **APIs:** gRPC `:9190`, REST gRPC-Gateway `:2327`, OpenAPI served via `docs.RegisterOpenAPIService`
 - **Gasless UX:** ante decorators enforce per-sender quotas driven by `LUMEN_RL_*`
 
 ### Core Modules

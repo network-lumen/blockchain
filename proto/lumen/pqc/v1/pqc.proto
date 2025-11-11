@@ -9,14 +9,16 @@ option go_package = "lumen/x/pqc/types";
 message AccountPQC {
   string addr = 1 [(gogoproto.moretags) = "yaml:\"addr\""];
   string scheme = 2 [(gogoproto.moretags) = "yaml:\"scheme\""];
-  bytes pub_key = 3 [(gogoproto.moretags) = "yaml:\"pub_key\""];
+  bytes pub_key_hash = 3 [(gogoproto.moretags) = "yaml:\"pub_key_hash\""];
   int64 added_at = 4 [(gogoproto.moretags) = "yaml:\"added_at\""];
+  reserved 5;
 }
 
 message PQCSignatureEntry {
   string addr = 1;
   string scheme = 2;
   bytes signature = 3;
+  bytes pub_key = 4;
 }
 
 message PQCSignatures {

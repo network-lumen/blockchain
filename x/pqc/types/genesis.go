@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -43,8 +44,8 @@ func (gs GenesisState) Validate() error {
 		if !IsSupportedScheme(account.Scheme) {
 			return fmt.Errorf("accounts[%d]: unsupported scheme %q", i, account.Scheme)
 		}
-		if len(account.PubKey) == 0 {
-			return fmt.Errorf("accounts[%d]: pub_key must not be empty", i)
+		if len(account.PubKeyHash) != sha256.Size {
+			return fmt.Errorf("accounts[%d]: pub_key_hash must be %d bytes", i, sha256.Size)
 		}
 	}
 

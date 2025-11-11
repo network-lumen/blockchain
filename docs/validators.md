@@ -9,7 +9,7 @@ This guide covers the essentials for running a Lumen node in production or stagi
 make
 
 # Cross-platform release artifacts (dist/<version>/…)
-bash devtools/scripts/build_release.sh
+make build-release
 ```
 
 Release artifacts contain Linux amd64/arm64 and macOS arm64 binaries plus `SHA256SUMS`.
@@ -20,17 +20,17 @@ Generate or install the unit file using the helper script:
 
 ```bash
 # Dry run (prints unit to stdout)
-devtools/scripts/install_service.sh --print-unit
+make install-service ARGS="--print-unit"
 
 # Install under /etc/systemd/system/lumend.service (requires sudo)
-sudo devtools/scripts/install_service.sh
+sudo make install-service
 sudo systemctl enable --now lumend
 ```
 
 The default unit starts the node with:
 
 - `--minimum-gas-prices 0ulmn` (gasless operation)
-- REST (`:1317`), gRPC (`:9090`), and gRPC-Web enabled on localhost
+- REST (`:2327`), gRPC (`:9190`), and gRPC-Web enabled on localhost
 - Rate-limit env vars exported to the process (see below)
 
 ## Rate-Limit Environment Variables
@@ -55,7 +55,7 @@ lumend start --minimum-gas-prices 0ulmn
 ## Useful REST Queries
 
 ```bash
-API=http://127.0.0.1:1317
+API=http://127.0.0.1:2327
 
 # DNS
 curl -s "$API/lumen/dns/v1/params" | jq
@@ -73,12 +73,12 @@ curl -s "$API/lumen/release/latest?channel=stable&platform=linux-amd64&kind=daem
 ## Networking & Security
 
 - Run validators with `--minimum-gas-prices 0ulmn`; the rate-limit decorator supplies DoS protection.
-- Place a TLS-enabled reverse proxy (nginx, Caddy, envoy, …) with request rate limiting in front of `:1317` if the REST API is exposed publicly.
+- Place a TLS-enabled reverse proxy (nginx, Caddy, envoy, …) with request rate limiting in front of `:2327` if the REST API is exposed publicly.
 - Keep keys in an OS keyring, KMS, or HSM when possible. Avoid the `--keyring-backend test` setting outside of development.
 - Monitor module accounts via `lumend q bank balances <module-address>` to confirm fee/tax flows.
 
 ## Upgrades & Releases
 
-- Use `devtools/scripts/build_release.sh` to produce reproducible artifacts.
+- Use `make build-release` to produce reproducible artifacts.
 - Tag releases (`git tag vX.Y.Z && git push origin vX.Y.Z`) after running the validation checklist in [`docs/releases.md`](releases.md).
 - Update operators with parameter changes from governance proposals (see [`docs/params.md`](params.md)).
