@@ -26,6 +26,8 @@ message Params {
   repeated LengthTier domain_tiers = 16;
   repeated LengthTier ext_tiers = 17;
   uint64 min_price_ulmn_per_month = 18;
+  // Flat fee (in ulmn) charged on every MsgUpdate.
+  uint64 update_fee_ulmn = 19;
 }
 
 // LengthTier defines a multiplier (in basis points) that applies when the

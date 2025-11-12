@@ -3,14 +3,20 @@ package keeper
 import (
 	"context"
 
+	"lumen/app/denom"
+
 	errorsmod "cosmossdk.io/errors"
+	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"lumen/x/dns/types"
 )
 
 func (k msgServer) Update(ctx context.Context, msg *types.MsgUpdate) (*types.MsgUpdateResponse, error) {
-	if _, err := k.addressCodec.StringToBytes(msg.Creator); err != nil {
+	creatorBz, err := k.addressCodec.StringToBytes(msg.Creator)
+	if err != nil {
 		return nil, errorsmod.Wrap(err, "invalid creator address")
 	}
 
@@ -40,6 +46,7 @@ func (k msgServer) Update(ctx context.Context, msg *types.MsgUpdate) (*types.Msg
 	if err := enforceUpdatePoW(name, msg.Creator, msg.PowNonce, params.UpdatePowDifficulty); err != nil {
 		return nil, err
 	}
+	feeInt := sdkmath.NewIntFromUint64(params.UpdateFeeUlmn)
 
 	if len(msg.Records) > 0 {
 		if err := types.ValidateRecords(msg.Records); err != nil {
@@ -49,14 +56,28 @@ func (k msgServer) Update(ctx context.Context, msg *types.MsgUpdate) (*types.Msg
 	}
 	dom.UpdatedAt = now
 
+	if feeInt.IsPositive() {
+		if k.bank == nil {
+			return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "bank keeper unavailable while update_fee_ulmn > 0")
+		}
+		sdkCtx := sdk.UnwrapSDKContext(ctx)
+		from := sdk.AccAddress(creatorBz)
+		feeCoin := sdk.NewCoin(denom.BaseDenom, feeInt)
+		if err := k.bank.SendCoinsFromAccountToModule(sdkCtx, from, authtypes.FeeCollectorName, sdk.NewCoins(feeCoin)); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := k.Domain.Set(ctx, name, dom); err != nil {
 		return nil, err
 	}
 
-	// no fixed fee for updates
-
 	sdk.UnwrapSDKContext(ctx).EventManager().EmitEvent(
-		sdk.NewEvent("dns_update", sdk.NewAttribute("name", name)),
+		sdk.NewEvent(
+			"dns_update",
+			sdk.NewAttribute("name", name),
+			sdk.NewAttribute("fee_ulmn", feeInt.String()),
+		),
 	)
 	return &types.MsgUpdateResponse{}, nil
 }

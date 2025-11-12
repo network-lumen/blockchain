@@ -29,6 +29,8 @@ Notes:
 - Domain names and extensions are ASCII-only (lowercase `[a-z0-9-]`, no leading/trailing hyphen); internationalized domains (IDN/punycode) are not supported today.
 - Up to 64 records per domain, with a combined key/value payload ≤ 16 KiB.
 - Transfers move ownership immediately after the fixed `transfer_fee_ulmn` is paid.
+- Updates can optionally charge a flat `update_fee_ulmn` (defaults to `0` so updates stay gasless by default). When set,
+  the fee is debited from the owner and routed to the fee collector module account.
 - Auctions begin automatically once `grace_days` elapse; `MsgSettle` finalises the highest bid at the end of the auction window.
 - `MsgUpdate` enforces a per-domain cooldown (`update_rate_limit_seconds`) and a lightweight proof-of-work: the client must supply a `pow_nonce` such that `sha256(fqdn|creator|nonce)` contains at least `update_pow_difficulty` leading zero bits. Set the difficulty to `0` to disable PoW.
 
@@ -42,6 +44,7 @@ Notes:
 - `t`: nominal DNS ops per block target (internal metric).
 - `grace_days`, `auction_days`: lifecycle windows after expiration.
 - `transfer_fee_ulmn`: fixed fee charged on ownership transfers.
+- `update_fee_ulmn`: fixed fee charged on every `MsgUpdate` (defaults to `0`).
 - `bid_fee_ulmn`: flat fee charged on every auction bid.
 - `update_rate_limit_seconds`: minimum spacing between two `MsgUpdate` calls on the same domain.
 - `update_pow_difficulty`: number of leading zero bits required in the update PoW (0 disables it).
@@ -80,3 +83,9 @@ curl -s http://127.0.0.1:1317/lumen/dns/v1/auction/<name.ext> | jq
 - Run nodes with `--minimum-gas-prices 0ulmn` to honour the gasless flow; the ante decorator enforces rate limits via `LUMEN_RL_*`.
 - Use a rate-limiting proxy in front of REST if you expose it publicly.
 - AutoCLI exposes JSON schema hints: `lumend tx dns register --help` prints accepted flags and formats.
+
+### Events
+
+- `dns_update`
+  - `name` – fully qualified domain name that was updated.
+  - `fee_ulmn` – flat fee (in `ulmn`) charged for the update; `"0"` when `update_fee_ulmn` is disabled.

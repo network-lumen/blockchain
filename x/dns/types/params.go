@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	sdkmath "cosmossdk.io/math"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 const (
@@ -12,6 +13,12 @@ const (
 
 var (
 	tierBpsDenomInt = sdkmath.NewInt(tierBpsDenom)
+)
+
+var _ paramtypes.ParamSet = (*Params)(nil)
+
+var (
+	KeyUpdateFeeUlmn = []byte("UpdateFeeUlmn")
 )
 
 var (
@@ -35,6 +42,7 @@ var (
 	DefaultBidFeeUlmn             uint64 = 1_000   // 0.001 LMN
 	DefaultUpdateRateLimitSeconds uint64 = 60      // one update per minute
 	DefaultUpdatePowDifficulty    uint32 = 12      // ~ 1 in 4096 guesses
+	DefaultUpdateFeeUlmn          uint64 = 0       // gasless by default
 
 	// DefaultMinPriceUlmnPerMonth is the DAO-controlled floor before multipliers.
 	DefaultMinPriceUlmnPerMonth uint64 = 30_000_000 // 30 LMN / month
@@ -52,6 +60,7 @@ func NewParams(
 	bidFeeUlmn uint64,
 	updateRateLimitSeconds uint64,
 	updatePowDifficulty uint32,
+	updateFeeUlmn uint64,
 	domainTiers []*LengthTier,
 	extTiers []*LengthTier,
 	minPrice uint64,
@@ -68,6 +77,7 @@ func NewParams(
 		BidFeeUlmn:             bidFeeUlmn,
 		UpdateRateLimitSeconds: updateRateLimitSeconds,
 		UpdatePowDifficulty:    updatePowDifficulty,
+		UpdateFeeUlmn:          updateFeeUlmn,
 		DomainTiers:            cloneLengthTiers(domainTiers),
 		ExtTiers:               cloneLengthTiers(extTiers),
 		MinPriceUlmnPerMonth:   minPrice,
@@ -87,10 +97,21 @@ func DefaultParams() Params {
 		DefaultBidFeeUlmn,
 		DefaultUpdateRateLimitSeconds,
 		DefaultUpdatePowDifficulty,
+		DefaultUpdateFeeUlmn,
 		defaultLengthTiers(defaultDomainTierDefs),
 		defaultLengthTiers(defaultExtTierDefs),
 		DefaultMinPriceUlmnPerMonth,
 	)
+}
+
+func ParamKeyTable() paramtypes.KeyTable {
+	return paramtypes.NewKeyTable().RegisterParamSet(&Params{})
+}
+
+func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(KeyUpdateFeeUlmn, &p.UpdateFeeUlmn, validateUpdateFeeParam),
+	}
 }
 
 func (p Params) Validate() error {
@@ -125,6 +146,9 @@ func (p Params) Validate() error {
 		return err
 	}
 	if err := validateUpdatePowDifficulty(p.UpdatePowDifficulty); err != nil {
+		return err
+	}
+	if err := validateUpdateFee(p.UpdateFeeUlmn); err != nil {
 		return err
 	}
 	if err := validateLengthTiers("domain_tiers", p.DomainTiers); err != nil {
@@ -194,6 +218,18 @@ func validateUpdatePowDifficulty(v uint32) error {
 		return fmt.Errorf("update_pow_difficulty must be <= 256 bits")
 	}
 	return nil
+}
+
+func validateUpdateFee(v uint64) error {
+	return nil
+}
+
+func validateUpdateFeeParam(i interface{}) error {
+	v, ok := i.(uint64)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+	return validateUpdateFee(v)
 }
 
 func validateMinPrice(v uint64) error {

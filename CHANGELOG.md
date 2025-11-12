@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+---
+
+## 🧪 Development versions (pre-1.0)
+
+## [0.10.1] - 2025-11-12
+
+### 🧭 DNS module
+- **New parameter `update_fee_ulmn`**: a flat fee (in `ulmn`) charged on every `MsgUpdate`.
+  - **Defaults to `0`** → updates remain gasless unless configured.
+  - The fee is **deducted from the creator** and **credited to the fee collector** module account (`auth/fee_collector`).
+  - **Event enrichment:** `dns_update` now includes a `fee_ulmn` attribute for transparency.
+- **Params / Genesis / Query:** the field is fully integrated into the `Params` structure, persists through genesis, and is exposed via the `/params` endpoint.
+- **Events doc:** `dns_update` event attributes (`name`, `fee_ulmn`) are now documented for explorers/tooling.
+- **Compatibility:** non-breaking addition (new proto field, no state migration required). PoW and rate-limit enforcement remain unchanged and compatible.
+
+### 🧪 Tests
+- **Covered cases:**
+  - `update_fee_ulmn > 0` → fee is deducted from creator and credited to fee collector; event `fee_ulmn` matches the charged amount.
+  - **Insufficient funds** → transaction fails cleanly, no state changes, no event emitted.
+  - `update_fee_ulmn = 0` → no fee deducted; event shows `fee_ulmn="0"`.
+  - **Genesis round-trip** confirms parameter persistence across init/export cycles.
+
+---
+
 ## [0.10.0] - 2025-11-11
 
 Major dev milestone introducing PQC hardening, on-chain footprint reduction, and unified Make-based workflows.

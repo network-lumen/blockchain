@@ -10,7 +10,11 @@ import (
 
 func TestGenesis(t *testing.T) {
 	genesisState := types.GenesisState{
-		Params:    types.DefaultParams(),
+		Params: func() types.Params {
+			p := types.DefaultParams()
+			p.UpdateFeeUlmn = 42
+			return p
+		}(),
 		DomainMap: []types.Domain{{Index: "0"}, {Index: "1"}}, AuctionMap: []types.Auction{{Index: "0"}, {Index: "1"}}}
 
 	f := initFixture(t)

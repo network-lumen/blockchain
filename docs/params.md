@@ -15,6 +15,7 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 - `grace_days`, `auction_days` – lifecycle windows post-expiration
 - `transfer_fee_ulmn` – fixed fee charged on `MsgTransfer`
 - `bid_fee_ulmn` – flat fee charged on each `MsgBid`
+- `update_fee_ulmn` – fixed fee charged on every `MsgUpdate` (defaults to `0`)
 - `update_rate_limit_seconds`, `update_pow_difficulty` – `MsgUpdate` guards
 - `min_price_ulmn_per_month` – DAO floor applied before multipliers
 - `domain_tiers`, `ext_tiers` – ordered `{max_len, multiplier_bps}` tables controlling surcharges for short names/extensions (last tier uses `max_len = 0` to denote infinity)
