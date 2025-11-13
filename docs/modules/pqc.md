@@ -170,6 +170,7 @@ binaries, and `cmd/lumend` panics during `init()` if an unexpected backend name 
 
 ## End-to-end Tests
 
-All E2E scripts are PQC-enabled by default. Genesis and gentx phases temporarily export `LUMEN_PQC_DISABLE=1`, but the
-runtime decorator is always active once the node starts (and transactions that pass `--pqc-enable=false` fail with an
-explicit PQC signature error).
+All CLI and E2E scripts run with PQC enabled by default. The only supported way to bypass the decorator is to pass
+`--pqc-enable=false` on a single transaction, which should then fail on-chain when `policy=REQUIRED`. Test harnesses may
+flip that flag to ensure the failure path is exercised, but there is no global “disable PQC” environment variable for
+the application.

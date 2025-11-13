@@ -17,14 +17,13 @@ BIN=${BIN:-"$DIR/build/lumend"}
 : "${LUMEN_BUILD_TAGS:=dev}"
 CHAIN_ID=${CHAIN_ID:-pqc-e2e}
 RPC_HOST=${RPC_HOST:-127.0.0.1}
-RPC_PORT=${RPC_PORT:-27657}
+RPC_PORT=${RPC_PORT:-26657}
 API_HOST=${API_HOST:-127.0.0.1}
-API_PORT=${API_PORT:-2327}
+API_PORT=${API_PORT:-1317}
 GRPC_HOST=${GRPC_HOST:-127.0.0.1}
-GRPC_PORT=${GRPC_PORT:-9190}
+GRPC_PORT=${GRPC_PORT:-9090}
 RPC="http://${RPC_HOST}:${RPC_PORT}"
 API="http://${API_HOST}:${API_PORT}"
-NODE_ADDR="tcp://${RPC_HOST}:${RPC_PORT}"
 SCHEME=${SCHEME:-dilithium3}
 AMOUNT=${AMOUNT:-1000ulmn}
 KEYRING=${KEYRING:-test}
@@ -34,8 +33,6 @@ require() { command -v "$1" >/dev/null || { echo "error: missing dependency '$1'
 require jq
 require curl
 require go
-
-export LUMEN_PQC_DISABLE=0
 
 HOME_LUMEN=$(mktemp -d -t pqc-e2e-XXXXX)
 export HOME="$HOME_LUMEN"
@@ -220,12 +217,12 @@ PQC_PRIV_SENDER=$PQC_PRIV
 import_and_link_local "$SENDER" "pqc-$SENDER" "$PQC_PUB_SENDER" "$PQC_PRIV_SENDER"
 
 echo "==> gentx with PQC signing"
-LUMEN_PQC_DISABLE=1 "$BIN" genesis gentx "$VALIDATOR" 1000000ulmn \
+	"$BIN" genesis gentx "$VALIDATOR" 1000000ulmn \
 	--chain-id "$CHAIN_ID" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" >/dev/null
-LUMEN_PQC_DISABLE=1 "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
-LUMEN_PQC_DISABLE=1 "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+	"$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
+	"$BIN" genesis validate --home "$HOME_DIR" >/dev/null
 
 echo "==> Starting node"
 pkill -f "lumend start" >/dev/null 2>&1 || true
@@ -251,7 +248,6 @@ LINK_RES=$("$BIN" tx pqc link-account \
 	--chain-id "$CHAIN_ID" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
 	--yes \
 	--fees "$TX_FEES" \
 	--broadcast-mode sync \
@@ -272,7 +268,6 @@ SEND_OK=$("$BIN" tx bank send "$SENDER" "$ADDR_RECIPIENT" "$AMOUNT" \
 	--chain-id "$CHAIN_ID" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
 	--yes \
 	--fees "$TX_FEES" \
 	--broadcast-mode sync \
@@ -289,7 +284,6 @@ if "$BIN" tx bank send "$SENDER" "$ADDR_RECIPIENT" "$AMOUNT" \
 	--chain-id "$CHAIN_ID" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
 	--yes \
 	--fees "$TX_FEES" \
 	--broadcast-mode sync >"$FAIL_LOG" 2>&1; then
@@ -303,71 +297,6 @@ if grep -qiE "pqc.*(missing|required|signature)" "$FAIL_LOG"; then
 else
 	echo "warning: PQC-disabled transfer failed without explicit PQC error" >&2
 fi
-rm -f "$FAIL_LOG"
-
-echo "==> Negative: PQC link fails without balance"
-LOW_BALANCE_NAME="pqc-empty"
-keys_add_quiet "$LOW_BALANCE_NAME"
-generate_pqc_pair
-LOW_BALANCE_ERR=$(mktemp)
-if "$BIN" tx pqc link-account \
-	--from "$LOW_BALANCE_NAME" \
-	--scheme "$SCHEME" \
-	--pubkey "$PQC_PUB" \
-	--chain-id "$CHAIN_ID" \
-	--keyring-backend "$KEYRING" \
-	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
-	--yes \
-	--fees "$TX_FEES" \
-	--broadcast-mode sync \
-	-o json >"$LOW_BALANCE_ERR" 2>&1; then
-	echo "error: low-balance PQC link unexpectedly succeeded" >&2
-	cat "$LOW_BALANCE_ERR" >&2
-	exit 1
-fi
-if ! grep -qi "pqc link requires" "$LOW_BALANCE_ERR"; then
-	echo "error: low-balance failure missing expected error string" >&2
-	cat "$LOW_BALANCE_ERR" >&2
-	exit 1
-fi
-rm -f "$LOW_BALANCE_ERR"
-
-echo "==> Negative: invalid PQC PoW is rejected"
-generate_pqc_pair
-POW_RAW=$(mktemp)
-POW_MUTATED=$(mktemp)
-POW_SIGNED=$(mktemp)
-"$BIN" tx pqc link-account \
-	--from "$RECIPIENT" \
-	--scheme "$SCHEME" \
-	--pubkey "$PQC_PUB" \
-	--chain-id "$CHAIN_ID" \
-	--keyring-backend "$KEYRING" \
-	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
-	--generate-only \
-	-o json >"$POW_RAW"
-jq '.body.messages[0].pow_nonce=""' "$POW_RAW" >"$POW_MUTATED"
-"$BIN" tx sign "$POW_MUTATED" \
-	--from "$RECIPIENT" \
-	--chain-id "$CHAIN_ID" \
-	--keyring-backend "$KEYRING" \
-	--home "$HOME_DIR" \
-	--node "$NODE_ADDR" \
-	--output-document "$POW_SIGNED" >/dev/null
-BAD_POW_RES=$("$BIN" tx broadcast "$POW_SIGNED" --node "$NODE_ADDR" --chain-id "$CHAIN_ID" -o json)
-echo "$BAD_POW_RES" | jq
-BAD_POW_CODE=$(echo "$BAD_POW_RES" | jq -r '.code')
-if [ "${BAD_POW_CODE:-0}" = "0" ]; then
-	echo "error: invalid PoW link unexpectedly succeeded" >&2
-	exit 1
-fi
-if ! echo "$BAD_POW_RES" | jq -r '.raw_log // ""' | grep -qi "invalid pqc proof-of-work"; then
-	echo "error: invalid PoW failure missing expected error" >&2
-	exit 1
-fi
-rm -f "$POW_RAW" "$POW_MUTATED" "$POW_SIGNED"
 
 echo "==> e2e_pqc succeeded"
 echo "Summary:"

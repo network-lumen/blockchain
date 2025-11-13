@@ -26,6 +26,9 @@ devtools/
     ├── e2e_release.sh          # Release publisher workflows
     ├── e2e_send_tax.sh         # Send-tax ante/post handler behaviour
     ├── e2e_pqc.sh              # Dilithium dual-signing flow
+    ├── e2e_gov.sh              # Table-driven governance suite (driven by gov_param_cases.json)
+    ├── gov_param_cases.json    # Declarative parameter/scenario cases for the governance suite
+    ├── lib_gov.sh              # Shared governance helpers (waiters, proposal/vote helpers, assertions)
     ├── smoke_rest.sh           # Lightweight REST/RPC health check
     ├── test_all.sh             # Orchestrates unit + E2E suites
     └── test_gasless_enforcement.sh # Manual gateway ante handler probe
@@ -57,7 +60,7 @@ The target honours `LUMEN_RL_*`, `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, and `IMAGE_
 Builds `./build/lumend` once, exports `SKIP_BUILD=1`, and runs:
 
 - `go test ./...`
-- `devtools/tests/e2e_*.sh` (send-tax, DNS auction, release, gateways, PQC)
+- `devtools/tests/e2e_*.sh` (send-tax, DNS auction, release, gateways, gov, PQC)
 - `devtools/tests/smoke_rest.sh`
 
 Logs land in `artifacts/test-logs/*.log` and a JSON summary in `artifacts/test-report.json`.
@@ -157,7 +160,29 @@ HOME=$(mktemp -d) make e2e
 # Individual flows (skip rebuild after the first run)
 make e2e-send-tax ARGS="--skip-build"
 make e2e-dns-auction ARGS="--skip-build --mode prod"
+make e2e-gov ARGS="--skip-build"
 ```
+
+The governance suite (`devtools/tests/e2e_gov.sh`) is fully table-driven. Cases live in
+`devtools/tests/gov_param_cases.json` and are executed in order—each entry can either tweak a
+single parameter (`"type": "param"`) or describe a richer scenario (`"scenario": ...`) with
+messages, votes, deposits, PQC expectations, DNS parameter effects, authority overrides, and
+accounting assertions. Shared shell helpers for proposals, voting, waiters, and DNS round-trips
+live in `devtools/tests/lib_gov.sh`. The full matrix currently runs ~12–13 minutes and covers
+25 cases (ratios/durations/coins + lifecycle/burn/PQC/DNS scenarios).
+
+Helpful knobs when iterating on the governance suite:
+
+- `CASE_FILTER="substring"` limits execution to cases whose `name`/`scenario`/`description`
+  contains the given substring (e.g. `CASE_FILTER=dns make e2e-gov ARGS="--skip-build"`).
+- `CASE_FILE=/path/to/custom.json` swaps in an alternate case file without touching
+  `gov_param_cases.json`.
+- `DEBUG_KEEP=1` preserves the temporary HOME directory (`/tmp/lumen-e2e-gov-XXXXXX`) so you
+  can inspect logs, node state, or keyrings after a failure.
+
+To extend coverage, add new cases to the JSON file (no code changes needed unless a brand-new
+message type is introduced), then run `make e2e-gov ARGS="--skip-build"` to verify both the
+individual case and the whole matrix.
 
 ### Documentation / OpenAPI
 

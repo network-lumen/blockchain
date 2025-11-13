@@ -16,9 +16,11 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 - `transfer_fee_ulmn` – fixed fee charged on `MsgTransfer`
 - `bid_fee_ulmn` – flat fee charged on each `MsgBid`
 - `update_fee_ulmn` – fixed fee charged on every `MsgUpdate` (defaults to `0`)
-- `update_rate_limit_seconds`, `update_pow_difficulty` – `MsgUpdate` guards
+- `update_rate_limit_seconds`, `update_pow_difficulty` – `MsgUpdate` guards (durations use standard Go/protobuf literals such as `"2s"` or `"60s"`)
 - `min_price_ulmn_per_month` – DAO floor applied before multipliers
 - `domain_tiers`, `ext_tiers` – ordered `{max_len, multiplier_bps}` tables controlling surcharges for short names/extensions (last tier uses `max_len = 0` to denote infinity)
+
+> Advanced knobs: `alpha`, `t`, the tier tables, and the `update_pow_difficulty` guard are primarily for economists / protocol engineers. Adjust them only when you fully understand how they feed into DNS pricing and spam resistance.
 
 ### `x/gateways`
 
@@ -32,6 +34,8 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 - `max_active_contracts_per_gateway` – concurrency limit per gateway
 - `action_fee_ulmn` – flat fee charged on gateway actions (register/update/etc.)
 
+> Advanced knobs: `month_seconds`, `finalize_delay_months`, and `max_active_contracts_per_gateway` should only be tweaked when redesigning the entire gateway lifecycle. Small DAO/operator tweaks should focus on pricing and commissions.
+
 ### `x/release`
 
 `GET /lumen/release/params`
@@ -44,6 +48,8 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 - `max_pending_ttl` – lifetime of a pending release before auto-expiry
 - `reject_refund_bps` – refund percentage (0–10,000 bps) on rejection
 - `require_validation_for_stable` – enforce validation before `stable` installs
+
+> Advanced knobs: `dao_publishers`, the various `max_*` limits, and `reject_refund_bps` directly impact anti-spam safeguards. Treat them as expert-level settings.
 
 ### `x/tokenomics`
 
@@ -60,6 +66,8 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 
 > The REST path for tokenomics queries follows the usual gRPC-Gateway convention once the service is registered; use `lumend q tokenomics params` for AutoCLI output.
 
+> Advanced knobs: `initial_reward_per_block_lumn`, `halving_interval_blocks`, `supply_cap_lumn`, `decimals`, `denom`, and `distribution_interval_blocks` govern the entire emission schedule. Change them only with explicit governance intent and migration plans.
+
 ### `x/pqc`
 
 `GET /lumen/pqc/v1/params`
@@ -69,6 +77,23 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 - `allow_account_rotate` – opt-in flag for key rotation
 - `min_balance_for_link` – spendable ULUMEN threshold required before linking
 - `pow_difficulty_bits` – difficulty target for `sha256(pubkey || nonce)`
+
+> Advanced knobs: `allow_account_rotate` and `pow_difficulty_bits` control security-critical flows. Leave them at defaults unless the PQC module owners propose a coordinated change. The `policy`/`min_scheme` pair should remain `REQUIRED` / `dilithium3` for the foreseeable future.
+
+### `x/gov`
+
+`GET /cosmos/gov/v1/params`
+
+- `min_deposit`, `expedited_min_deposit` – escrow requirements for regular / expedited proposals (defaults: `10,000,000 ulmn` and `50,000,000 ulmn`).
+- `max_deposit_period`, `voting_period`, `expedited_voting_period` – Go/protobuf duration strings (e.g. `"60s"`, `"172800s"`) controlling each phase.
+- `quorum`, `threshold`, `veto_threshold`, `expedited_threshold` – decimal strings (`0.334`, `0.500`, `0.334`, `0.670` by default).
+- `min_initial_deposit_ratio`, `min_deposit_ratio` – ratios enforcing how much of the deposit must be supplied at submit time and in follow-up deposits.
+- `proposal_cancel_ratio`, `proposal_cancel_dest` – controls how much of the escrow is burned and where it is redirected on cancellation (defaults to zero / empty).
+- `burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto` – boolean burn toggles; all default to `false`.
+
+> Advanced knobs: `min_initial_deposit_ratio`, `min_deposit_ratio`, the cancellation fields, and the burn toggles can destroy deposits or destabilise proposal flow when misused. Reserve them for tightly scoped governance changes with clear operator consensus.
+
+All fields are governed by `MsgSubmitProposal` and the on-chain authority derived from the `gov` module account.
 
 ## Environment Variables
 

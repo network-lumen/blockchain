@@ -99,7 +99,7 @@ pqc_import_and_link_local() {
 
 pqc_wait_tx() {
 	local hash="$1"
-	local rpc_base="${2:-http://127.0.0.1:27657}"
+	local rpc_base="${2:-http://127.0.0.1:26657}"
 	for _ in $(seq 1 120); do
 		local resp code
 		resp=$(curl -s "$rpc_base/tx?hash=0x$hash" 2>/dev/null || true)
@@ -121,7 +121,7 @@ pqc_link_onchain() {
 	keyring="${KEYRING:-test}"
 	fees="${TX_FEES:-0ulmn}"
 	cli_node="${NODE:-tcp://127.0.0.1:26657}"
-	rpc_base="${RPC:-http://127.0.0.1:27657}"
+	rpc_base="${RPC:-http://127.0.0.1:26657}"
 	chain_id="${CHAIN_ID:-lumen}"
 
 	: "${BIN:?BIN must be set before calling pqc_link_onchain}"

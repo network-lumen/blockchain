@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Environment variables:
 #   SKIP_BUILD       Skip rebuilding the binary (default 0)
-#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:27657)
-#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:2327)
-#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9190)
+#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:26657)
+#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:1317)
+#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9090)
 #   GRPC_WEB_ENABLE  Enable gRPC-Web (default 1)
 #   LOG_FILE         Node log destination (default /tmp/lumen.log)
 #   DEBUG_KEEP       Set to 1 to keep the temporary HOME directory on exit
@@ -23,15 +23,15 @@ BIN="$DIR/build/lumend"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-27657}"
+RPC_PORT="${RPC_PORT:-26657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-2327}"
+API_PORT="${API_PORT:-1317}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-9190}"
+GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
@@ -66,7 +66,6 @@ build(){
 init_chain(){
   step "Init chain"
   rm -rf "$HOME_DIR"
-  export LUMEN_PQC_DISABLE=1
   "$BIN" init local --chain-id "$CHAIN_ID" --home "$HOME_DIR"
   keys_add_quiet publisher1
   keys_add_quiet publisher2
@@ -90,7 +89,6 @@ init_chain(){
       max_notes_len:"512"
     } | .' "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
-  unset LUMEN_PQC_DISABLE
 }
 
 start_node(){
@@ -120,7 +118,7 @@ release_tx(){
   local res hash
   res=$("$BIN" tx release "$subcmd" "$@" \
     --keyring-backend "$KEYRING" --home "$HOME_DIR" \
-    --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json)
+    --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json)
   echo "$res" | jq >&2
   hash=$(echo "$res" | jq -r .txhash)
   if [ -n "$hash" ] && [ "$hash" != "null" ]; then

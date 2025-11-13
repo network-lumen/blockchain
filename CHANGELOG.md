@@ -2,9 +2,21 @@
 
 ## [Unreleased]
 
+
 ---
 
 ## 🧪 Development versions (pre-1.0)
+
+## [0.11.0] - 2025-11-13
+
+### 🗳 Governance integration
+- Wired the Cosmos SDK `x/gov` module into the app wiring (module account with burner permissions, begin/end blockers, keeper injection, param authority).
+- Added the governance CLI wiring so `lumend tx gov ...` commands are available alongside the existing DNS/gateways/release flows.
+
+### 📚 Docs & tests
+- Expanded [docs/governance.md](docs/governance.md) with a full CLI walkthrough and called out advanced knobs/caution notes in [docs/params.md](docs/params.md).
+- Documented the governance tooling in the root README and `devtools/README.md`, including usage of `make e2e-gov`.
+- Grew the table-driven governance E2E suite to 25 cases covering ratios, durations, deposits, burn/cancel flags, PQC-negative paths, and DNS parameter mutations.
 
 ## [0.10.1] - 2025-11-12
 

@@ -22,10 +22,11 @@ declare -a CMDS
 add_job() { NAMES+=("$1"); CMDS+=("$2"); }
 
 add_job "unit (go test)" "(cd '$ROOT_DIR' && go test -tags '!legacy' ./...)"
-add_job "e2e_send_tax" "LUMEN_PQC_DISABLE=1 bash '$ROOT_DIR/devtools/tests/e2e_send_tax.sh' --skip-build"
-add_job "e2e_dns_auction" "LUMEN_PQC_DISABLE=1 bash '$ROOT_DIR/devtools/tests/e2e_dns_auction.sh' --skip-build --mode prod"
-add_job "e2e_release" "LUMEN_PQC_DISABLE=1 bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-build"
-add_job "e2e_gateways" "LUMEN_PQC_DISABLE=1 bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
+add_job "e2e_send_tax" "bash '$ROOT_DIR/devtools/tests/e2e_send_tax.sh' --skip-build"
+add_job "e2e_dns_auction" "bash '$ROOT_DIR/devtools/tests/e2e_dns_auction.sh' --skip-build --mode prod"
+add_job "e2e_release" "bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-build"
+add_job "e2e_gov" "bash '$ROOT_DIR/devtools/tests/e2e_gov.sh' --skip-build"
+add_job "e2e_gateways" "bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
 add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
 
 add_job "smoke REST" "bash '$ROOT_DIR/devtools/tests/smoke_rest.sh'"

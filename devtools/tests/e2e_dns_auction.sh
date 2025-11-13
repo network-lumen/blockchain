@@ -5,9 +5,9 @@ set -euo pipefail
 #   SKIP_BUILD         Skip rebuilding the binary (default 0 / --skip-build)
 #   MODE               'prod' (default) or 'dev'; can also be set via --mode
 #   SKIP_PQC_NEGATIVE  Set to 1 to skip the PQC negative test
-#   RPC_HOST/PORT      RPC bind host/port (default 127.0.0.1:27657)
-#   API_HOST/PORT      REST bind host/port (default 127.0.0.1:2327)
-#   GRPC_HOST/PORT     gRPC bind host/port (default 127.0.0.1:9190)
+#   RPC_HOST/PORT      RPC bind host/port (default 127.0.0.1:26657)
+#   API_HOST/PORT      REST bind host/port (default 127.0.0.1:1317)
+#   GRPC_HOST/PORT     gRPC bind host/port (default 127.0.0.1:9090)
 #   GRPC_WEB_ENABLE    Enable gRPC-Web (default 1)
 #   LOG_FILE           Node log destination (default /tmp/lumen.log)
 #   DEBUG_KEEP         Set to 1 to keep the temporary HOME directory on exit
@@ -25,15 +25,15 @@ BIN="$DIR/build/lumend"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-27657}"
+RPC_PORT="${RPC_PORT:-26657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-2327}"
+API_PORT="${API_PORT:-1317}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-9190}"
+GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
@@ -137,7 +137,6 @@ build() {
 init_chain(){
   step "Init chain"
   rm -rf "$HOME_DIR"
-  export LUMEN_PQC_DISABLE=1
   "$BIN" init local --chain-id "$CHAIN_ID" --home "$HOME_DIR"
   keys_add_quiet "$FARMER_NAME"
   local acct_addr
@@ -164,7 +163,6 @@ init_chain(){
     | .app_state.dns.params.update_pow_difficulty="0"
   ' "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR"
-  unset LUMEN_PQC_DISABLE
 }
 
 set_dns_bid_amounts() {
@@ -239,7 +237,7 @@ update_domain_expire(){
   local res
   res=$("$BIN" tx dns update-domain "$index" "$name" "$owner" "{}" "$exp" \
     --from "$owner" --keyring-backend "$KEYRING" --home "$HOME_DIR" \
-    --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json)
+    --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json)
   echo "$res" | jq
   local h
   h=$(echo "$res" | jq -r .txhash)
@@ -269,15 +267,15 @@ FARMER=$("$BIN" keys show "$FARMER_NAME" -a --keyring-backend "$KEYRING" --home 
 setup_pqc_signer "$FARMER_NAME"
 
 step "Fund bidders"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER1" 2000000000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER2" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER3" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
+H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER1" 2000000000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
+H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER2" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
+H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER3" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
 
 for signer in owner1 owner2 owner3; do
   setup_pqc_signer "$signer"
 done
 
-TX_GASLESS_ARGS=(--keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --node "$NODE" -y -o json)
+TX_GASLESS_ARGS=(--keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
 
 step "Register $NAME.$EXT for owner1"
 RES=$("$BIN" tx dns register "$NAME" "$EXT" \
@@ -296,7 +294,7 @@ echo "code=$CODE"
 if [ "${SKIP_PQC_NEGATIVE:-0}" != "1" ]; then
   if "$BIN" tx bank send owner1 "$OWNER2" "1ulmn" \
      --pqc-enable=false --fees "$TX_FEES" --chain-id "$CHAIN_ID" \
-     --keyring-backend "$KEYRING" --home "$HOME_DIR" --node "$NODE" \
+     --keyring-backend "$KEYRING" --home "$HOME_DIR" \
      --broadcast-mode sync --yes >/tmp/pqc_neg.out 2>&1; then
     echo "error: PQC-disabled TX unexpectedly succeeded" >&2
     exit 1
@@ -353,7 +351,7 @@ fi
 echo "code=$CODE"
 
 step "Verify ownership transferred to owner3"
-"$BIN" query dns list-domain -o json --home "$HOME_DIR" --node "$NODE" | jq -r --arg n "$INDEX" '.domain[] | select(.name==$n) | .owner' | grep -q "$OWNER3"
+"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$INDEX" '.domain[] | select(.name==$n) | .owner' | grep -q "$OWNER3"
 
 step "Negative: lower bid rejected"
 RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$LOWER_BID" \

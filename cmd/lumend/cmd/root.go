@@ -82,6 +82,7 @@ func NewRootCmd() *cobra.Command {
 		panic(err)
 	}
 	patchBankSendCommand(rootCmd)
+	patchGovTxCommand(rootCmd)
 
 	return rootCmd
 }

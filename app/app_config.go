@@ -19,6 +19,7 @@ import (
 	consensusmodulev1 "cosmossdk.io/api/cosmos/consensus/module/v1"
 	distrmodulev1 "cosmossdk.io/api/cosmos/distribution/module/v1"
 	genutilmodulev1 "cosmossdk.io/api/cosmos/genutil/module/v1"
+	govmodulev1 "cosmossdk.io/api/cosmos/gov/module/v1"
 	stakingmodulev1 "cosmossdk.io/api/cosmos/staking/module/v1"
 	txconfigv1 "cosmossdk.io/api/cosmos/tx/config/v1"
 	"cosmossdk.io/depinject/appconfig"
@@ -37,6 +38,7 @@ import (
 	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config" // import for side-effects
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 )
 
 var (
@@ -45,6 +47,7 @@ var (
 		{Account: distrtypes.ModuleName},
 		{Account: dnsmoduletypes.ModuleName},
 		{Account: releasemoduletypes.ModuleName},
+		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: gatewaysmoduletypes.ModuleAccountTreasury},
 		{Account: gatewaysmoduletypes.ModuleAccountEscrow},
 		{Account: tokenomicsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter}},
@@ -56,6 +59,7 @@ var (
 	blockAccAddrs = []string{
 		authtypes.FeeCollectorName,
 		distrtypes.ModuleName,
+		govtypes.ModuleName,
 		stakingtypes.BondedPoolName,
 		stakingtypes.NotBondedPoolName,
 		tokenomicsmoduletypes.ModuleName,
@@ -73,6 +77,7 @@ var (
 					BeginBlockers: []string{
 						distrtypes.ModuleName,
 						stakingtypes.ModuleName,
+						govtypes.ModuleName,
 						dnsmoduletypes.ModuleName,
 						releasemoduletypes.ModuleName,
 						gatewaysmoduletypes.ModuleName,
@@ -81,6 +86,7 @@ var (
 					},
 					EndBlockers: []string{
 						stakingtypes.ModuleName,
+						govtypes.ModuleName,
 						dnsmoduletypes.ModuleName,
 						releasemoduletypes.ModuleName,
 						gatewaysmoduletypes.ModuleName,
@@ -99,6 +105,7 @@ var (
 						banktypes.ModuleName,
 						distrtypes.ModuleName,
 						stakingtypes.ModuleName,
+						govtypes.ModuleName,
 						genutiltypes.ModuleName,
 						dnsmoduletypes.ModuleName,
 						releasemoduletypes.ModuleName,
@@ -144,6 +151,12 @@ var (
 			{
 				Name:   consensustypes.ModuleName,
 				Config: appconfig.WrapAny(&consensusmodulev1.Module{}),
+			},
+			{
+				Name: govtypes.ModuleName,
+				Config: appconfig.WrapAny(&govmodulev1.Module{
+					MaxMetadataLen: 4096,
+				}),
 			},
 			{
 				Name:   dnsmoduletypes.ModuleName,

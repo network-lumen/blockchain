@@ -28,6 +28,7 @@ import (
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 
 	"lumen/docs"
@@ -85,6 +86,7 @@ type App struct {
 	BankKeeper    bankkeeper.Keeper
 	StakingKeeper *stakingkeeper.Keeper
 	DistrKeeper   distrkeeper.Keeper
+	GovKeeper     *govkeeper.Keeper
 
 	DnsKeeper        dnsmodulekeeper.Keeper
 	ReleaseKeeper    releasemodulekeeper.Keeper
@@ -153,6 +155,7 @@ func New(
 		&app.BankKeeper,
 		&app.StakingKeeper,
 		&app.DistrKeeper,
+		&app.GovKeeper,
 		&app.DnsKeeper,
 		&app.ReleaseKeeper,
 		&app.GatewaysKeeper,

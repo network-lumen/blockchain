@@ -4,9 +4,9 @@ set -euo pipefail
 # Environment variables:
 #   SKIP_BUILD       Skip rebuilding the binary (default 0 / --skip-build)
 #   MONTH_SECONDS    Duration of one billing month in seconds (default 5 for tests)
-#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:27657)
-#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:2327)
-#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9190)
+#   RPC_HOST/PORT    RPC bind host/port (default 127.0.0.1:26657)
+#   API_HOST/PORT    REST bind host/port (default 127.0.0.1:1317)
+#   GRPC_HOST/PORT   gRPC bind host/port (default 127.0.0.1:9090)
 #   GRPC_WEB_ENABLE  Enable gRPC-Web (default 1)
 #   LOG_FILE         Node log destination (default /tmp/lumen_gateways.log)
 #   DEBUG_KEEP       Set to 1 to keep the temporary HOME directory on exit
@@ -26,19 +26,18 @@ BIN="$DIR/build/lumend"
 HOME_DIR="${HOME}/.lumen"
 LOG_FILE="${LOG_FILE:-/tmp/lumen_gateways.log}"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-27657}"
+RPC_PORT="${RPC_PORT:-26657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-2327}"
+API_PORT="${API_PORT:-1317}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-9190}"
+GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
 CHAIN_ID="lumen"
-NODE=${NODE:-$RPC_LADDR}
 MONTH_SECONDS=${MONTH_SECONDS:-5}
 KEYRING=${KEYRING:-test}
 TX_FEES=${TX_FEES:-0ulmn}
@@ -186,7 +185,6 @@ ADDR_FINALIZER=""
 init_chain() {
   step "Init chain"
   rm -rf "$HOME_DIR"
-  export LUMEN_PQC_DISABLE=1
   "$BIN" init local --chain-id "$CHAIN_ID" --home "$HOME_DIR"
 
   for name in client gateway finalizer; do
@@ -228,7 +226,6 @@ init_chain() {
   "$BIN" genesis gentx client 1000000ulmn --chain-id "$CHAIN_ID" --keyring-backend "$KEYRING" --home "$HOME_DIR" --moniker local --commission-rate 0.10 --commission-max-rate 0.20 --commission-max-change-rate 0.01 --min-self-delegation 1 >/dev/null
   "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
-  unset LUMEN_PQC_DISABLE
 }
 
 start_node() {
@@ -277,7 +274,7 @@ GW_JSON=$("$BIN" q gateways gateway "$GATEWAY_ID" --node "$RPC_LADDR" --output j
 expect_eq "$(echo "$GW_JSON" | jq -r '.gateway.operator')" "$ADDR_GATEWAY" "gateway operator"
 
 step "Create contract (single month term)"
-CREATE_JSON=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 1000 50 20 1 --metadata "payout-flow" --from client --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
+CREATE_JSON=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 1000 50 20 1 --metadata "payout-flow" --from client --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$CREATE_JSON"
 await_tx "$CREATE_JSON"
 if [ "${SKIP_PQC_NEGATIVE:-0}" != "1" ]; then
@@ -296,7 +293,7 @@ sleep 1
 
 sleep_one_period
 step "Claim payment"
-CLAIM1=$("$BIN" tx gateways claim-payment "$CONTRACT_CLAIM_ID" --from gateway --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_GATEWAY" --pqc-key "pqc-gateway" --yes --broadcast-mode sync --output json)
+CLAIM1=$("$BIN" tx gateways claim-payment "$CONTRACT_CLAIM_ID" --from gateway --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_GATEWAY" --pqc-key "pqc-gateway" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$CLAIM1"
 await_tx "$CLAIM1"
 
@@ -305,14 +302,14 @@ expect_eq "$(echo "$CLAIM_CONTRACT_JSON" | jq -r '.contract.claimed_months // "0
 expect_eq "$(echo "$CLAIM_CONTRACT_JSON" | jq -r '.contract.status')" "CONTRACT_STATUS_COMPLETED" "contract completed after payout"
 
 step "Create contract for cancellation"
-CREATE_CANCEL=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 1500 40 15 3 --metadata "cancel-flow" --from client --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
+CREATE_CANCEL=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 1500 40 15 3 --metadata "cancel-flow" --from client --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$CREATE_CANCEL"
 await_tx "$CREATE_CANCEL"
 CONTRACT_CANCEL_ID="1"
 sleep 1
 
 step "Cancel contract before completion"
-CANCEL_JSON=$("$BIN" tx gateways cancel-contract "$CONTRACT_CANCEL_ID" --from client --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
+CANCEL_JSON=$("$BIN" tx gateways cancel-contract "$CONTRACT_CANCEL_ID" --from client --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$CANCEL_JSON"
 await_tx "$CANCEL_JSON"
 
@@ -323,19 +320,19 @@ GW_JSON=$("$BIN" q gateways gateway "$GATEWAY_ID" --node "$RPC_LADDR" --output j
 expect_eq "$(echo "$GW_JSON" | jq -r '.gateway.cancellations')" "1" "gateway cancellation counter incremented"
 
 step "Create contract for finalization"
-CREATE_FINAL=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 2000 25 10 1 --metadata "finalize-flow" --from client --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
+CREATE_FINAL=$("$BIN" tx gateways create-contract "$GATEWAY_ID" 2000 25 10 1 --metadata "finalize-flow" --from client --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_CLIENT" --pqc-key "pqc-client" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$CREATE_FINAL"
 await_tx "$CREATE_FINAL"
 CONTRACT_FINAL_ID="2"
 sleep 1
 
 sleep_one_period
-FINAL_CLAIM=$("$BIN" tx gateways claim-payment "$CONTRACT_FINAL_ID" --from gateway --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_GATEWAY" --pqc-key "pqc-gateway" --yes --broadcast-mode sync --output json)
+FINAL_CLAIM=$("$BIN" tx gateways claim-payment "$CONTRACT_FINAL_ID" --from gateway --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_GATEWAY" --pqc-key "pqc-gateway" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$FINAL_CLAIM"
 await_tx "$FINAL_CLAIM"
 
 sleep 1
-FINALIZE_JSON=$("$BIN" tx gateways finalize-contract "$CONTRACT_FINAL_ID" --from finalizer --chain-id "$CHAIN_ID" --node "$NODE" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_FINALIZER" --pqc-key "pqc-finalizer" --yes --broadcast-mode sync --output json)
+FINALIZE_JSON=$("$BIN" tx gateways finalize-contract "$CONTRACT_FINAL_ID" --from finalizer --chain-id "$CHAIN_ID" --home "$HOME_DIR" --keyring-backend test --pqc-from "$ADDR_FINALIZER" --pqc-key "pqc-finalizer" --yes --broadcast-mode sync --output json)
 ensure_code_zero "$FINALIZE_JSON"
 await_tx "$FINALIZE_JSON"
 

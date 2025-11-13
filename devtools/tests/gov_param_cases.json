@@ -1,0 +1,483 @@
+[
+  {
+    "type": "param",
+    "name": "min_initial_deposit_ratio",
+    "value_type": "ratio",
+    "valid": [
+      "0.250000000000000000"
+    ],
+    "invalid": [
+      "1.100000000000000000"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "burn_proposal_deposit_prevote",
+    "value_type": "bool",
+    "valid": [
+      true
+    ],
+    "invalid": []
+  },
+  {
+    "type": "param",
+    "name": "min_deposit_ratio",
+    "value_type": "ratio",
+    "valid": [
+      "0.500000000000000000"
+    ],
+    "invalid": []
+  },
+  {
+    "type": "param",
+    "name": "quorum",
+    "value_type": "ratio",
+    "valid": [
+      "0.750000000000000000"
+    ],
+    "invalid": [
+      "-0.01"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "threshold",
+    "value_type": "ratio",
+    "valid": [
+      "0.600000000000000000"
+    ],
+    "invalid": [
+      "1.2"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "veto_threshold",
+    "value_type": "ratio",
+    "valid": [
+      "0.250000000000000000"
+    ],
+    "invalid": [
+      "1.5"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "expedited_threshold",
+    "value_type": "ratio",
+    "valid": [
+      "0.700000000000000000"
+    ],
+    "invalid": [
+      "-0.1"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "max_deposit_period",
+    "value_type": "duration",
+    "valid": [
+      "6s"
+    ],
+    "invalid": [
+      "abc"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "voting_period",
+    "value_type": "duration",
+    "valid": [
+      "6s"
+    ],
+    "invalid": [
+      "-5s"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "expedited_voting_period",
+    "value_type": "duration",
+    "valid": [
+      "3s"
+    ],
+    "invalid": [
+      "-10s"
+    ]
+  },
+  {
+    "type": "param",
+    "name": "min_deposit",
+    "value_type": "coins",
+    "valid": [
+      [
+        "5000000ulmn"
+      ]
+    ],
+    "invalid": [
+      [
+        "0ulmn"
+      ]
+    ]
+  },
+  {
+    "type": "param",
+    "name": "expedited_min_deposit",
+    "value_type": "coins",
+    "valid": [
+      [
+        "50000000ulmn"
+      ]
+    ],
+    "invalid": [
+      [
+        "0ulmn"
+      ],
+      [
+        "0bar"
+      ]
+    ]
+  },
+  {
+    "scenario": "deposit_topup",
+    "description": "Initial deposit meets ratio but needs an additional deposit to enter voting",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "3000000ulmn"
+    },
+    "topup": {
+      "from": "voter2",
+      "amount": "7000000ulmn"
+    },
+    "expect": {
+      "status_after_topup": "PROPOSAL_STATUS_VOTING_PERIOD"
+    }
+  },
+  {
+    "scenario": "deposit_expiry",
+    "description": "Proposal stays in deposit period and expires when max_deposit_period elapses",
+    "requires": [
+      {
+        "name": "max_deposit_period",
+        "value_type": "duration",
+        "value": "10s"
+      }
+    ],
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "3000000ulmn"
+    },
+    "sleep_seconds": 10,
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_FAILED"
+    }
+  },
+  {
+    "scenario": "insufficient_initial_deposit",
+    "description": "Submitting with a deposit below min_initial_deposit_ratio fails on-chain",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "1ulmn"
+    }
+  },
+  {
+    "scenario": "quorum_burn",
+    "description": "If quorum is not met and burn_vote_quorum is true, deposits are burned",
+    "requires": [
+      {
+        "name": "burn_vote_quorum",
+        "value_type": "bool",
+        "value": true
+      },
+      {
+        "name": "voting_period",
+        "value_type": "duration",
+        "value": "10s"
+      },
+      {
+        "name": "quorum",
+        "value_type": "ratio",
+        "value": "0.800000000000000000"
+      }
+    ],
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "sleep_seconds": 12,
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_REJECTED",
+      "burned": true
+    }
+  },
+  {
+    "scenario": "tally_veto_burn",
+    "description": "NO_WITH_VETO vote burns deposits when burn_vote_veto is enabled",
+    "requires": [
+      {
+        "name": "burn_vote_veto",
+        "value_type": "bool",
+        "value": true
+      }
+    ],
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "votes": [
+      {
+        "voter": "validator",
+        "option": "NO_WITH_VETO"
+      },
+      {
+        "voter": "voter2",
+        "option": "YES"
+      }
+    ],
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_REJECTED",
+      "burned": true
+    }
+  },
+  {
+    "scenario": "expedited_threshold",
+    "description": "Expedited proposal respects expedited threshold and voting period",
+    "requires": [
+      {
+        "name": "expedited_voting_period",
+        "value_type": "duration",
+        "value": "4s"
+      },
+      {
+        "name": "expedited_threshold",
+        "value_type": "ratio",
+        "value": "0.700000000000000000"
+      }
+    ],
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_rate_limit_seconds": 5
+          }
+        }
+      ],
+      "initial_deposit": "50000000ulmn",
+      "expedited": true
+    },
+    "votes": [
+      {
+        "voter": "validator",
+        "option": "YES"
+      }
+    ],
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_PASSED"
+    }
+  },
+  {
+    "scenario": "cancel_refund",
+    "description": "Cancelling a proposal redirects the configured ratio to the destination address",
+    "requires": [
+      {
+        "name": "proposal_cancel_ratio",
+        "value_type": "ratio",
+        "value": "0.250000000000000000"
+      },
+      {
+        "name": "proposal_cancel_dest",
+        "value_type": "address",
+        "value": "$VOTER2"
+      }
+    ],
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_rate_limit_seconds": 20
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "expect": {
+      "canceled": true
+    }
+  },
+  {
+    "scenario": "authority_invalid",
+    "description": "Using a non-gov authority in MsgUpdateParams fails",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "1"
+          },
+          "authority_override": "$VALIDATOR"
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "expect": {
+      "tx_failure": true
+    }
+  },
+  {
+    "scenario": "multi_msg_atomic",
+    "description": "Multiple messages execute atomically; failure in one rolls back the other",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "333000"
+          }
+        },
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "floor": "5",
+            "ceiling": "1"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_FAILED"
+    }
+  },
+  {
+    "scenario": "dns_update_fee_effect",
+    "description": "Updating the DNS fee parameter charges the owner on MsgUpdate",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "250000"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "post_tx": {
+      "dns_update": {
+        "domain": "govcase",
+        "ext": "test",
+        "records": [
+          {
+            "key": "txt",
+            "value": "governance"
+          }
+        ]
+      },
+      "expect_fee_ulmn": "250000"
+    }
+  },
+  {
+    "scenario": "pqc_disabled",
+    "description": "Submitting a proposal with --pqc-enable=false fails",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    }
+  },
+  {
+    "scenario": "weighted_split",
+    "description": "Weighted votes split YES/NO/ABSTAIN and fail to meet threshold",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "0"
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "votes": [
+      {
+        "voter": "validator",
+        "weighted": true,
+        "options": "yes=0.25,no=0.5,abstain=0.25"
+      }
+    ],
+    "expect": {
+      "final_status": "PROPOSAL_STATUS_REJECTED"
+    }
+  },
+  {
+    "scenario": "multi_msg_success",
+    "description": "Valid multi-message proposal updates multiple DNS params atomically",
+    "proposal": {
+      "messages": [
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_fee_ulmn": "125000"
+          }
+        },
+        {
+          "type": "dns_update_params",
+          "changes": {
+            "update_rate_limit_seconds": 15
+          }
+        }
+      ],
+      "initial_deposit": "10000000ulmn"
+    },
+    "expect": {
+      "params": {
+        "update_fee_ulmn": "125000",
+        "update_rate_limit_seconds": 15
+      }
+    }
+  }
+]

@@ -20,6 +20,13 @@ The codebase is organised as a standard Go module (`module lumen`) and relies on
 | `x/release` | Artifact publishing, mirroring, and verification. |
 | `x/tokenomics` | Chain-wide economic parameters (supply, taxation). |
 | `x/pqc` | Dilithium key registry + dual-sign ante (always REQUIRED). |
+| `x/gov` (SDK) | Cosmos governance module backing DAO votes & param authority. |
+
+## 0.11.0 Highlights
+
+- Wired the upstream Cosmos SDK `x/gov` module into the application (module account, param authority, begin/end blockers) so DAO proposals can drive `MsgUpdateParams` across every keeper.
+- Extended the governance documentation: [docs/governance.md](docs/governance.md) now includes end-to-end CLI examples and [docs/params.md](docs/params.md) lists all gov knobs with advanced/caution notes.
+- Added a table-driven governance E2E suite exposed via `make e2e-gov`; it currently runs ~12–13 minutes and covers 25 cases spanning ratios, durations, deposits, burn flags, PQC negatives, and DNS parameter updates.
 
 ## Security
 
@@ -80,7 +87,7 @@ make vulncheck
 ```
 
 Individual flows are exposed via dedicated make targets (wrapping the scripts under `devtools/tests/`), e.g.
-`make e2e-dns-auction`, `make e2e-send-tax`, `make e2e-gateways`, or `make e2e-release`. Most targets rebuild the
+`make e2e-dns-auction`, `make e2e-send-tax`, `make e2e-gateways`, `make e2e-release`, or `make e2e-gov`. Most targets rebuild the
 binary unless `SKIP_BUILD=1` is exported.
 
 The PQC client injector is enabled by default; pass `--pqc-enable=false` on any `lumend tx` command to intentionally
@@ -91,6 +98,7 @@ You can run all end-to-end tests with:
 ```bash
 make e2e-pqc
 HOME=$(mktemp -d) make e2e
+make e2e-gov ARGS="--skip-build"
 ```
 
 All E2E scripts now enforce PQC dual-signing by default.

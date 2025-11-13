@@ -117,6 +117,9 @@ e2e-gateways: ## Gateways happy-path suite (devtools/tests/e2e_gateways.sh)
 e2e-release: ## Release publisher workflow (devtools/tests/e2e_release.sh)
 	@bash devtools/tests/e2e_release.sh $(ARGS)
 
+e2e-gov: ## Governance / DAO parameter workflow (devtools/tests/e2e_gov.sh)
+	@bash devtools/tests/e2e_gov.sh $(ARGS)
+
 e2e-send-tax: ## Send-tax ante/post handler suite (devtools/tests/e2e_send_tax.sh)
 	@bash devtools/tests/e2e_send_tax.sh $(ARGS)
 
@@ -127,7 +130,7 @@ clean:
 	@rm -rf build/ dist/ artifacts/
 
 .PHONY: build build-native build-release test preflight doc-check pre-release simulate-network install-service sanity \
-	e2e e2e-pqc e2e-dns e2e-dns-auction e2e-gateways e2e-release e2e-send-tax smoke-rest clean
+	e2e e2e-pqc e2e-dns e2e-dns-auction e2e-gateways e2e-release e2e-gov e2e-send-tax smoke-rest clean
 
 docs:
 	@mkdir -p artifacts/docs

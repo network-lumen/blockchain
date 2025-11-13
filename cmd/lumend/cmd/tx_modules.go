@@ -33,6 +33,7 @@ func newDNSTxCmd() *cobra.Command {
 		newDNSRegisterCmd(),
 		newDNSBidCmd(),
 		newDNSSettleCmd(),
+		newDNSUpdateCmd(),
 		newDNSUpdateDomainCmd(),
 	)
 	return cmd
@@ -154,6 +155,48 @@ func newDNSSettleCmd() *cobra.Command {
 			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
 		},
 	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func newDNSUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update [domain] [ext]",
+		Short: "Update an existing domain's records (requires PoW)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			recordsJSON, err := cmd.Flags().GetString("records")
+			if err != nil {
+				return err
+			}
+			records, err := parseDNSRecordsJSON(recordsJSON)
+			if err != nil {
+				return fmt.Errorf("parse --records: %w", err)
+			}
+
+			powNonce, err := cmd.Flags().GetUint64("pow-nonce")
+			if err != nil {
+				return err
+			}
+
+			msg := &dnstypes.MsgUpdate{
+				Creator:  clientCtx.GetFromAddress().String(),
+				Domain:   args[0],
+				Ext:      args[1],
+				Records:  records,
+				PowNonce: powNonce,
+			}
+
+			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+		},
+	}
+	cmd.Flags().String("records", "[]", "JSON array of DNS record objects")
+	cmd.Flags().Uint64("pow-nonce", 0, "nonce satisfying the update PoW requirement")
 	flags.AddTxFlagsToCmd(cmd)
 	return cmd
 }
