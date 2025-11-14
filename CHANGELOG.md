@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+---
+
+## 🧪 Development versions (pre-1.0)
+
+## [0.12.1] - 2025-11-14
+
+### ⚖️ Governance polish
+- Clarified [docs/params.md](docs/params.md) and [docs/governance.md](docs/governance.md) so the burn toggles (`burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto`) are documented as disabled by default and treated as hazardous knobs that require explicit proposals.
+- `devtools/scripts/simulate_network.sh` now forces those burn flags to `false` when bootstrapping the Docker simulator, keeping sandbox runs aligned with mainnet defaults.
+
 ## [0.12.0] - 2025-11-14
 
 ### 🔒 Governance hardening
@@ -19,10 +29,6 @@
 ### 📚 Docs
 - Updated [docs/governance.md](docs/governance.md) and [docs/params.md](docs/params.md) to document the carved-out governance surface and the hardened vote thresholds.
 - Refreshed [docs/params_introspection.md](docs/params_introspection.md) with DAO/❌ annotations for every module and clarified which tokenomics/PQC fields are immutable.
-
----
-
-## 🧪 Development versions (pre-1.0)
 
 ## [0.11.0] - 2025-11-13
 

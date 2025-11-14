@@ -78,4 +78,5 @@ lumend tx gov vote 1 yes --from validator --yes
   multi-message proposal (including negative deposit coverage).
 - Treat the more destructive knobs (`min_initial_deposit_ratio`, `min_deposit_ratio`, `proposal_cancel_ratio`,
   `proposal_cancel_dest`, and the `burn_*` flags) as advanced settings—only flip them when a governance proposal
-  clearly documents the operational impact and rollback plan.
+  clearly documents the operational impact and rollback plan. All burn flags default to `false`; enabling them must be
+  an explicit governance decision.

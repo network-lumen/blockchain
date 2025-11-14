@@ -321,6 +321,14 @@ prepare_genesis() {
 	' "$SEED_HOME/config/genesis.json" >"$tmp"
 	mv "$tmp" "$SEED_HOME/config/genesis.json"
 
+	tmp="$(mktemp)"
+	jq '
+		.app_state.gov.params.burn_proposal_deposit_prevote=false
+		| .app_state.gov.params.burn_vote_quorum=false
+		| .app_state.gov.params.burn_vote_veto=false
+	' "$SEED_HOME/config/genesis.json" >"$tmp"
+	mv "$tmp" "$SEED_HOME/config/genesis.json"
+
 	local base_bid
 	base_bid=$(calc_dns_price_from_genesis "$SEED_HOME/config/genesis.json" "$DNS_NAME" "$DNS_EXT" 365)
 	if [[ -z "$base_bid" || "$base_bid" -le 0 ]]; then

@@ -88,7 +88,7 @@ This page lists the configurable knobs exposed by the chain. Governance can only
 - `quorum`, `threshold`, `veto_threshold`, `expedited_threshold` – decimal strings (`0.67`, `0.75`, `0.334`, `0.85` in Lumen).
 - `min_initial_deposit_ratio`, `min_deposit_ratio` – ratios enforcing how much of the deposit must be supplied at submit time and in follow-up deposits.
 - `proposal_cancel_ratio`, `proposal_cancel_dest` – controls how much of the escrow is burned and where it is redirected on cancellation (defaults to zero / empty).
-- `burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto` – boolean burn toggles; all default to `false`, except `burn_vote_veto = true`.
+- `burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto` – boolean burn toggles; all default to `false` in Lumen.
 
 > Advanced knobs: `min_initial_deposit_ratio`, `min_deposit_ratio`, the cancellation fields, and the burn toggles can destroy deposits or destabilise proposal flow when misused. Reserve them for tightly scoped governance changes with clear operator consensus. Quorum/threshold defaults are hard-coded (67% participation, 75% YES threshold) and cannot be changed via DAO.
 
