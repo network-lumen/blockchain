@@ -14,7 +14,7 @@ parameters remain for backwards compatibility but are clamped in-memory).
 - The stored record contains the scheme identifier (currently `dilithium3`), the SHA-256 hash of the public key, and the
   timestamp (`added_at`). Full keys never live on-chain; they are provided alongside signatures and
   hashed/verified on demand.
-- Rotation is disabled by default to avoid silent key churn; governance can flip the `allow_account_rotate` parameter.
+- Rotation is permanently disabled; relinking with the exact same key is accepted as a no-op, but any attempt to replace the hash is rejected with `ErrAccountRotationDisabled`.
 - Linking is gated by two guards:
   1. `min_balance_for_link` – required spendable ULUMEN balance before broadcasting `MsgLinkAccountPQC`.
   2. `pow_difficulty_bits` – the transaction must include a nonce such that `sha256(pubkey || nonce)` has at least this
@@ -46,11 +46,10 @@ link if the account balance is below `min_balance_for_link`, and mines an approp
 |-----------|---------|-------------|
 | `policy` | `REQUIRED` | Runtime policy is forced to REQUIRED; other enum values are ignored and rejected in SetParams. |
 | `min_scheme` | `dilithium3` | Minimum scheme identifier accepted for incoming signatures. |
-| `allow_account_rotate` | `false` | Allows accounts to overwrite an existing PQC key when set to `true`. |
 | `min_balance_for_link` | `1000ulmn` | Accounts must hold at least this spendable balance before linking. |
 | `pow_difficulty_bits` | `21` | Required number of leading zero bits for `sha256(pubkey || nonce)` during link. |
 
-Parameter updates are validated against the list of supported schemes exposed by the active backend. The PoW guard uses
+Parameter updates are validated against the list of supported schemes exposed by the active backend. Account rotation is permanently disabled; attempting to re-link with a different key returns `ErrAccountRotationDisabled`. The PoW guard uses
 big-endian encodings of the nonce bytes; clients increment the nonce until the digest carries enough leading zeros.
 
 ## Dual-Sign Ante Enforcement

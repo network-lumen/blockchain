@@ -26,10 +26,9 @@ func TestParamsInvalidScheme(t *testing.T) {
 
 func TestParamsRejectNonRequiredPolicy(t *testing.T) {
 	params := types.Params{
-		Policy:             types.PqcPolicy_PQC_POLICY_OPTIONAL,
-		MinScheme:          types.DefaultMinScheme,
-		AllowAccountRotate: false,
-		MinBalanceForLink:  types.DefaultMinBalanceForLink,
+		Policy:            types.PqcPolicy_PQC_POLICY_OPTIONAL,
+		MinScheme:         types.DefaultMinScheme,
+		MinBalanceForLink: types.DefaultMinBalanceForLink,
 	}
 	err := params.Validate()
 	require.Error(t, err)

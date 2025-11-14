@@ -34,12 +34,15 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	_ "github.com/cosmos/cosmos-sdk/x/auth"           // import for side-effects
 	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config" // import for side-effects
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 )
+
+const immutableAuthorityModuleName = "gov-immutable"
 
 var (
 	moduleAccPerms = []*authmodulev1.ModuleAccountPermission{
@@ -64,6 +67,8 @@ var (
 		stakingtypes.NotBondedPoolName,
 		tokenomicsmoduletypes.ModuleName,
 	}
+
+	immutableAuthority = mustModuleAuthority(immutableAuthorityModuleName)
 
 	appConfig = appconfig.Compose(&appv1alpha1.Config{
 		Modules: []*appv1alpha1.ModuleConfig{
@@ -121,12 +126,14 @@ var (
 					Bech32Prefix:                AccountAddressPrefix,
 					ModuleAccountPermissions:    moduleAccPerms,
 					EnableUnorderedTransactions: false,
+					Authority:                   immutableAuthority,
 				}),
 			},
 			{
 				Name: banktypes.ModuleName,
 				Config: appconfig.WrapAny(&bankmodulev1.Module{
 					BlockedModuleAccountsOverride: blockAccAddrs,
+					Authority:                     immutableAuthority,
 				}),
 			},
 			{
@@ -134,6 +141,7 @@ var (
 				Config: appconfig.WrapAny(&stakingmodulev1.Module{
 					Bech32PrefixValidator: AccountAddressPrefix + "valoper",
 					Bech32PrefixConsensus: AccountAddressPrefix + "valcons",
+					Authority:             immutableAuthority,
 				}),
 			},
 			{
@@ -146,16 +154,21 @@ var (
 			},
 			{
 				Name:   distrtypes.ModuleName,
-				Config: appconfig.WrapAny(&distrmodulev1.Module{}),
+				Config: appconfig.WrapAny(&distrmodulev1.Module{
+					Authority: immutableAuthority,
+				}),
 			},
 			{
 				Name:   consensustypes.ModuleName,
-				Config: appconfig.WrapAny(&consensusmodulev1.Module{}),
+				Config: appconfig.WrapAny(&consensusmodulev1.Module{
+					Authority: immutableAuthority,
+				}),
 			},
 			{
 				Name: govtypes.ModuleName,
 				Config: appconfig.WrapAny(&govmodulev1.Module{
 					MaxMetadataLen: 4096,
+					Authority:      immutableAuthority,
 				}),
 			},
 			{
@@ -181,3 +194,8 @@ var (
 		},
 	})
 )
+
+func mustModuleAuthority(moduleName string) string {
+	addr := authtypes.NewModuleAddress(moduleName)
+	return sdk.MustBech32ifyAddressBytes(AccountAddressPrefix, addr)
+}

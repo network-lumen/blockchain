@@ -39,7 +39,8 @@ type Params struct {
 	DomainTiers            []*LengthTier `protobuf:"bytes,16,rep,name=domain_tiers,json=domainTiers,proto3" json:"domain_tiers,omitempty"`
 	ExtTiers               []*LengthTier `protobuf:"bytes,17,rep,name=ext_tiers,json=extTiers,proto3" json:"ext_tiers,omitempty"`
 	MinPriceUlmnPerMonth   uint64        `protobuf:"varint,18,opt,name=min_price_ulmn_per_month,json=minPriceUlmnPerMonth,proto3" json:"min_price_ulmn_per_month,omitempty"`
-	UpdateFeeUlmn          uint64        `protobuf:"varint,19,opt,name=update_fee_ulmn,json=updateFeeUlmn,proto3" json:"update_fee_ulmn,omitempty"`
+	// Flat fee (in ulmn) charged on every MsgUpdate.
+	UpdateFeeUlmn uint64 `protobuf:"varint,19,opt,name=update_fee_ulmn,json=updateFeeUlmn,proto3" json:"update_fee_ulmn,omitempty"`
 }
 
 func (m *Params) Reset()         { *m = Params{} }

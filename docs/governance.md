@@ -1,23 +1,32 @@
 # Governance Notes
 
-Lumen now wires the upstream Cosmos SDK `x/gov` module directly into the application. All module `MsgUpdateParams`
-entry-points share the same authority: the `gov` module account (`lmn1...` derived from `gov`). Governance proposals
-are therefore able to execute arbitrary messages (parameter changes, treasury spends, emergency toggles) once quorum and
-threshold requirements are met.
+Lumen wires the upstream Cosmos SDK `x/gov` module directly into the application. DAO authority is deliberately scoped:
+only the DNS, gateways, release, and non-fundamental tokenomics knobs accept `MsgUpdateParams`. Core SDK modules
+(`x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, and `x/pqc`) reject governance attempts and
+require a binary upgrade instead.
 
 ## Module wiring & defaults
 
-- **Authority:** every module keeper receives `authtypes.NewModuleAddress("gov")` as its authority unless it is
-  explicitly overridden in the module configuration. When a `MsgUpdateParams` request specifies a different `authority`,
-  it is rejected.
+- **Authority:** DNS, gateways, release, and tokenomics keepers still receive `authtypes.NewModuleAddress("gov")`.
+  All SDK keepers (auth/bank/staking/distribution/consensus/gov) are wired to an internal `gov-immutable` module
+  address so that `MsgUpdateParams` from the DAO are rejected with `ErrInvalidSigner`.
 - **Module account:** `gov` owns a burn-enabled module account so that failed/withdrawn deposits can be slashed when
   the relevant burn flags are set.
 - **Metadata cap:** the runtime configuration sets `max_metadata_len = 4096` bytes for proposal metadata.
-- **Default parameters:** the SDK defaults are reused (min deposit `10,000,000 ulmn`, expedited deposit
-  `50,000,000 ulmn`, deposit period `172800s`, voting period `172800s`, expedited voting period `86400s`,
-  quorum `0.334`, threshold `0.5`, veto `0.334`, min initial deposit ratio `0.25`, expedited threshold `0.67`,
-  `burn_*` flags disabled). Duration fields always use Go/protobuf literals such as `"60s"` or `"172800s"`.
-  All values live under `app_state.gov.params` in genesis and are queryable via `lumend q gov params`.
+- **Default parameters (fixed):** quorum `0.67`, threshold `0.75`, veto `0.334`, expedited threshold `0.85`,
+  `max_deposit_period/voting_period = 172800s`, `expedited_voting_period = 86400s`, and deposits of
+  `10,000,000 ulmn` (regular) / `50,000,000 ulmn` (expedited). These values are hard-coded; proposals attempting to
+  change them will fail because `x/gov` no longer accepts `MsgUpdateParams`. Duration fields always use Go/protobuf
+  literals such as `"60s"` or `"172800s"`. The current params live under `app_state.gov.params` and are queryable via
+  `lumend q gov params`.
+
+## Immutable vs governable surface
+
+- ✅ Governable: `x/dns`, `x/gateways`, `x/release`, and tokenomics' soft knobs (`tx_tax_rate`, `min_send_ulmn`,
+  `distribution_interval_blocks`).
+- ❌ Immutable: `x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, `x/pqc`, and the tokenomics
+  supply/currency fields (`denom`, `decimals`, `supply_cap_lumn`, `halving_interval_blocks`,
+  `initial_reward_per_block_lumn`). Governance proposals that touch these areas will be rejected.
 
 ## Submitting proposals
 
@@ -58,8 +67,7 @@ lumend tx gov vote 1 yes --from validator --yes
   can be finalised.
 - **`x/release`:** maintain publisher allowlists, add/remove channels, tweak anti-spam fees, or enforce validation for
   stable releases.
-- **`x/tokenomics`:** control emission schedule (`initial_reward_per_block_lumn`, `halving_interval_blocks`), tax rate,
-  and distribution cadence.
+- **`x/tokenomics`:** adjust the tax rate and distribution cadence. Emission schedule fields are genesis-locked.
 
 ## Operational Guidance
 

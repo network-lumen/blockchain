@@ -335,6 +335,16 @@ gov_override_param() {
 gov_apply_params() {
   local params_json="$1"; local title="$2"; local summary="$3"
   local metadata="${4:-""}"
+  if [ "${GOV_ALLOW_PARAM_UPDATES:-0}" != "1" ]; then
+    local desired current
+    desired=$(echo "$params_json" | jq -S '.')
+    current=$(gov_query_params | jq -S '.')
+    if [ "$desired" != "$current" ]; then
+      echo "gov params immutable; cannot apply update for $title" >&2
+      return 1
+    fi
+    return 0
+  fi
   local msg
   msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson params "$params_json" '{"@type":"/cosmos.gov.v1.MsgUpdateParams", authority:$auth, params:$params}')
   local proposal_file
@@ -353,6 +363,10 @@ gov_apply_params() {
 
 gov_try_params_update() {
   local params_json="$1"; local title="$2"; local summary="$3"
+  if [ "${GOV_ALLOW_PARAM_UPDATES:-0}" != "1" ]; then
+    echo "gov params immutable; skipping try-update $title" >&2
+    return 1
+  fi
   local msg
   msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson params "$params_json" '{"@type":"/cosmos.gov.v1.MsgUpdateParams", authority:$auth, params:$params}')
   local proposal_file

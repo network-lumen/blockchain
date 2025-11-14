@@ -40,6 +40,7 @@ TX_FEES=${TX_FEES:-0ulmn}
 NODE=${NODE:-$RPC_LADDR}
 CASE_FILE="${CASE_FILE:-${SOURCE_DIR}/gov_param_cases.json}"
 CASE_FILTER="${CASE_FILTER:-}"
+GOV_ALLOW_PARAM_UPDATES="${GOV_ALLOW_PARAM_UPDATES:-0}"
 
 GOV_DIRTY=0
 DNS_DIRTY=0
@@ -91,17 +92,17 @@ init_chain() {
       max_deposit_period:"8s",
       voting_period:"8s",
       expedited_voting_period:"4s",
-      quorum:"0.334000000000000000",
-      threshold:"0.500000000000000000",
-      expedited_threshold:"0.670000000000000000",
+      quorum:"0.670000000000000000",
+      threshold:"0.750000000000000000",
+      expedited_threshold:"0.850000000000000000",
       veto_threshold:"0.334000000000000000",
-      min_initial_deposit_ratio:"0.250000000000000000",
+      min_initial_deposit_ratio:"0.000000000000000000",
       proposal_cancel_ratio:"0.000000000000000000",
       proposal_cancel_dest:"",
       burn_proposal_deposit_prevote:false,
       burn_vote_quorum:false,
       burn_vote_veto:false,
-      min_deposit_ratio:"0.100000000000000000"
+      min_deposit_ratio:"0.010000000000000000"
     }
     | .app_state.gov.constitution = "Lumen DAO stewards DNS and gateway policies."
     ' "$HOME_DIR/config/genesis.json" >"$tmp"
@@ -110,7 +111,7 @@ init_chain() {
   jq '.app_state.dns.params |= (.update_rate_limit_seconds = "2" | .update_pow_difficulty = 4)' \
     "$HOME_DIR/config/genesis.json" >"$tmp"
   mv "$tmp" "$HOME_DIR/config/genesis.json"
-  jq -r '.app_state.gov.params.min_initial_deposit_ratio' "$HOME_DIR/config/genesis.json" | grep -qx '0.250000000000000000'
+  jq -r '.app_state.gov.params.min_initial_deposit_ratio' "$HOME_DIR/config/genesis.json" | grep -qx '0.000000000000000000'
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
 }
 
@@ -745,6 +746,19 @@ scenario_weighted_split() {
   dns_restore_if_dirty
 }
 
+scenario_gov_param_mutation_blocked() {
+  local entry="$1"
+  local value
+  value=$(echo "$entry" | jq -r '.value // "0.750000000000000000"')
+  local mutated
+  mutated=$(gov_override_param "$GOV_BASE_PARAMS" "quorum" "ratio" "$value")
+  if gov_apply_params "$mutated" "illegal gov quorum change" "gov-immutable"; then
+    echo "expected gov_apply_params to reject quorum mutation" >&2
+    exit 1
+  fi
+  gov_assert_param_equals "quorum" "0.670000000000000000" 1
+}
+
 run_param_case() {
   local entry="$1"
   local name type
@@ -816,6 +830,7 @@ run_scenario_case() {
     deposit_topup) scenario_deposit_topup "$entry" ;;
     deposit_expiry) scenario_deposit_expiry "$entry" ;;
     insufficient_initial_deposit) scenario_initial_deposit_guard "$entry" ;;
+    gov_param_mutation_blocked) scenario_gov_param_mutation_blocked "$entry" ;;
     quorum_burn) scenario_quorum_burn "$entry" ;;
     tally_veto_burn) scenario_tally_veto "$entry" ;;
     expedited_threshold) scenario_expedited "$entry" ;;

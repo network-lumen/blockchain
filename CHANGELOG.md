@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-11-14
+
+### 🔒 Governance hardening
+- Locked the Cosmos SDK keepers (`x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`) to an internal `gov-immutable` authority so DAO proposals can no longer mutate core chain invariants. Only DNS, gateways, release, and the soft tokenomics knobs remain governable.
+- Overrode the `x/gov` defaults at init to enforce quorum `0.67`, threshold `0.75`, veto `0.334`, and expedited threshold `0.85`; proposals attempting to change those values are now rejected. Updated docs to reflect the tighter requirements.
+
+### 🪙 Tokenomics guards
+- `denom`, `decimals`, `supply_cap_lumn`, `halving_interval_blocks`, and `initial_reward_per_block_lumn` are now genesis-only. `MsgUpdateParams` compares the stored values and aborts with `tokenomics: <field> is immutable` if a proposal tries to change them.
+- Added regression tests for the mutable/immutable split.
+
+### 🧠 PQC registry
+- Removed the unused `allow_account_rotate` parameter and associated proto field (Go + TypeScript) so the module surface matches reality—rotation attempts now consistently fail unless they replay the exact same key. Generated code via `make proto` and `npm run gen:proto`.
+- `MsgLinkAccountPQC` short-circuits as a no-op when the hash already matches, but refuses to overwrite existing hashes. Docs (`modules/pqc.md`, `params.md`, `params_introspection.md`) now describe the PoW/balance guards and permanent rotation ban.
+
+### 📚 Docs
+- Updated [docs/governance.md](docs/governance.md) and [docs/params.md](docs/params.md) to document the carved-out governance surface and the hardened vote thresholds.
+- Refreshed [docs/params_introspection.md](docs/params_introspection.md) with DAO/❌ annotations for every module and clarified which tokenomics/PQC fields are immutable.
 
 ---
 

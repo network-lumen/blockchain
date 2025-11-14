@@ -1,6 +1,6 @@
 # Parameters & Environment
 
-This page lists the configurable knobs exposed by the chain. Unless stated otherwise all parameters are managed on-chain through governance via the respective `MsgUpdateParams` messages.
+This page lists the configurable knobs exposed by the chain. Governance can only mutate the DNS, gateways, release, and **non-fundamental** tokenomics parameters; all other modules require a binary upgrade or manual intervention.
 
 ## Module Parameters
 
@@ -56,17 +56,17 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 `GET /lumen/tokenomics/v1/params`
 
 - `tx_tax_rate` – decimal tax applied to eligible transactions
-- `initial_reward_per_block_lumn` – first-block emission (LMN)
-- `halving_interval_blocks` – blocks between halving events
-- `supply_cap_lumn` – maximum cumulative supply (LMN)
-- `decimals` – chain-wide denom precision (default `6`)
 - `min_send_ulmn` – minimum transferable amount per recipient (default `1000`)
-- `denom` – base staking/fee denom (default `ulmn`)
 - `distribution_interval_blocks` – cadence for validator distribution
+- `initial_reward_per_block_lumn` – first-block emission (LMN) *(genesis-locked)*
+- `halving_interval_blocks` – blocks between halving events *(genesis-locked)*
+- `supply_cap_lumn` – maximum cumulative supply (LMN) *(genesis-locked)*
+- `decimals` – chain-wide denom precision (default `6`) *(genesis-locked)*
+- `denom` – base staking/fee denom (default `ulmn`) *(genesis-locked)*
 
 > The REST path for tokenomics queries follows the usual gRPC-Gateway convention once the service is registered; use `lumend q tokenomics params` for AutoCLI output.
 
-> Advanced knobs: `initial_reward_per_block_lumn`, `halving_interval_blocks`, `supply_cap_lumn`, `decimals`, `denom`, and `distribution_interval_blocks` govern the entire emission schedule. Change them only with explicit governance intent and migration plans.
+> Immutable fields: `initial_reward_per_block_lumn`, `halving_interval_blocks`, `supply_cap_lumn`, `decimals`, and `denom` are fixed at genesis. Any proposal trying to modify them will be rejected by the chain.
 
 ### `x/pqc`
 
@@ -74,11 +74,10 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 
 - `policy` – enforced as `REQUIRED`
 - `min_scheme` – minimum accepted Dilithium variant
-- `allow_account_rotate` – opt-in flag for key rotation
 - `min_balance_for_link` – spendable ULUMEN threshold required before linking
 - `pow_difficulty_bits` – difficulty target for `sha256(pubkey || nonce)`
 
-> Advanced knobs: `allow_account_rotate` and `pow_difficulty_bits` control security-critical flows. Leave them at defaults unless the PQC module owners propose a coordinated change. The `policy`/`min_scheme` pair should remain `REQUIRED` / `dilithium3` for the foreseeable future.
+> Advanced knobs: `pow_difficulty_bits` and `min_balance_for_link` control security-critical flows. Leave them at defaults unless the PQC module owners propose a coordinated change. Account rotation is permanently disabled; proposals cannot re-enable it. The `policy`/`min_scheme` pair should remain `REQUIRED` / `dilithium3` for the foreseeable future.
 
 ### `x/gov`
 
@@ -86,14 +85,14 @@ This page lists the configurable knobs exposed by the chain. Unless stated other
 
 - `min_deposit`, `expedited_min_deposit` – escrow requirements for regular / expedited proposals (defaults: `10,000,000 ulmn` and `50,000,000 ulmn`).
 - `max_deposit_period`, `voting_period`, `expedited_voting_period` – Go/protobuf duration strings (e.g. `"60s"`, `"172800s"`) controlling each phase.
-- `quorum`, `threshold`, `veto_threshold`, `expedited_threshold` – decimal strings (`0.334`, `0.500`, `0.334`, `0.670` by default).
+- `quorum`, `threshold`, `veto_threshold`, `expedited_threshold` – decimal strings (`0.67`, `0.75`, `0.334`, `0.85` in Lumen).
 - `min_initial_deposit_ratio`, `min_deposit_ratio` – ratios enforcing how much of the deposit must be supplied at submit time and in follow-up deposits.
 - `proposal_cancel_ratio`, `proposal_cancel_dest` – controls how much of the escrow is burned and where it is redirected on cancellation (defaults to zero / empty).
-- `burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto` – boolean burn toggles; all default to `false`.
+- `burn_proposal_deposit_prevote`, `burn_vote_quorum`, `burn_vote_veto` – boolean burn toggles; all default to `false`, except `burn_vote_veto = true`.
 
-> Advanced knobs: `min_initial_deposit_ratio`, `min_deposit_ratio`, the cancellation fields, and the burn toggles can destroy deposits or destabilise proposal flow when misused. Reserve them for tightly scoped governance changes with clear operator consensus.
+> Advanced knobs: `min_initial_deposit_ratio`, `min_deposit_ratio`, the cancellation fields, and the burn toggles can destroy deposits or destabilise proposal flow when misused. Reserve them for tightly scoped governance changes with clear operator consensus. Quorum/threshold defaults are hard-coded (67% participation, 75% YES threshold) and cannot be changed via DAO.
 
-All fields are governed by `MsgSubmitProposal` and the on-chain authority derived from the `gov` module account.
+`MsgSubmitProposal` is still used to drive DNS/gateways/release updates and the soft tokenomics knobs, but the `x/gov` parameters above are fixed in the binary/genesis and cannot be changed via DAO votes.
 
 ## Environment Variables
 

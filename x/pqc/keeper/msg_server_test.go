@@ -89,18 +89,13 @@ func TestLinkAccountPQC_SingleLink(t *testing.T) {
 	require.Equal(t, expectedHash[:], account.PubKeyHash)
 	require.Equal(t, f.ctx.BlockTime().Unix(), account.AddedAt)
 
-	// rotation disabled: attempting to relink must fail
+	// relinking with the same payload is a no-op
 	_, err = f.msgSrv.LinkAccountPQC(f.ctx, msg)
-	require.ErrorIs(t, err, types.ErrAccountRotationDisabled)
+	require.NoError(t, err)
 }
 
-func TestLinkAccountPQC_RotationAllowed(t *testing.T) {
+func TestLinkAccountPQC_RotationRejected(t *testing.T) {
 	f := newFixture(t)
-	params := types.DefaultParams()
-	params.AllowAccountRotate = true
-	params.PowDifficultyBits = 0
-	require.NoError(t, f.keeper.SetParams(f.ctx, params))
-
 	msg, addr := f.newMessage(t)
 	_, err := f.msgSrv.LinkAccountPQC(f.ctx, msg)
 	require.NoError(t, err)
@@ -112,13 +107,7 @@ func TestLinkAccountPQC_RotationAllowed(t *testing.T) {
 	rotate := types.NewMsgLinkAccountPQC(addr, scheme.Name(), newPub)
 	rotate.PowNonce = []byte{0xBB}
 	_, err = f.msgSrv.LinkAccountPQC(f.ctx, rotate)
-	require.NoError(t, err)
-
-	account, found, err := f.keeper.GetAccountPQC(f.ctx, addr)
-	require.NoError(t, err)
-	require.True(t, found)
-	newHash := sha256.Sum256(newPub)
-	require.Equal(t, newHash[:], account.PubKeyHash)
+	require.ErrorIs(t, err, types.ErrAccountRotationDisabled)
 }
 
 func TestQueryAccount(t *testing.T) {
@@ -165,7 +154,6 @@ func TestGenesisRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, genesis.Params.Policy, exported.Params.Policy)
 	require.Equal(t, genesis.Params.MinScheme, exported.Params.MinScheme)
-	require.Equal(t, genesis.Params.AllowAccountRotate, exported.Params.AllowAccountRotate)
 	require.Equal(t, genesis.Accounts, exported.Accounts)
 }
 

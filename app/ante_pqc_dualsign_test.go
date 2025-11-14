@@ -436,10 +436,9 @@ func (env *pqcTestEnv) newContext(txBytes []byte) sdk.Context {
 
 func defaultParams() pqctypes.Params {
 	return pqctypes.Params{
-		Policy:             pqctypes.PqcPolicy_PQC_POLICY_REQUIRED,
-		MinScheme:          pqctypes.SchemeDilithium3,
-		AllowAccountRotate: false,
-		MinBalanceForLink:  pqctypes.DefaultMinBalanceForLink,
+		Policy:            pqctypes.PqcPolicy_PQC_POLICY_REQUIRED,
+		MinScheme:         pqctypes.SchemeDilithium3,
+		MinBalanceForLink: pqctypes.DefaultMinBalanceForLink,
 	}
 }
 

@@ -62,14 +62,6 @@ func (m msgServer) LinkAccountPQC(goCtx context.Context, msg *types.MsgLinkAccou
 		return nil, err
 	}
 
-	existing, found, err := m.keeper.GetAccountPQC(goCtx, creatorAddr)
-	if err != nil {
-		return nil, err
-	}
-	if found && !params.AllowAccountRotate {
-		return nil, types.ErrAccountRotationDisabled
-	}
-
 	hash := sha256.Sum256(msg.PubKey)
 	pubKeyHash := append([]byte(nil), hash[:]...)
 
@@ -80,16 +72,22 @@ func (m msgServer) LinkAccountPQC(goCtx context.Context, msg *types.MsgLinkAccou
 		AddedAt:    sdkCtx.BlockTime().Unix(),
 	}
 
+	existing, found, err := m.keeper.GetAccountPQC(goCtx, creatorAddr)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		if !equalAccount(existing, account) {
+			return nil, types.ErrAccountRotationDisabled
+		}
+		return &types.MsgLinkAccountPQCResponse{}, nil
+	}
+
 	if err := m.keeper.SetAccountPQC(goCtx, creatorAddr, account); err != nil {
 		return nil, err
 	}
 
-	if !found {
-		m.emitLinkEvent(sdkCtx, creatorAddr.String(), msg.Scheme, pubKeyHash, params)
-	} else if params.AllowAccountRotate &&
-		!equalAccount(existing, account) {
-		m.emitLinkEvent(sdkCtx, creatorAddr.String(), msg.Scheme, pubKeyHash, params)
-	}
+	m.emitLinkEvent(sdkCtx, creatorAddr.String(), msg.Scheme, pubKeyHash, params)
 
 	return &types.MsgLinkAccountPQCResponse{}, nil
 }

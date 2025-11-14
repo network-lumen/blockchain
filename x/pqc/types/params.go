@@ -14,9 +14,8 @@ const (
 	// PQC is mandatory at runtime. The stored policy field is kept for backwards
 	// compatibility but the keeper always enforces REQUIRED regardless of the
 	// genesis value.
-	DefaultPolicy             = PqcPolicy_PQC_POLICY_REQUIRED
-	DefaultMinScheme          = SchemeDilithium3
-	DefaultAllowAccountRotate = false
+	DefaultPolicy    = PqcPolicy_PQC_POLICY_REQUIRED
+	DefaultMinScheme = SchemeDilithium3
 
 	DefaultPowDifficultyBits uint32 = 21
 )
@@ -32,11 +31,10 @@ var DefaultMinBalanceForLink = sdk.NewCoin(
 
 func DefaultParams() Params {
 	return Params{
-		Policy:             DefaultPolicy,
-		MinScheme:          DefaultMinScheme,
-		AllowAccountRotate: DefaultAllowAccountRotate,
-		MinBalanceForLink:  DefaultMinBalanceForLink,
-		PowDifficultyBits:  DefaultPowDifficultyBits,
+		Policy:            DefaultPolicy,
+		MinScheme:         DefaultMinScheme,
+		MinBalanceForLink: DefaultMinBalanceForLink,
+		PowDifficultyBits: DefaultPowDifficultyBits,
 	}
 }
 
