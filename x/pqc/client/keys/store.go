@@ -1,13 +1,20 @@
 package keys
 
 import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/scrypt"
 )
 
 const (
@@ -27,10 +34,27 @@ type KeyRecord struct {
 }
 
 // Store manages local PQC keys and address bindings.
+type StoreOptions struct {
+	passphrase []byte
+}
+
+type StoreOption func(*StoreOptions)
+
+// WithPassphrase instructs the store to encrypt key material on disk using the provided passphrase.
+func WithPassphrase(passphrase []byte) StoreOption {
+	return func(o *StoreOptions) {
+		if len(passphrase) == 0 {
+			return
+		}
+		o.passphrase = append([]byte(nil), passphrase...)
+	}
+}
+
 type Store struct {
-	dir       string
-	keysPath  string
-	linksPath string
+	dir        string
+	keysPath   string
+	linksPath  string
+	passphrase []byte
 
 	mu    sync.RWMutex
 	keys  map[string]KeyRecord
@@ -38,7 +62,7 @@ type Store struct {
 }
 
 // LoadStore initialises a PQC key store under the provided home directory.
-func LoadStore(homeDir string) (*Store, error) {
+func LoadStore(homeDir string, opts ...StoreOption) (*Store, error) {
 	if homeDir == "" {
 		return nil, errors.New("home directory is required")
 	}
@@ -48,12 +72,23 @@ func LoadStore(homeDir string) (*Store, error) {
 		return nil, fmt.Errorf("create pqc key directory: %w", err)
 	}
 
+	optValues := StoreOptions{}
+	for _, opt := range opts {
+		opt(&optValues)
+	}
+
 	store := &Store{
 		dir:       dir,
 		keysPath:  filepath.Join(dir, keysFileName),
 		linksPath: filepath.Join(dir, linksFileName),
-		keys:      make(map[string]KeyRecord),
-		links:     make(map[string]string),
+		passphrase: func() []byte {
+			if len(optValues.passphrase) == 0 {
+				return nil
+			}
+			return append([]byte(nil), optValues.passphrase...)
+		}(),
+		keys:  make(map[string]KeyRecord),
+		links: make(map[string]string),
 	}
 
 	if err := store.load(); err != nil {
@@ -77,7 +112,7 @@ func (s *Store) load() error {
 }
 
 func (s *Store) loadKeysLocked() error {
-	data, err := os.ReadFile(s.keysPath)
+	data, err := s.readFileMaybeEncrypted(s.keysPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -94,7 +129,7 @@ func (s *Store) loadKeysLocked() error {
 }
 
 func (s *Store) loadLinksLocked() error {
-	data, err := os.ReadFile(s.linksPath)
+	data, err := s.readFileMaybeEncrypted(s.linksPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -213,9 +248,137 @@ func (s *Store) persistLocked(path string, v any) error {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("close tmp store: %w", err)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := osRenameEncrypted(tmpPath, path, s.passphrase); err != nil {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("persist pqc store: %w", err)
 	}
 	return nil
+}
+
+const (
+	encryptionMagic = "PQCENC1"
+	encryptionSalt  = 16
+	encryptionNonce = 12
+)
+
+func osRenameEncrypted(tmpPath, finalPath string, passphrase []byte) error {
+	if len(passphrase) == 0 {
+		return os.Rename(tmpPath, finalPath)
+	}
+
+	plaintext, err := os.ReadFile(tmpPath)
+	if err != nil {
+		return err
+	}
+	ciphertext, err := encryptBytes(passphrase, plaintext)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(tmpPath, ciphertext, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, finalPath)
+}
+
+func (s *Store) readFileMaybeEncrypted(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.HasPrefix(data, []byte(encryptionMagic)) {
+		if len(s.passphrase) == 0 {
+			return nil, fmt.Errorf("%s is encrypted; provide a PQC keystore passphrase", path)
+		}
+		plain, err := decryptBytes(s.passphrase, data)
+		if err != nil {
+			return nil, err
+		}
+		return plain, nil
+	}
+	return data, nil
+}
+
+func encryptBytes(passphrase, plaintext []byte) ([]byte, error) {
+	salt := make([]byte, encryptionSalt)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return nil, fmt.Errorf("generate salt: %w", err)
+	}
+	key, err := deriveKey(passphrase, salt)
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(key)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("cipher init: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher gcm: %w", err)
+	}
+
+	nonce := make([]byte, encryptionNonce)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("generate nonce: %w", err)
+	}
+
+	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
+	buf := bytes.NewBuffer(make([]byte, 0, len(encryptionMagic)+len(salt)+len(nonce)+len(ciphertext)))
+	buf.WriteString(encryptionMagic)
+	buf.Write(salt)
+	buf.Write(nonce)
+	buf.Write(ciphertext)
+	return buf.Bytes(), nil
+}
+
+func decryptBytes(passphrase, ciphertext []byte) ([]byte, error) {
+	header := []byte(encryptionMagic)
+	if len(ciphertext) < len(header)+encryptionSalt+encryptionNonce {
+		return nil, errors.New("encrypted data truncated")
+	}
+	if !bytes.Equal(ciphertext[:len(header)], header) {
+		return nil, errors.New("invalid encryption magic")
+	}
+	offset := len(header)
+	salt := ciphertext[offset : offset+encryptionSalt]
+	offset += encryptionSalt
+	nonce := ciphertext[offset : offset+encryptionNonce]
+	offset += encryptionNonce
+	payload := ciphertext[offset:]
+
+	key, err := deriveKey(passphrase, salt)
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(key)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("cipher init: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher gcm: %w", err)
+	}
+
+	plaintext, err := gcm.Open(nil, nonce, payload, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt pqc keystore: %w", err)
+	}
+	return plaintext, nil
+}
+
+func deriveKey(passphrase, salt []byte) ([]byte, error) {
+	key, err := scrypt.Key(passphrase, salt, 1<<15, 8, 1, 32)
+	if err != nil {
+		return nil, fmt.Errorf("derive key: %w", err)
+	}
+	return key, nil
+}
+
+func zeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
 }

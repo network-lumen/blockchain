@@ -153,13 +153,13 @@ var (
 				Config: appconfig.WrapAny(&genutilmodulev1.Module{}),
 			},
 			{
-				Name:   distrtypes.ModuleName,
+				Name: distrtypes.ModuleName,
 				Config: appconfig.WrapAny(&distrmodulev1.Module{
 					Authority: immutableAuthority,
 				}),
 			},
 			{
-				Name:   consensustypes.ModuleName,
+				Name: consensustypes.ModuleName,
 				Config: appconfig.WrapAny(&consensusmodulev1.Module{
 					Authority: immutableAuthority,
 				}),

@@ -28,6 +28,8 @@ add_job "e2e_release" "bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-bui
 add_job "e2e_gov" "bash '$ROOT_DIR/devtools/tests/e2e_gov.sh' --skip-build"
 add_job "e2e_gateways" "bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
 add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
+add_job "e2e_pqc_cli" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc_cli.sh'"
+add_job "e2e_bootstrap_validator" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_bootstrap_validator.sh'"
 
 add_job "smoke REST" "bash '$ROOT_DIR/devtools/tests/smoke_rest.sh'"
 

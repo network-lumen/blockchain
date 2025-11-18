@@ -40,6 +40,35 @@ The CLI validates that the provided scheme matches the active backend (`crypto/p
 link if the account balance is below `min_balance_for_link`, and mines an appropriate nonce to satisfy
 `pow_difficulty_bits` before broadcasting.
 
+### Operator workflow helpers
+
+Production builds now expose the PQC helper commands under `lumend keys` so operators never have to rebuild custom
+binaries:
+
+```bash
+# Generate a Dilithium3 keypair, store it locally, and link it to the "validator" keyring entry:
+lumend keys pqc-generate --name validator-pqc --link-from validator \
+  --pqc-passphrase-file ~/.config/lumen/pqc_passphrase
+
+# List stored keys and local bindings:
+lumend keys pqc-list
+
+# Produce the JSON snippet for genesis (app_state.pqc.accounts):
+lumend keys pqc-genesis-entry --from validator \
+  --output validator-pqc.json \
+  --write-genesis ~/.lumen/config/genesis.json
+```
+
+`pqc-generate` prints the public/private key hex by default and supports `--pub-out` / `--priv-out` to write them to
+files, as well as `--force` to overwrite existing outputs. The generated key can be stored (`--name`) and linked to a
+Cosmos key in one shot (`--link-from`). En ajoutant `--pqc-passphrase-file` ou la variable `LUMEN_PQC_PASSPHRASE_FILE`,
+le keystore local (`~/.lumen/pqc_keys/*.json`) est chiffré ; sans passphrase, les clés restent en clair.
+
+`pqc-import` importe toujours un couple fourni par un autre outil, et `pqc-link` relie un compte Cosmos à une clé locale.
+`pqc-genesis-entry` inspecte la clé liée (ou celle passée via `--pqc`) et produit l’entrée JSON prête à être insérée
+dans `app_state.pqc.accounts`. Avec `--write-genesis`, l’entrée est injectée directement dans le `genesis.json`
+(un backup `.bak` est créé automatiquement).
+
 ## Module Parameters
 
 | Parameter | Default | Description |
@@ -103,10 +132,14 @@ Successful verifications emit a `pqc.verified` event containing the signer addre
 ## Client Setup
 
 A lightweight keystore stores Dilithium testing keys under `~/.lumen/pqc_keys`. The keystore is intentionally
-plaintext (for development only) and the associated CLI commands are compiled only when the binary is built with the
-`dev` or `test` tags. In those builds, the following helpers are available:
+plaintext (for operator convenience); ensure the directory is protected at the OS level or migrate the keys to an HSM
+when you harden your environment. The following helpers are always available:
 
 ```bash
+# Generate and link a new Dilithium keypair
+lumend keys pqc-generate --name validator-pqc --link-from validator \
+  --pqc-passphrase-file ~/.config/lumen/pqc_passphrase
+
 # Import a Dilithium keypair (private key provided as hex/base64)
 lumend keys pqc-import --name local-dilithium --scheme dilithium3 \
   --pubkey <hex-or-base64> --privkey <hex-or-base64>
@@ -119,6 +152,10 @@ lumend keys pqc-show local-dilithium
 
 # Link a cosmos keyring entry to the imported PQC key
 lumend keys pqc-link --from validator --pqc local-dilithium
+
+# Produce the JSON entry for app_state.pqc.accounts
+lumend keys pqc-genesis-entry --from validator --output validator-pqc.json \
+  --write-genesis ~/.lumen/config/genesis.json
 ```
 
 During transaction assembly, the CLI signs Ed25519 first and then augments the tx with PQC signatures. PQC signing is

@@ -72,10 +72,54 @@ curl -s "$API/lumen/release/latest?channel=stable&platform=linux-amd64&kind=daem
 
 ## Networking & Security
 
-- Run validators with `--minimum-gas-prices 0ulmn`; the rate-limit decorator supplies DoS protection.
-- Place a TLS-enabled reverse proxy (nginx, Caddy, envoy, …) with request rate limiting in front of `:2327` if the REST API is exposed publicly.
-- Keep keys in an OS keyring, KMS, or HSM when possible. Avoid the `--keyring-backend test` setting outside of development.
-- Monitor module accounts via `lumend q bank balances <module-address>` to confirm fee/tax flows.
+- **Ports** : par défaut CometBFT écoute sur `26656` (P2P), `26657` (RPC), `2327` (REST), `9190` (gRPC), `9091` (gRPC-Web). Expose uniquement ce qui est nécessaire ; `26657` et REST peuvent rester en local si un reverse proxy est utilisé.
+- **Pare-feu** : autorise `26656/tcp` depuis tes pairs/seed, bloque l’accès public à `26657` et `2327` sauf si tu ajoutes un proxy HTTPS avec limite de débit.
+- **IPv4/IPv6** : configure `persistent_peers` avec les IP mixtes et valide que chaque peer annonce son `external_address`. Si tu utilises IPv6 only, renseigne `[addr]:port`.
+- **DoS soft** : conserve `--minimum-gas-prices 0ulmn` (le decorateur rate-limit s’occupe d’empêcher les abus) et ajoute un proxy type nginx/Caddy pour forcer TLS + fail2ban/limit_req.
+- **Accès SSH** : désactive root, utilise IPv6 + UFW `default deny`, et limite les connexions admin au strict nécessaire.
+- **Clés** : privilégie un keyring chiffré (file/os) voire un HSM. Le backend `test` n’est acceptable qu’en labo.
+
+## Bootstrap Automatisé du Validateur
+
+Pour enchaîner toutes les étapes (init, clé Ed25519, clé PQC, gentx, service systemd) en une commande, utilisez le script
+`devtools/scripts/bootstrap_validator.sh` :
+
+```bash
+./devtools/scripts/bootstrap_validator.sh \
+  --moniker mon-validator \
+  --chain-id lumen-testnet \
+  --home /var/lib/lumen \
+  --stake 1ulmn \
+  --balance 1000ulmn \
+  --pqc-passphrase-file ~/.config/lumen/pqc_pass
+```
+
+Le script :
+- exécute `lumend init`, crée la clé `validator`, et crédite le compte dans le genesis ;
+- génère une clé Dilithium locale (chiffrée si `--pqc-passphrase-file` est fourni) et insère l’entrée dans `genesis.json` ;
+- produit le `gentx` et lance `collect-gentxs` ;
+- installe optionnellement le service systemd (`--install-service`).
+
+Conservez soigneusement la mnemonic Ed25519 et la passphrase PQC imprimées par le script.
+
+## Sauvegarde & Restauration
+
+Sauvegardez hors-ligne (USB chiffrée, coffre) les fichiers suivants :
+
+- `config/priv_validator_key.json`
+- `config/node_key.json`
+- `config/priv_validator_state.json` (pouvant être recréé mais utile pour reprendre sans double-sign)
+- `pqc_keys/keys.json` et `pqc_keys/links.json` + la passphrase associée
+- Les exports de portefeuille (`lumend keys export` ou `keyring` sécurisé)
+
+Pour restaurer un nœud :
+1. Prépare un nouveau `$HOME` (ex. `/var/lib/lumen`), exécute `lumend init` pour générer les dossiers.
+2. Remplace les fichiers listés ci-dessus par leurs sauvegardes (respecter les permissions 600).
+3. Vérifie que l’adresse renvoyée par `lumend keys show validator` correspond bien à celle attendue.
+4. Si le keystore PQC est chiffré, remets la passphrase via `--pqc-passphrase-file`.
+5. Relance le service (`systemctl restart lumend`) et surveille les logs pour confirmer qu’aucune erreur PQC n’apparaît.
+
+Perdre la clé PQC ou la clé Ed25519 rend impossible la reprise des signatures ; assure-toi donc d’avoir au minimum deux copies chiffrées et testées de ces fichiers critiques.
 
 ## Upgrades & Releases
 

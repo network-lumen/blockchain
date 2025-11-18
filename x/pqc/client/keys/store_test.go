@@ -46,3 +46,37 @@ func TestStoreRoundTrip(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dir, storageDirName, linksFileName))
 	require.NoError(t, err)
 }
+
+func TestStoreWithPassphrase(t *testing.T) {
+	dir := t.TempDir()
+	pass := []byte("s3cret-passphrase")
+
+	store, err := LoadStore(dir, WithPassphrase(pass))
+	require.NoError(t, err)
+
+	record := KeyRecord{
+		Name:       "enc",
+		Scheme:     "dilithium3",
+		PublicKey:  []byte{9, 9, 9},
+		PrivateKey: []byte{8, 8, 8},
+		CreatedAt:  time.Now().UTC().Truncate(time.Second),
+	}
+	require.NoError(t, store.SaveKey(record))
+	require.NoError(t, store.LinkAddress("addr-enc", "enc"))
+
+	reloaded, err := LoadStore(dir, WithPassphrase(pass))
+	require.NoError(t, err)
+
+	key, ok := reloaded.GetKey("enc")
+	require.True(t, ok)
+	require.Equal(t, record.PublicKey, key.PublicKey)
+
+	// ensure ciphertext stored on disk
+	data, err := os.ReadFile(filepath.Join(dir, storageDirName, keysFileName))
+	require.NoError(t, err)
+	require.Contains(t, string(data[:8]), "PQCENC1")
+
+	// missing passphrase should error
+	_, err = LoadStore(dir)
+	require.Error(t, err)
+}

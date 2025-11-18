@@ -67,4 +67,3 @@ func TestMsgUpdateParams(t *testing.T) {
 		})
 	}
 }
-

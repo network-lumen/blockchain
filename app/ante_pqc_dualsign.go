@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"time"
 
 	txv1beta1 "cosmossdk.io/api/cosmos/tx/v1beta1"
 	"cosmossdk.io/log"
@@ -19,6 +20,7 @@ import (
 	signingtypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 
+	"lumen/app/metrics"
 	"lumen/crypto/pqc/dilithium"
 	pqcsigning "lumen/x/pqc/signing"
 	pqctypes "lumen/x/pqc/types"
@@ -114,6 +116,7 @@ func (d PQCDualSignDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 	required := params.Policy == pqctypes.PqcPolicy_PQC_POLICY_REQUIRED
 
 	for idx, signer := range signers {
+		start := time.Now()
 		account := d.ak.GetAccount(ctx, signer)
 		if account == nil {
 			return ctx, fmt.Errorf("pqc: signer account %s not found", signer.String())
@@ -221,6 +224,8 @@ func (d PQCDualSignDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 		d.emitEvent(ctx, pqctypes.EventTypeVerified, signer.String(), map[string]string{
 			pqctypes.AttributeKeyScheme: entry.Scheme,
 		})
+		metrics.SignaturesCounter().WithLabelValues("ok").Inc()
+		metrics.VerifyObserver().Observe(time.Since(start).Seconds())
 	}
 
 	return next(ctx, tx, simulate)

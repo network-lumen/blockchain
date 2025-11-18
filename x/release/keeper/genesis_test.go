@@ -29,4 +29,3 @@ func TestGenesis(t *testing.T) {
 	require.Equal(t, genesisState.BundleCount, got.BundleCount)
 
 }
-

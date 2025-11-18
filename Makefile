@@ -105,6 +105,12 @@ e2e: ## Run the full test orchestrator (devtools/tests/test_all.sh)
 e2e-pqc: ## Run the dedicated PQC e2e flow (devtools/tests/e2e_pqc.sh)
 	@BIN=./build/lumend bash devtools/tests/e2e_pqc.sh $(ARGS)
 
+e2e-pqc-cli: ## Run the CLI-centric PQC flow (devtools/tests/e2e_pqc_cli.sh)
+	@BIN=./build/lumend bash devtools/tests/e2e_pqc_cli.sh $(ARGS)
+
+e2e-bootstrap-validator: ## Run bootstrap validator e2e flow (devtools/tests/e2e_bootstrap_validator.sh)
+	@BIN=./build/lumend bash devtools/tests/e2e_bootstrap_validator.sh $(ARGS)
+
 e2e-dns: ## Legacy DNS CLI flow (devtools/tests/e2e_dns.sh)
 	@bash devtools/tests/e2e_dns.sh $(ARGS)
 
