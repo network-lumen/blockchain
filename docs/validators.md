@@ -72,17 +72,17 @@ curl -s "$API/lumen/release/latest?channel=stable&platform=linux-amd64&kind=daem
 
 ## Networking & Security
 
-- **Ports** : par défaut CometBFT écoute sur `26656` (P2P), `26657` (RPC), `2327` (REST), `9190` (gRPC), `9091` (gRPC-Web). Expose uniquement ce qui est nécessaire ; `26657` et REST peuvent rester en local si un reverse proxy est utilisé.
-- **Pare-feu** : autorise `26656/tcp` depuis tes pairs/seed, bloque l’accès public à `26657` et `2327` sauf si tu ajoutes un proxy HTTPS avec limite de débit.
-- **IPv4/IPv6** : configure `persistent_peers` avec les IP mixtes et valide que chaque peer annonce son `external_address`. Si tu utilises IPv6 only, renseigne `[addr]:port`.
-- **DoS soft** : conserve `--minimum-gas-prices 0ulmn` (le decorateur rate-limit s’occupe d’empêcher les abus) et ajoute un proxy type nginx/Caddy pour forcer TLS + fail2ban/limit_req.
-- **Accès SSH** : désactive root, utilise IPv6 + UFW `default deny`, et limite les connexions admin au strict nécessaire.
-- **Clés** : privilégie un keyring chiffré (file/os) voire un HSM. Le backend `test` n’est acceptable qu’en labo.
+- **Ports**: CometBFT listens on `26656` (P2P), `26657` (RPC), `2327` (REST), `9190` (gRPC), `9091` (gRPC-Web). Only expose what you need; `26657` and REST can stay behind a reverse proxy if you prefer.
+- **Firewalls**: allow `26656/tcp` from peers/seeds, block public access to `26657` and `2327` unless protected by HTTPS + rate limiting.
+- **IPv4/IPv6**: configure `persistent_peers` with dual-stack entries and ensure every peer advertises its `external_address`. For IPv6-only peers use `[addr]:port`.
+- **Soft DoS controls**: keep `--minimum-gas-prices 0ulmn` (the rate-limit decorator handles it) and front public endpoints with nginx/Caddy + TLS and fail2ban/`limit_req`.
+- **SSH access**: disable root logins, enforce UFW `default deny`, prefer IPv6, and restrict admin hosts.
+- **Keys**: prefer encrypted keyrings (file/os) or HSMs. The `test` backend is only acceptable for labs.
 
-## Bootstrap Automatisé du Validateur
+## Automated Validator Bootstrap
 
-Pour enchaîner toutes les étapes (init, clé Ed25519, clé PQC, gentx, service systemd) en une commande, utilisez le script
-`devtools/scripts/bootstrap_validator.sh` :
+To chain init + Ed25519 key + PQC + gentx + systemd, run
+`devtools/scripts/bootstrap_validator.sh`:
 
 ```bash
 ./devtools/scripts/bootstrap_validator.sh \
@@ -94,32 +94,54 @@ Pour enchaîner toutes les étapes (init, clé Ed25519, clé PQC, gentx, service
   --pqc-passphrase-file ~/.config/lumen/pqc_pass
 ```
 
-Le script :
-- exécute `lumend init`, crée la clé `validator`, et crédite le compte dans le genesis ;
-- génère une clé Dilithium locale (chiffrée si `--pqc-passphrase-file` est fourni) et insère l’entrée dans `genesis.json` ;
-- produit le `gentx` et lance `collect-gentxs` ;
-- installe optionnellement le service systemd (`--install-service`).
+The script:
+- runs `lumend init`, creates the `validator` key, and credits the account in genesis;
+- generates a local Dilithium key (encrypted if `--pqc-passphrase-file` is provided) and writes it into `genesis.json`;
+- creates the `gentx` and runs `collect-gentxs`;
+- optionally installs the systemd service (`--install-service`).
 
-Conservez soigneusement la mnemonic Ed25519 et la passphrase PQC imprimées par le script.
+Store the Ed25519 mnemonic and PQC passphrase printed by the script securely.
 
-## Sauvegarde & Restauration
+### Full bootstrap on a root server
 
-Sauvegardez hors-ligne (USB chiffrée, coffre) les fichiers suivants :
+To provision a bare host (systemd unit already installed, PQC keys coming from HSM/offline), run `devtools/scripts/bootstrap_validator_node.sh` as root:
+
+```bash
+sudo MONIKER=my-node \
+     CHAIN_ID=lumen \
+     PQC_PUB_FILE=/root/validator.pub \
+     PQC_PRIV_FILE=/root/validator.priv \
+     PQC_PASSPHRASE_FILE=/root/pqc_passphrase \
+     devtools/scripts/bootstrap_validator_node.sh
+```
+
+The script:
+- detects the service `--home` and user automatically (or honors `LUMEN_HOME` / `LUMEN_USER`);
+- stops the service, wipes `$LUMEN_HOME`, runs `lumend init`, enforces `minimum-gas-prices = "0ulmn"` in `app.toml`, and creates the `validator` key (keyring `test`);
+- credits the address (`GENESIS_BALANCE`, default `1000000000000ulmn`), generates the `gentx` (`GENTX_AMOUNT`), patches `delegator_address` if needed, and re-signs offline;
+- imports your Dilithium pair (`PQC_PUB_FILE`, `PQC_PRIV_FILE`, `PQC_PASSPHRASE_FILE`), links PQC to the Ed25519 address, and injects the Genesis entry;
+- validates genesis, restores ownership to `LUMEN_USER`, restarts `systemctl restart lumend`, and writes `~/mnemo` (mnemonic) plus `~/wallet` (address/valoper).
+
+Useful env vars: `MONIKER`, `CHAIN_ID`, `KEY_NAME`, `PQC_KEY_NAME`, `GENESIS_BALANCE`, `GENTX_AMOUNT`, `MNEMO_FILE`, `WALLET_FILE`, `MIN_GAS_PRICE`. PQC files must exist (hex format, mode 600). After the run, monitor `journalctl -fu lumend` to ensure the node is producing blocks with no “validator set is empty” errors.
+
+## Backup & Restore
+
+Keep offline (encrypted USB, safe) the following files:
 
 - `config/priv_validator_key.json`
 - `config/node_key.json`
-- `config/priv_validator_state.json` (pouvant être recréé mais utile pour reprendre sans double-sign)
-- `pqc_keys/keys.json` et `pqc_keys/links.json` + la passphrase associée
-- Les exports de portefeuille (`lumend keys export` ou `keyring` sécurisé)
+- `config/priv_validator_state.json` (re-creatable but useful to resume without double-signing)
+- `pqc_keys/keys.json` and `pqc_keys/links.json` plus the passphrase
+- Wallet exports (`lumend keys export` or a secure keyring)
 
-Pour restaurer un nœud :
-1. Prépare un nouveau `$HOME` (ex. `/var/lib/lumen`), exécute `lumend init` pour générer les dossiers.
-2. Remplace les fichiers listés ci-dessus par leurs sauvegardes (respecter les permissions 600).
-3. Vérifie que l’adresse renvoyée par `lumend keys show validator` correspond bien à celle attendue.
-4. Si le keystore PQC est chiffré, remets la passphrase via `--pqc-passphrase-file`.
-5. Relance le service (`systemctl restart lumend`) et surveille les logs pour confirmer qu’aucune erreur PQC n’apparaît.
+To restore a node:
+1. Prepare a new `$HOME` (e.g. `/var/lib/lumen`), run `lumend init` to create folders.
+2. Replace the files above with the backups (keep 600 permissions).
+3. Verify `lumend keys show validator` returns the expected address.
+4. If the PQC keystore is encrypted, re-provide the passphrase via `--pqc-passphrase-file`.
+5. Restart the service (`systemctl restart lumend`) and monitor the logs to confirm no PQC errors remain.
 
-Perdre la clé PQC ou la clé Ed25519 rend impossible la reprise des signatures ; assure-toi donc d’avoir au minimum deux copies chiffrées et testées de ces fichiers critiques.
+Losing the PQC key or the Ed25519 key makes recovery impossible; maintain at least two encrypted, tested copies of these critical artifacts.
 
 ## Upgrades & Releases
 

@@ -3,13 +3,6 @@
 Lumen is a Cosmos SDK chain focused on DNS auctions, release distribution, and gateway settlement flows.  
 The codebase is organised as a standard Go module (`module lumen`) and relies on the Cosmos SDK v0.53 stack.
 
-> 🚧 **Pre-release notice:**  
-> This repository is open for public review and feedback before the first tagged release  
-> (planned ~1 week after publication). All tests pass and CI guards are active, but please  
-> report any issues or inconsistencies via GitHub Issues.
-
-📆 **See [ROADMAP.md](./ROADMAP.md) for the technical development timeline.**
-
 
 ## Modules at a Glance
 
@@ -22,11 +15,6 @@ The codebase is organised as a standard Go module (`module lumen`) and relies on
 | `x/pqc` | Dilithium key registry + dual-sign ante (always REQUIRED). |
 | `x/gov` (SDK) | Cosmos governance module backing DAO votes & param authority. |
 
-## 0.11.0 Highlights
-
-- Wired the upstream Cosmos SDK `x/gov` module into the application (module account, param authority, begin/end blockers) so DAO proposals can drive `MsgUpdateParams` across every keeper.
-- Extended the governance documentation: [docs/governance.md](docs/governance.md) now includes end-to-end CLI examples and [docs/params.md](docs/params.md) lists all gov knobs with advanced/caution notes.
-- Added a table-driven governance E2E suite exposed via `make e2e-gov`; it currently runs ~12–13 minutes and covers 25 cases spanning ratios, durations, deposits, burn flags, PQC negatives, and DNS parameter updates.
 
 ## Security
 
@@ -36,7 +24,6 @@ The codebase is organised as a standard Go module (`module lumen`) and relies on
 
 ## Project docs
 
-- 📆 Roadmap: see [ROADMAP.md](./ROADMAP.md)
 - 🔐 Security: see [SECURITY.md](./SECURITY.md) and the detailed [docs/Security.md](./docs/Security.md)
 - 🧪 Simulator (Docker): see [docs/simulation.md](./docs/simulation.md)
 - 🧩 Changelog: see [CHANGELOG.md](./CHANGELOG.md)

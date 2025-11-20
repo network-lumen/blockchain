@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [1.0.0] - 2025-11-18
+## [1.0.1] - 2025-11-18
 
 First stable release of the Lumen blockchain.
 
