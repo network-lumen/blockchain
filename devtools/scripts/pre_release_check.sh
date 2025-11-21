@@ -53,11 +53,11 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 ok "go mod tidy OK"
 
-run "go vet ./..."
+run "bash '$ROOT_DIR/devtools/scripts/go_with_pkgs.sh' vet"
 ok "go vet OK"
 
-run "go test ./... -count=1"
-ok "go test ./... OK"
+run "bash '$ROOT_DIR/devtools/scripts/go_test.sh' -count=1"
+ok "go test OK"
 
 if grep -q '^preflight:' Makefile 2>/dev/null; then
   run "make preflight"

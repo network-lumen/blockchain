@@ -186,3 +186,25 @@ pqc_wait_ready() {
 		fi
 	done
 }
+
+pqc_set_client_config() {
+	local home="${1:-$(__pqc_home_dir)}"
+	local rpc="${2:-${NODE:-tcp://127.0.0.1:26657}}"
+	local chain="${3:-${CHAIN_ID:-lumen}}"
+	local cfg="$home/config/client.toml"
+	[ -f "$cfg" ] || return 0
+	local tmp
+	tmp=$(mktemp)
+	awk -v rpc="$rpc" -v chain="$chain" '
+BEGIN { replaced_node=0; replaced_chain=0 }
+/^node = / { print "node = \"" rpc "\""; replaced_node=1; next }
+/^chain-id = / { print "chain-id = \"" chain "\""; replaced_chain=1; next }
+{ print }
+END {
+	if (!replaced_node) { print "node = \"" rpc "\"" }
+	if (!replaced_chain) { print "chain-id = \"" chain "\"" }
+}
+' "$cfg" >"$tmp"
+	mv "$tmp" "$cfg"
+	return 0
+}

@@ -17,7 +17,6 @@ SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 pqc_require_bins
 
 HOME_LUMEN=$(mktemp -d -t lumen-e2e-XXXXXX)
-trap '[[ "${DEBUG_KEEP:-0}" = "1" ]] || rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true' EXIT
 export HOME="$HOME_LUMEN"
 
 DIR=$(cd "${SOURCE_DIR}/../.." && pwd)
@@ -28,15 +27,19 @@ LOG_FILE="${LOG_FILE:-/tmp/lumen_gateways.log}"
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
 RPC_PORT="${RPC_PORT:-26657}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
-RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
+RPC="${RPC:-${RPC_LADDR/tcp:\/\//http://}}"
 API_HOST="${API_HOST:-127.0.0.1}"
 API_PORT="${API_PORT:-1317}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
-API="${API:-http://${API_HOST}:${API_PORT}}"
+API="${API:-${API_ADDR/tcp:\/\//http://}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
 GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-26656}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
+DISABLE_PPROF="${DISABLE_PPROF:-1}"
 CHAIN_ID="lumen"
 MONTH_SECONDS=${MONTH_SECONDS:-5}
 KEYRING=${KEYRING:-test}
@@ -111,7 +114,14 @@ wait_tx_commit() {
 }
 
 kill_node() { pkill -f "lumend start" >/dev/null 2>&1 || true; }
-cleanup() { kill_node; }
+cleanup() {
+  kill_node
+  if [ "${DEBUG_KEEP:-0}" != "1" ]; then
+    rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true
+  else
+    echo "DEBUG_KEEP=1: keeping $HOME_LUMEN"
+  fi
+}
 trap cleanup EXIT
 
 ensure_code_zero() {
@@ -226,6 +236,7 @@ init_chain() {
   "$BIN" genesis gentx client 1000000ulmn --chain-id "$CHAIN_ID" --keyring-backend "$KEYRING" --home "$HOME_DIR" --moniker local --commission-rate 0.10 --commission-max-rate 0.20 --commission-max-change-rate 0.01 --min-self-delegation 1 >/dev/null
   "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+  pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
 
 start_node() {
@@ -235,6 +246,7 @@ start_node() {
     "$BIN" start
     --home "$HOME_DIR"
     --rpc.laddr "$RPC_LADDR"
+    --p2p.laddr "$P2P_LADDR"
     --api.enable
     --api.address "$API_ADDR"
     --grpc.address "$GRPC_ADDR"
@@ -242,7 +254,7 @@ start_node() {
   )
   [ "$GRPC_WEB_ENABLE" = "1" ] && cmd+=(--grpc-web.enable)
   if [ "${DISABLE_PPROF:-0}" = "1" ]; then
-    cmd+=(--pprof.laddr "")
+    cmd+=(--rpc.pprof_laddr "")
   fi
   (
     LUMEN_RL_PER_BLOCK="$LUMEN_RL_PER_BLOCK" \

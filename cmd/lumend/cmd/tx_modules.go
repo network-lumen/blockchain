@@ -11,6 +11,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	gogotypes "github.com/cosmos/gogoproto/types"
 
 	dnstypes "lumen/x/dns/types"
 	gatewaytypes "lumen/x/gateways/types"
@@ -31,6 +32,8 @@ func newDNSTxCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		newDNSRegisterCmd(),
+		newDNSRenewCmd(),
+		newDNSTransferCmd(),
 		newDNSBidCmd(),
 		newDNSSettleCmd(),
 		newDNSUpdateCmd(),
@@ -112,6 +115,35 @@ func newDNSRegisterCmd() *cobra.Command {
 	return cmd
 }
 
+func newDNSRenewCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "renew [domain] [ext] [duration-days]",
+		Short: "Renew an existing domain for N days",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			duration, err := strconv.ParseUint(args[2], 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse duration-days: %w", err)
+			}
+
+			msg := &dnstypes.MsgRenew{
+				Creator:      clientCtx.GetFromAddress().String(),
+				Domain:       args[0],
+				Ext:          args[1],
+				DurationDays: duration,
+			}
+			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
 func newDNSBidCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bid [domain] [ext] [amount]",
@@ -128,6 +160,30 @@ func newDNSBidCmd() *cobra.Command {
 				Domain:  args[0],
 				Ext:     args[1],
 				Amount:  args[2],
+			}
+			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func newDNSTransferCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "transfer [domain] [ext] [new-owner]",
+		Short: "Transfer domain ownership",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			msg := &dnstypes.MsgTransfer{
+				Creator:  clientCtx.GetFromAddress().String(),
+				Domain:   args[0],
+				Ext:      args[1],
+				NewOwner: args[2],
 			}
 			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
 		},
@@ -161,9 +217,9 @@ func newDNSSettleCmd() *cobra.Command {
 
 func newDNSUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update [domain] [ext]",
+		Use:   "update [domain] [ext] [records-json]",
 		Short: "Update an existing domain's records (requires PoW)",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.RangeArgs(2, 3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -173,6 +229,9 @@ func newDNSUpdateCmd() *cobra.Command {
 			recordsJSON, err := cmd.Flags().GetString("records")
 			if err != nil {
 				return err
+			}
+			if len(args) >= 3 {
+				recordsJSON = args[2]
 			}
 			records, err := parseDNSRecordsJSON(recordsJSON)
 			if err != nil {
@@ -391,11 +450,100 @@ func newGatewaysTxCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		newGatewayRegisterCmd(),
+		newGatewayUpdateCmd(),
 		newGatewayCreateContractCmd(),
 		newGatewayClaimPaymentCmd(),
 		newGatewayCancelContractCmd(),
 		newGatewayFinalizeContractCmd(),
 	)
+	return cmd
+}
+
+func newGatewayRegisterCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "register-gateway [payout-addr]",
+		Short: "Register a gateway operator (pays register_gateway_fee_ulmn)",
+		Args:  cobra.RangeArgs(0, 1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			payout := clientCtx.GetFromAddress().String()
+			if len(args) == 1 && strings.TrimSpace(args[0]) != "" {
+				payout = strings.TrimSpace(args[0])
+			}
+
+			metadata, err := cmd.Flags().GetString("metadata")
+			if err != nil {
+				return err
+			}
+
+			msg := &gatewaytypes.MsgRegisterGateway{
+				Operator: clientCtx.GetFromAddress().String(),
+				Payout:   payout,
+				Metadata: metadata,
+			}
+			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+		},
+	}
+	cmd.Flags().String("metadata", "", "Optional metadata string (<=512 chars)")
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func newGatewayUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update-gateway [gateway-id]",
+		Short: "Update gateway metadata/payout/active flag (pays action_fee_ulmn)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			gatewayID, err := strconv.ParseUint(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse gateway-id: %w", err)
+			}
+
+			payout, err := cmd.Flags().GetString("payout")
+			if err != nil {
+				return err
+			}
+			metadata, err := cmd.Flags().GetString("metadata")
+			if err != nil {
+				return err
+			}
+			active, err := cmd.Flags().GetBool("active")
+			if err != nil {
+				return err
+			}
+
+			msg := &gatewaytypes.MsgUpdateGateway{
+				Operator:  clientCtx.GetFromAddress().String(),
+				GatewayId: gatewayID,
+			}
+			if cmd.Flags().Changed("payout") {
+				msg.Payout = &gogotypes.StringValue{Value: strings.TrimSpace(payout)}
+			}
+			if cmd.Flags().Changed("metadata") {
+				msg.Metadata = &gogotypes.StringValue{Value: metadata}
+			}
+			if cmd.Flags().Changed("active") {
+				msg.Active = &gogotypes.BoolValue{Value: active}
+			}
+
+			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+		},
+	}
+	cmd.Flags().String("payout", "", "Optional payout address override")
+	cmd.Flags().String("metadata", "", "Optional metadata update")
+	cmd.Flags().Bool("active", false, "Set active flag (requires explicit flag)")
+	flags.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 

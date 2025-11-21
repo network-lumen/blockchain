@@ -58,7 +58,7 @@ The canonical binary entry point lives in `cmd/lumend`.
 
 ```bash
 # Unit tests only
-go test ./...
+./devtools/scripts/go_test.sh
 
 # Full suite: unit tests + end-to-end flows + REST smoke checks
 HOME=$(mktemp -d) make e2e
@@ -108,7 +108,7 @@ To avoid dust spam, tokenomics enforces `min_send_ulmn` (default `1000ulmn`) on 
 ## Local Validation (Go 1.23/1.24/1.25)
 
 Tested with Go 1.23, 1.24, and 1.25.
-The blocking jobs remain golangci-lint run ./..., staticcheck ./..., and go test ./....
+The blocking jobs remain golangci-lint run ./..., staticcheck ./..., and ./devtools/scripts/go_test.sh.
 
 The make vulncheck target first runs a source scan; if it encounters the known upstream internal error
 (x/sys/unix ↔ go-isatty), it rebuilds build/lumend and retries using govulncheck -mode=binary.
@@ -118,7 +118,7 @@ Only that specific internal error is tolerated — any other failure remains blo
 go mod tidy
 make lint
 make staticcheck
-go test ./...
+./devtools/scripts/go_test.sh
 make vuln-tools && make vulncheck
 ```
 The optional make vulncheck-json target writes a non-blocking JSON report under

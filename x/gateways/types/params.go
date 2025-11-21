@@ -3,9 +3,9 @@ package types
 import "fmt"
 
 const (
-	defaultActionFeeUlmn          uint64 = 100_000   // 0.1 LUMEN
-	defaultRegisterGatewayFeeUlmn uint64 = 2_000_000 // 2 LUMEN
-	defaultMinContractPriceUlmn   uint64 = 100_000   // 0.1 LUMEN / month
+	defaultActionFeeUlmn          uint64 = 1_000      // 0.001 LUMEN
+	defaultRegisterGatewayFeeUlmn uint64 = 50_000_000 // 50 LUMEN
+	defaultMinContractPriceUlmn   uint64 = 100_000    // 0.1 LUMEN / month
 )
 
 func NewParams() Params {

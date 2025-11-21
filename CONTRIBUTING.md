@@ -10,8 +10,8 @@ Thanks for your interest in contributing! This project is community-driven and w
 Before pushing:
 ```bash
 go mod tidy
-go vet ./...
-go test ./... -count=1
+./devtools/scripts/go_with_pkgs.sh vet
+./devtools/scripts/go_test.sh -count=1
 make preflight           # if available; runs the focused checks
 make lint                # golangci-lint
 make staticcheck

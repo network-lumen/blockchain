@@ -7,7 +7,7 @@ Lumen uses a conventional Git-based release flow augmented by on-chain metadata 
 Run the scripted checks instead of reimplementing them manually:
 
 1. `make pre-release`  
-   Runs `go mod tidy`, `go vet`, `go test ./...`, `make preflight`, lint/staticcheck, govulncheck, and builds `./build/lumend`
+   Runs `go mod tidy`, `./devtools/scripts/go_with_pkgs.sh vet`, `./devtools/scripts/go_test.sh`, `make preflight`, lint/staticcheck, govulncheck, and builds `./build/lumend`
    with the PQC guard. Append `ARGS="--fast"` to skip the clean-tree check or `ARGS="--no-vuln"` to skip the vuln scan.
 2. `HOME=$(mktemp -d) make e2e`  
    Executes the unit suite plus every E2E flow (DNS, Gateways, Release, PQC). This mirrors the CI pipeline and must pass

@@ -32,6 +32,7 @@ type ModuleInputs struct {
 	AuthKeeper       types.AuthKeeper
 	BankKeeper       types.BankKeeper
 	TokenomicsKeeper types.TokenomicsKeeper
+	DistrKeeper      types.DistrKeeper
 }
 
 type ModuleOutputs struct {
@@ -50,6 +51,7 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 	k.SetBankKeeper(in.BankKeeper)
 	k.SetAccountKeeper(in.AuthKeeper)
 	k.SetTokenomicsKeeper(in.TokenomicsKeeper)
+	k.SetDistrKeeper(in.DistrKeeper)
 	m := NewAppModule(in.Cdc, k, in.AuthKeeper, in.BankKeeper)
 	return ModuleOutputs{GatewaysKeeper: k, Module: m}
 }

@@ -28,3 +28,7 @@ type BankKeeper interface {
 type TokenomicsKeeper interface {
 	GetParams(context.Context) tokenomicstypes.Params
 }
+
+type DistrKeeper interface {
+	FundCommunityPool(context.Context, sdk.Coins, sdk.AccAddress) error
+}

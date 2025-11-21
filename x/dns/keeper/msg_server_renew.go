@@ -48,12 +48,22 @@ func (k msgServer) Renew(ctx context.Context, msg *types.MsgRenew) (*types.MsgRe
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	if priceInt.IsPositive() && k.bank != nil {
+	if priceInt.IsPositive() {
 		addrBz, _ := k.addressCodec.StringToBytes(msg.Creator)
 		acc := sdk.AccAddress(addrBz)
 		coin := sdk.NewCoin(denom.BaseDenom, priceInt)
-		if err := k.bank.SendCoinsFromAccountToModule(sdkCtx, acc, authtypes.FeeCollectorName, sdk.NewCoins(coin)); err != nil {
-			return nil, err
+		coins := sdk.NewCoins(coin)
+		switch {
+		case k.dk != nil:
+			if err := k.dk.FundCommunityPool(ctx, coins, acc); err != nil {
+				return nil, err
+			}
+		case k.bank != nil:
+			if err := k.bank.SendCoinsFromAccountToModule(sdkCtx, acc, authtypes.FeeCollectorName, coins); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "bank and distribution keepers unavailable")
 		}
 	}
 

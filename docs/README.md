@@ -6,7 +6,7 @@ and API references. All pages are plain Markdown so you can read them on GitHub 
 ## Quick Start
 
 - **Build:** `make build-native` → `build/lumend`
-- **Tests:** `go test ./...` or `HOME=$(mktemp -d) make e2e` (unit + E2E suite)
+- **Tests:** `./devtools/scripts/go_test.sh` or `HOME=$(mktemp -d) make e2e` (unit + E2E suite)
 - **OpenAPI:** `make docs` → inspect `artifacts/docs/openapi.swagger.json`
 
 ## Architecture Highlights

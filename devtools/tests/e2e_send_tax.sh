@@ -17,7 +17,6 @@ SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 pqc_require_bins
 
 HOME_LUMEN=$(mktemp -d -t lumen-e2e-XXXXXX)
-trap '[[ "${DEBUG_KEEP:-0}" = "1" ]] || rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true' EXIT
 export HOME="$HOME_LUMEN"
 
 DIR=$(cd "${SOURCE_DIR}/../.." && pwd)
@@ -39,6 +38,9 @@ GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
 NODE=${NODE:-$RPC_LADDR}
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
 CHAIN_ID="lumen"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-26656}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 FARMER_NAME=farmer
 FEE_COLLECTOR_NAME=fee_collector
 KEYRING=${KEYRING:-test}
@@ -73,6 +75,15 @@ wait_tx_commit() {
 }
 
 kill_node() { pkill -f "lumend start" >/dev/null 2>&1 || true; }
+cleanup() {
+  kill_node
+  if [ "${DEBUG_KEEP:-0}" != "1" ]; then
+    rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true
+  else
+    echo "DEBUG_KEEP=1: keeping $HOME_LUMEN"
+  fi
+}
+trap cleanup EXIT
 
 SKIP_BUILD=${SKIP_BUILD:-0}
 build() {
@@ -106,6 +117,7 @@ init_chain() {
     --min-self-delegation 1 >/dev/null
   "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
   "$BIN" genesis validate --home "$HOME_DIR"
+  pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
 
 start_node() {
@@ -116,7 +128,7 @@ start_node() {
   local extra_flags=()
   [ "$GRPC_WEB_ENABLE" = "1" ] && grpc_web_flag+=(--grpc-web.enable)
   if [ "${DISABLE_PPROF:-0}" = "1" ]; then
-    extra_flags+=(--pprof.laddr "")
+    extra_flags+=(--rpc.pprof_laddr "")
   fi
   get_addr() {
     local name="$1"; local addr=""; local tries=15
@@ -136,6 +148,7 @@ start_node() {
   (LUMEN_TAX_DIRECT_TO_PROPOSER=1 "$BIN" start \
     --home "$HOME_DIR" \
     --rpc.laddr "$RPC_LADDR" \
+    --p2p.laddr "$P2P_LADDR" \
     --api.enable --api.address "$API_ADDR" \
     --grpc.address "$GRPC_ADDR" "${grpc_web_flag[@]}" \
     --minimum-gas-prices 0ulmn \

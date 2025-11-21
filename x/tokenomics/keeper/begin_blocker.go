@@ -1,10 +1,12 @@
 package keeper
 
 import (
+	"errors"
 	"fmt"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
@@ -89,6 +91,9 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 				panic(err)
 			}
 			if _, err := k.distr.WithdrawValidatorCommission(ctx, sdk.ValAddress(valAddrBz)); err != nil {
+				if errors.Is(err, distrtypes.ErrNoValidatorCommission) {
+					return false
+				}
 				panic(err)
 			}
 			return false

@@ -43,7 +43,7 @@
 ## Release safety guard
 - CI workflow “Release Safety” and `make pre-release` verify:
   - No test-only/noop PQC symbols in the binary.
-  - `go vet`, unit tests, static analysis, vuln scan, and preflight tests.
+  - `./devtools/scripts/go_with_pkgs.sh vet`, unit tests, static analysis, vuln scan, and preflight tests.
 
 ## Node hardening (prod)
 - Do not expose `:2327` directly; put TLS reverse proxy + IP rate-limits in front.

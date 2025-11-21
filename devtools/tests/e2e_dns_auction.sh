@@ -17,7 +17,6 @@ SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 pqc_require_bins
 
 HOME_LUMEN=$(mktemp -d -t lumen-e2e-XXXXXX)
-trap '[[ "${DEBUG_KEEP:-0}" = "1" ]] || rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true' EXIT
 export HOME="$HOME_LUMEN"
 
 DIR=$(cd "${SOURCE_DIR}/../.." && pwd)
@@ -36,6 +35,9 @@ GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
 GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-26656}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
 CHAIN_ID="lumen"
 FARMER_NAME=farmer
@@ -119,6 +121,15 @@ PY
 }
 
 kill_node(){ pkill -f "lumend start" >/dev/null 2>&1 || true; }
+cleanup(){
+  kill_node
+  if [ "${DEBUG_KEEP:-0}" != "1" ]; then
+    rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true
+  else
+    echo "DEBUG_KEEP=1: keeping $HOME_LUMEN"
+  fi
+}
+trap cleanup EXIT
 
 SKIP_BUILD=${SKIP_BUILD:-0}
 build() {
@@ -163,6 +174,7 @@ init_chain(){
     | .app_state.dns.params.update_pow_difficulty="0"
   ' "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR"
+  pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
 
 set_dns_bid_amounts() {
@@ -209,6 +221,7 @@ start_node(){
     "$BIN" start
     --home "$HOME_DIR"
     --rpc.laddr "$RPC_LADDR"
+    --p2p.laddr "$P2P_LADDR"
     --api.enable
     --api.address "$API_ADDR"
     --grpc.address "$GRPC_ADDR"
@@ -216,7 +229,7 @@ start_node(){
   )
   [ "$GRPC_WEB_ENABLE" = "1" ] && cmd+=(--grpc-web.enable)
   if [ "${DISABLE_PPROF:-0}" = "1" ]; then
-    cmd+=(--pprof.laddr "")
+    cmd+=(--rpc.pprof_laddr "")
   fi
   if [ "$MODE" = "prod" ]; then
     ("${cmd[@]}" >"$LOG_FILE" 2>&1 &)
@@ -267,9 +280,12 @@ FARMER=$("$BIN" keys show "$FARMER_NAME" -a --keyring-backend "$KEYRING" --home 
 setup_pqc_signer "$FARMER_NAME"
 
 step "Fund bidders"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER1" 2000000000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER2" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
-H=$("$BIN" tx bank send "$FARMER_NAME" "$OWNER3" 100000ulmn --keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash); [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
+for acct in "$OWNER1" "$OWNER2" "$OWNER3"; do
+  H=$("$BIN" tx bank send "$FARMER_NAME" "$acct" 2000000000ulmn \
+    --keyring-backend "$KEYRING" --home "$HOME_DIR" \
+    --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json | jq -r .txhash)
+  [ -n "$H" ] && [ "$H" != "null" ] && wait_tx_commit "$H"
+done
 
 for signer in owner1 owner2 owner3; do
   setup_pqc_signer "$signer"
@@ -349,6 +365,10 @@ else
   CODE=$(echo "$RES" | jq -r .code)
 fi
 echo "code=$CODE"
+if [ "$CODE" != "0" ] && [ -n "$HASH" ] && [ "$HASH" != "null" ]; then
+  echo "settle tx failed:" >&2
+  curl -s "$RPC/tx?hash=0x$HASH" | jq >&2
+fi
 
 step "Verify ownership transferred to owner3"
 "$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$INDEX" '.domain[] | select(.name==$n) | .owner' | grep -q "$OWNER3"

@@ -19,6 +19,8 @@ import (
 	authtxconfig "github.com/cosmos/cosmos-sdk/x/auth/tx/config"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	distcli "github.com/cosmos/cosmos-sdk/x/distribution/client/cli"
+	disttypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	"github.com/spf13/cobra"
 
 	"lumen/app"
@@ -83,6 +85,7 @@ func NewRootCmd() *cobra.Command {
 	}
 	patchBankSendCommand(rootCmd)
 	patchGovTxCommand(rootCmd)
+	patchDistributionWithdrawCommand(rootCmd)
 
 	return rootCmd
 }
@@ -152,5 +155,43 @@ func patchBankSendCommand(root *cobra.Command) {
 
 		msg := banktypes.NewMsgSend(clientCtx.GetFromAddress(), sdk.AccAddress(toAddrBz), coins)
 		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+	}
+}
+
+func patchDistributionWithdrawCommand(root *cobra.Command) {
+	path := []string{"tx", "distribution", "withdraw-rewards"}
+	withdrawCmd, _, err := root.Find(path)
+	if err != nil || withdrawCmd == nil {
+		return
+	}
+
+	withdrawCmd.Args = cobra.ExactArgs(1)
+	withdrawCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		clientCtx, err := client.GetClientTxContext(cmd)
+		if err != nil {
+			return err
+		}
+
+		signingCtx := clientCtx.TxConfig.SigningContext()
+		if signingCtx == nil {
+			return fmt.Errorf("pqc: signing context unavailable")
+		}
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[0]); err != nil {
+			return err
+		}
+
+		delAddr := clientCtx.GetFromAddress()
+		if delAddr == nil {
+			return fmt.Errorf("pqc: missing from address")
+		}
+
+		msgs := []sdk.Msg{
+			disttypes.NewMsgWithdrawDelegatorReward(delAddr.String(), args[0]),
+		}
+		if commission, _ := cmd.Flags().GetBool(distcli.FlagCommission); commission {
+			msgs = append(msgs, disttypes.NewMsgWithdrawValidatorCommission(args[0]))
+		}
+
+		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msgs...)
 	}
 }

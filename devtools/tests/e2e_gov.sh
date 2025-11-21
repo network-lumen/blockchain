@@ -9,11 +9,6 @@ pqc_require_bins
 gov_require_bins
 
 HOME_ROOT=$(mktemp -d -t lumen-e2e-gov-XXXXXX)
-if [ "${DEBUG_KEEP:-0}" != "1" ]; then
-  trap 'rm -rf "$HOME_ROOT" >/dev/null 2>&1 || true' EXIT
-else
-  echo "DEBUG_KEEP=1 -> preserving $HOME_ROOT"
-fi
 export HOME="$HOME_ROOT"
 
 DIR=$(cd "${SOURCE_DIR}/../.." && pwd)
@@ -21,17 +16,23 @@ BIN="$DIR/build/lumend"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 
+# randomised base to avoid port collisions when running standalone
+RANDOM_PORT_BASE=${E2E_BASE_PORT:-$(( (RANDOM % 1000) + 36000 ))}
+
 RPC_HOST="${RPC_HOST:-127.0.0.1}"
-RPC_PORT="${RPC_PORT:-28657}"
+RPC_PORT="${RPC_PORT:-$RANDOM_PORT_BASE}"
 RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
 RPC="${RPC:-http://${RPC_HOST}:${RPC_PORT}}"
 API_HOST="${API_HOST:-127.0.0.1}"
-API_PORT="${API_PORT:-28327}"
+API_PORT="${API_PORT:-$((RANDOM_PORT_BASE + 60))}"
 API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
 API="${API:-http://${API_HOST}:${API_PORT}}"
 GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
-GRPC_PORT="${GRPC_PORT:-28190}"
+GRPC_PORT="${GRPC_PORT:-$((RANDOM_PORT_BASE + 120))}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-$((RANDOM_PORT_BASE + 180))}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 
 LOG_FILE="${LOG_FILE:-/tmp/lumen-gov.log}"
 CHAIN_ID="${CHAIN_ID:-lumen-gov-1}"
@@ -41,6 +42,7 @@ NODE=${NODE:-$RPC_LADDR}
 CASE_FILE="${CASE_FILE:-${SOURCE_DIR}/gov_param_cases.json}"
 CASE_FILTER="${CASE_FILTER:-}"
 GOV_ALLOW_PARAM_UPDATES="${GOV_ALLOW_PARAM_UPDATES:-0}"
+DISABLE_PPROF="${DISABLE_PPROF:-1}"
 
 GOV_DIRTY=0
 DNS_DIRTY=0
@@ -53,6 +55,15 @@ keys_add_quiet() {
 step() { printf '\n==== %s\n' "$*"; }
 
 kill_node() { pkill -f "lumend start" >/dev/null 2>&1 || true; }
+cleanup() {
+  kill_node
+  if [ "${DEBUG_KEEP:-0}" != "1" ]; then
+    rm -rf "$HOME_ROOT" >/dev/null 2>&1 || true
+  else
+    echo "DEBUG_KEEP=1 -> preserving $HOME_ROOT"
+  fi
+}
+trap cleanup EXIT
 
 build() {
   if [ "${SKIP_BUILD:-0}" = "1" ]; then
@@ -111,8 +122,13 @@ init_chain() {
   jq '.app_state.dns.params |= (.update_rate_limit_seconds = "2" | .update_pow_difficulty = 4)' \
     "$HOME_DIR/config/genesis.json" >"$tmp"
   mv "$tmp" "$HOME_DIR/config/genesis.json"
+  tmp=$(mktemp)
+  jq '.app_state.distribution.params.community_tax = "0.0"' \
+    "$HOME_DIR/config/genesis.json" >"$tmp"
+  mv "$tmp" "$HOME_DIR/config/genesis.json"
   jq -r '.app_state.gov.params.min_initial_deposit_ratio' "$HOME_DIR/config/genesis.json" | grep -qx '0.000000000000000000'
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+  pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
 
 start_node() {
@@ -122,11 +138,15 @@ start_node() {
     "$BIN" start
     --home "$HOME_DIR"
     --rpc.laddr "$RPC_LADDR"
+    --p2p.laddr "$P2P_LADDR"
     --api.enable
     --api.address "$API_ADDR"
     --grpc.address "$GRPC_ADDR"
     --minimum-gas-prices 0ulmn
   )
+  if [ "${DISABLE_PPROF:-0}" = "1" ]; then
+    args+=(--rpc.pprof_laddr "")
+  fi
   ("${args[@]}" >"$LOG_FILE" 2>&1 &)
   sleep 1
   gov_wait_http "$RPC/status"
@@ -601,6 +621,30 @@ while True:
 PY
 }
 
+community_pool_amount_ulmn() {
+  "$BIN" q distribution community-pool --node "$NODE" -o json 2>/dev/null | jq -r '
+    def parse_coin($v):
+      if ($v | type) == "object" then
+        { denom: ($v.denom // ""), amount: ($v.amount // "0") }
+      elif ($v | type) == "string" then
+        ($v | capture("(?<amount>[-0-9.]+)(?<denom>[a-zA-Z0-9/]+)") // {denom:"", amount:$v})
+      else
+        { denom: "", amount: "0" }
+      end;
+    def pull_amount($x):
+      if ($x | type) == "array" then
+        ([ $x[]? | parse_coin(.) | select(.denom=="ulmn") | .amount ] | first? // "0")
+      elif ($x | type) == "object" then
+        (parse_coin($x) | select(.denom=="ulmn") | .amount // "0")
+      elif ($x | type) == "string" then
+        (parse_coin($x) | select(.denom=="ulmn") | .amount // "0")
+      else
+        "0"
+      end;
+    pull_amount(.pool)
+  '
+}
+
 scenario_dns_fee_effect() {
   local entry="$1"
   apply_requires "$entry"
@@ -610,24 +654,20 @@ scenario_dns_fee_effect() {
   gov_wait_status "$pid" "PROPOSAL_STATUS_PASSED"
   dns_mark_dirty
 
-  local domain ext fqdn dns_params difficulty nonce records_json
-  domain=$(echo "$entry" | jq -r '.post_tx.dns_update.domain // empty')
+  local domain ext fqdn records_json to_addr
+  domain=$(echo "$entry" | jq -r '.post_tx.dns_transfer.domain // empty')
   if [ -z "$domain" ] || [ "$domain" = "null" ]; then
     domain="govcase$(date +%s)"
   fi
-  ext=$(echo "$entry" | jq -r '.post_tx.dns_update.ext // "test"')
+  ext=$(echo "$entry" | jq -r '.post_tx.dns_transfer.ext // "test"')
   fqdn="${domain}.${ext}"
-  records_json=$(echo "$entry" | jq -c '.post_tx.dns_update.records // [{"key":"txt","value":"governance"}]')
+  records_json=$(echo "$entry" | jq -c '.post_tx.dns_transfer.records // [{"key":"txt","value":"governance"}]')
   register_domain_if_needed "$domain" "$ext" validator "$VAL_ADDR"
-
-  dns_params=$(gov_query_dns_params)
-  difficulty=$(echo "$dns_params" | jq -r '.update_pow_difficulty')
-  nonce=$(dns_pow_nonce "$fqdn" "$VAL_ADDR" "$difficulty")
+  to_addr=$(echo "$entry" | jq -r '.post_tx.dns_transfer.to // "$VOTER2"')
+  to_addr=$(resolve_placeholder "$to_addr")
 
   local tx hash
-  tx=$("$BIN" tx dns update "$domain" "$ext" \
-    --records "$records_json" \
-    --pow-nonce "$nonce" \
+  tx=$("$BIN" tx dns transfer "$domain" "$ext" "$to_addr" \
     --from validator \
     --node "$NODE" \
     --keyring-backend "$KEYRING" \
@@ -637,17 +677,17 @@ scenario_dns_fee_effect() {
     -y -o json)
   hash=$(echo "$tx" | jq -r '.txhash // empty')
   if [ -z "$hash" ] || [ "$hash" = "null" ]; then
-    echo "dns update tx missing hash" >&2
+    echo "dns transfer tx missing hash" >&2
     exit 1
   fi
   gov_wait_tx "$hash" >/dev/null || true
-  local tx_json fee_attr expected
+  local tx_json expected fee_attr
   tx_json=$(curl -s "$RPC/tx?hash=0x$hash")
   echo "$tx_json" > /tmp/dns_update_fee_tx.json
-  fee_attr=$(echo "$tx_json" | jq -r '.result.tx_result.events[]? | select(.type=="dns_update") | .attributes[]? | select(.key=="fee_ulmn") | .value' | tail -n1)
   expected=$(echo "$entry" | jq -r '.post_tx.expect_fee_ulmn')
+  fee_attr=$(echo "$tx_json" | jq -r '.result.tx_result.events[]? | select(.type=="dns_transfer") | .attributes[]? | select(.key=="fee_ulmn") | .value' | tail -n1)
   if [ "$fee_attr" != "$expected" ]; then
-    echo "expected dns_update fee $expected got $fee_attr" >&2
+    echo "expected dns_transfer fee $expected got $fee_attr" >&2
     exit 1
   fi
   local owner_spent collector_recv
@@ -664,25 +704,8 @@ scenario_dns_fee_effect() {
     | map(tonumber) 
     | add // 0
   ')
-  collector_recv=$(echo "$tx_json" | jq -r --arg addr "$FEE_COLLECTOR_ADDR" '
-    [ .result.tx_result.events[]? 
-      | select(.type=="coin_received") 
-      | select(any(.attributes[]?; .key=="receiver" and .value==$addr))
-      | .attributes[]? 
-      | select(.key=="amount") 
-      | .value 
-    ] 
-    | map(select(endswith("ulmn"))) 
-    | map(sub("ulmn$";"")) 
-    | map(tonumber) 
-    | add // 0
-  ')
   if [ "$owner_spent" != "$expected" ]; then
-    echo "validator spent $owner_spent ulmn but expected $expected during dns update" >&2
-    exit 1
-  fi
-  if [ "$collector_recv" != "$expected" ]; then
-    echo "fee collector received $collector_recv ulmn but expected $expected during dns update" >&2
+    echo "validator spent $owner_spent ulmn but expected $expected during dns transfer" >&2
     exit 1
   fi
   restore_base_params

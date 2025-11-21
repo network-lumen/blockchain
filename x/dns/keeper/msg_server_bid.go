@@ -86,15 +86,22 @@ func (k msgServer) Bid(ctx context.Context, msg *types.MsgBid) (*types.MsgBidRes
 		return nil, err
 	}
 
-	if k.bank != nil {
-		fee := sdkmath.NewIntFromUint64(params.BidFeeUlmn)
-		if fee.IsPositive() {
-			fromBz, _ := k.addressCodec.StringToBytes(msg.Creator)
-			from := sdk.AccAddress(fromBz)
-			coins := sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, fee))
+	fee := sdkmath.NewIntFromUint64(params.BidFeeUlmn)
+	if fee.IsPositive() {
+		fromBz, _ := k.addressCodec.StringToBytes(msg.Creator)
+		from := sdk.AccAddress(fromBz)
+		coins := sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, fee))
+		switch {
+		case k.dk != nil:
+			if err := k.dk.FundCommunityPool(ctx, coins, from); err != nil {
+				return nil, err
+			}
+		case k.bank != nil:
 			if err := k.bank.SendCoinsFromAccountToModule(sdk.UnwrapSDKContext(ctx), from, authtypes.FeeCollectorName, coins); err != nil {
 				return nil, err
 			}
+		default:
+			return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "bank and distribution keepers unavailable")
 		}
 	}
 

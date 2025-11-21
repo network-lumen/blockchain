@@ -8,6 +8,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"lumen/x/dns/types"
@@ -42,13 +43,23 @@ func (k msgServer) Transfer(ctx context.Context, msg *types.MsgTransfer) (*types
 	}
 
 	feeInt := sdkmath.NewIntFromUint64(params.TransferFeeUlmn)
-	if feeInt.IsPositive() && k.bank != nil {
+	if feeInt.IsPositive() {
 		sdkCtx := sdk.UnwrapSDKContext(ctx)
 		creatorBz, _ := k.addressCodec.StringToBytes(msg.Creator)
 		from := sdk.AccAddress(creatorBz)
 		feeCoin := sdk.NewCoin(denom.BaseDenom, feeInt)
-		if err := k.bank.SendCoinsFromAccountToModule(sdkCtx, from, authtypes.FeeCollectorName, sdk.NewCoins(feeCoin)); err != nil {
-			return nil, err
+		coins := sdk.NewCoins(feeCoin)
+		switch {
+		case k.dk != nil:
+			if err := k.dk.FundCommunityPool(ctx, coins, from); err != nil {
+				return nil, err
+			}
+		case k.bank != nil:
+			if err := k.bank.SendCoinsFromAccountToModule(sdkCtx, from, authtypes.FeeCollectorName, coins); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "bank and distribution keepers unavailable")
 		}
 	}
 

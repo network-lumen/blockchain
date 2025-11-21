@@ -59,7 +59,7 @@ The target honours `LUMEN_RL_*`, `FAST`, `CLEAN`, `KEEP`, `TIMEOUT`, and `IMAGE_
 
 Builds `./build/lumend` once, exports `SKIP_BUILD=1`, and runs:
 
-- `go test ./...`
+- `./devtools/scripts/go_test.sh`
 - `devtools/tests/e2e_*.sh` (send-tax, DNS auction, release, gateways, gov, PQC)
 - `devtools/tests/smoke_rest.sh`
 

@@ -83,12 +83,22 @@ func (k msgServer) Register(ctx context.Context, msg *types.MsgRegister) (*types
 
 	charge := true
 
-	if charge && priceInt.IsPositive() && k.bank != nil {
+	if charge && priceInt.IsPositive() {
 		creatorBz, _ := k.addressCodec.StringToBytes(msg.Creator)
 		payerAddr := sdk.AccAddress(creatorBz)
 		coin := sdk.NewCoin(denom.BaseDenom, priceInt)
-		if err := k.bank.SendCoinsFromAccountToModule(ctx, payerAddr, authtypes.FeeCollectorName, sdk.NewCoins(coin)); err != nil {
-			return nil, err
+		coins := sdk.NewCoins(coin)
+		switch {
+		case k.dk != nil:
+			if err := k.dk.FundCommunityPool(ctx, coins, payerAddr); err != nil {
+				return nil, err
+			}
+		case k.bank != nil:
+			if err := k.bank.SendCoinsFromAccountToModule(ctx, payerAddr, authtypes.FeeCollectorName, coins); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "bank and distribution keepers unavailable")
 		}
 	}
 

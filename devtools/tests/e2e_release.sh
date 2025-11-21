@@ -15,7 +15,6 @@ SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 pqc_require_bins
 
 HOME_LUMEN=$(mktemp -d -t lumen-e2e-XXXXXX)
-trap '[[ "${DEBUG_KEEP:-0}" = "1" ]] || rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true' EXIT
 export HOME="$HOME_LUMEN"
 
 DIR=$(cd "${SOURCE_DIR}/../.." && pwd)
@@ -34,6 +33,9 @@ GRPC_HOST="${GRPC_HOST:-127.0.0.1}"
 GRPC_PORT="${GRPC_PORT:-9090}"
 GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 GRPC_WEB_ENABLE="${GRPC_WEB_ENABLE:-1}"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-26656}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 LOG_FILE="${LOG_FILE:-/tmp/lumen.log}"
 CHAIN_ID="lumen"
 KEYRING=${KEYRING:-test}
@@ -50,6 +52,15 @@ wait_http() { local url="$1"; for i in $(seq 1 80); do curl -sSf "$url" >/dev/nu
 wait_tx_commit() { local h="$1"; for i in $(seq 1 100); do local c; c=$(curl -s "$RPC/tx?hash=0x$h" | jq -r .result.tx_result.code); [ "$c" != "null" ] && return 0; sleep 0.3; done; return 1; }
 
 kill_node(){ pkill -f "lumend start" >/dev/null 2>&1 || true; }
+cleanup(){
+  kill_node
+  if [ "${DEBUG_KEEP:-0}" != "1" ]; then
+    rm -rf "$HOME_LUMEN" >/dev/null 2>&1 || true
+  else
+    echo "DEBUG_KEEP=1: keeping $HOME_LUMEN"
+  fi
+}
+trap cleanup EXIT
 
 SKIP_BUILD=${SKIP_BUILD:-0}
 build(){
@@ -89,6 +100,7 @@ init_chain(){
       max_notes_len:"512"
     } | .' "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+  pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
 
 start_node(){
@@ -98,6 +110,7 @@ start_node(){
     "$BIN" start
     --home "$HOME_DIR"
     --rpc.laddr "$RPC_LADDR"
+    --p2p.laddr "$P2P_LADDR"
     --api.enable
     --api.address "$API_ADDR"
     --grpc.address "$GRPC_ADDR"
@@ -105,7 +118,7 @@ start_node(){
   )
   [ "$GRPC_WEB_ENABLE" = "1" ] && cmd+=(--grpc-web.enable)
   if [ "${DISABLE_PPROF:-0}" = "1" ]; then
-    cmd+=(--pprof.laddr "")
+    cmd+=(--rpc.pprof_laddr "")
   fi
   ("${cmd[@]}" >"$LOG_FILE" 2>&1 &)
   sleep 1

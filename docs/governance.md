@@ -13,6 +13,9 @@ require a binary upgrade instead.
 - **Module account:** `gov` owns a burn-enabled module account so that failed/withdrawn deposits can be slashed when
   the relevant burn flags are set.
 - **Metadata cap:** the runtime configuration sets `max_metadata_len = 4096` bytes for proposal metadata.
+- **Distribution params:** the Cosmos distribution module is initialised with `community_tax = 0` and keeps the proposer
+  reward fields untouched. Because `x/distribution` is wired to the immutable authority, governance proposals cannot
+  raise the community tax; only module-specific flows (e.g. DNS/Gateways) fund the community pool.
 - **Default parameters (fixed):** quorum `0.67`, threshold `0.75`, veto `0.334`, expedited threshold `0.85`,
   `max_deposit_period/voting_period = 172800s`, `expedited_voting_period = 86400s`, and deposits of
   `10,000,000 ulmn` (regular) / `50,000,000 ulmn` (expedited). These values are hard-coded; proposals attempting to

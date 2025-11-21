@@ -72,14 +72,32 @@ func (k msgServer) Settle(ctx context.Context, msg *types.MsgSettle) (*types.Msg
 			}
 			network := amt.Sub(proposer)
 
-			_ = k.bank.SendCoinsFromAccountToModule(ctx, winner, types.ModuleName, sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, amt)))
+			if err := k.bank.SendCoinsFromAccountToModule(ctx, winner, types.ModuleName, sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, amt))); err != nil {
+				return nil, err
+			}
+
+			moduleAddr := authtypes.NewModuleAddress(types.ModuleName)
 
 			if proposer.IsPositive() {
-				_ = k.bank.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, proposer)))
+				propCoins := sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, proposer))
+				if k.dk != nil {
+					if err := k.dk.FundCommunityPool(ctx, propCoins, moduleAddr); err != nil {
+						return nil, err
+					}
+				} else if err := k.bank.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, propCoins); err != nil {
+					return nil, err
+				}
 			}
 
 			if network.IsPositive() {
-				_ = k.bank.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, network)))
+				netCoins := sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, network))
+				if k.dk != nil {
+					if err := k.dk.FundCommunityPool(ctx, netCoins, moduleAddr); err != nil {
+						return nil, err
+					}
+				} else if err := k.bank.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, netCoins); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}

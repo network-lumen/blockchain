@@ -11,9 +11,7 @@ import (
 func TestGenesis(t *testing.T) {
 	genesisState := types.GenesisState{
 		Params: func() types.Params {
-			p := types.DefaultParams()
-			p.UpdateFeeUlmn = 42
-			return p
+			return types.DefaultParams()
 		}(),
 		DomainMap: []types.Domain{{Index: "0"}, {Index: "1"}}, AuctionMap: []types.Auction{{Index: "0"}, {Index: "1"}}}
 

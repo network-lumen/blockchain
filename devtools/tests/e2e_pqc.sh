@@ -24,6 +24,9 @@ GRPC_HOST=${GRPC_HOST:-127.0.0.1}
 GRPC_PORT=${GRPC_PORT:-9090}
 RPC="http://${RPC_HOST}:${RPC_PORT}"
 API="http://${API_HOST}:${API_PORT}"
+P2P_HOST="${P2P_HOST:-0.0.0.0}"
+P2P_PORT="${P2P_PORT:-26656}"
+P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 SCHEME=${SCHEME:-dilithium3}
 AMOUNT=${AMOUNT:-1000ulmn}
 KEYRING=${KEYRING:-test}
@@ -217,12 +220,26 @@ PQC_PRIV_SENDER=$PQC_PRIV
 import_and_link_local "$SENDER" "pqc-$SENDER" "$PQC_PUB_SENDER" "$PQC_PRIV_SENDER"
 
 echo "==> gentx with PQC signing"
-	"$BIN" genesis gentx "$VALIDATOR" 1000000ulmn \
-	--chain-id "$CHAIN_ID" \
-	--keyring-backend "$KEYRING" \
-	--home "$HOME_DIR" >/dev/null
-	"$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
-	"$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+"$BIN" genesis gentx "$VALIDATOR" 1000000ulmn \
+--chain-id "$CHAIN_ID" \
+--keyring-backend "$KEYRING" \
+--home "$HOME_DIR" >/dev/null
+"$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
+"$BIN" genesis validate --home "$HOME_DIR" >/dev/null
+CLIENT_TOML="$HOME_DIR/config/client.toml"
+if [ -f "$CLIENT_TOML" ]; then
+	tmpcfg=$(mktemp)
+	awk -v rpc="tcp://${RPC_HOST}:${RPC_PORT}" -v chain="$CHAIN_ID" '
+BEGIN { replaced_node=0; replaced_chain=0 }
+/^node = / { print "node = \"" rpc "\""; replaced_node=1; next }
+/^chain-id = / { print "chain-id = \"" chain "\""; replaced_chain=1; next }
+{ print }
+END {
+	if (!replaced_node) { print "node = \"" rpc "\"" }
+	if (!replaced_chain) { print "chain-id = \"" chain "\"" }
+}
+' "$CLIENT_TOML" >"$tmpcfg" && mv "$tmpcfg" "$CLIENT_TOML"
+fi
 
 echo "==> Starting node"
 pkill -f "lumend start" >/dev/null 2>&1 || true
@@ -230,6 +247,7 @@ pkill -f "lumend start" >/dev/null 2>&1 || true
 	"$BIN" start \
 		--home "$HOME_DIR" \
 		--rpc.laddr "tcp://${RPC_HOST}:${RPC_PORT}" \
+		--p2p.laddr "$P2P_LADDR" \
 		--api.enable \
 		--api.address "tcp://${API_HOST}:${API_PORT}" \
 		--grpc.address "${GRPC_HOST}:${GRPC_PORT}" \

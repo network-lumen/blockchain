@@ -34,6 +34,7 @@ type Keeper struct {
 	bank       types.BankKeeper
 	ak         types.AccountKeeper
 	tokenomics types.TokenomicsKeeper
+	dk         types.DistrKeeper
 }
 
 func NewKeeper(
@@ -74,6 +75,7 @@ func (k *Keeper) SetAccountKeeper(ak types.AccountKeeper) { k.ak = ak }
 func (k *Keeper) SetTokenomicsKeeper(tk types.TokenomicsKeeper) {
 	k.tokenomics = tk
 }
+func (k *Keeper) SetDistrKeeper(dk types.DistrKeeper) { k.dk = dk }
 
 func (k Keeper) GetAuthority() []byte { return k.authority }
 
@@ -165,7 +167,7 @@ func (k Keeper) moveModuleToModule(ctx context.Context, fromModule, toModule str
 }
 
 func (k Keeper) collectGatewayFee(ctx context.Context, payer string, amount uint64) error {
-	if amount == 0 || k.bank == nil {
+	if amount == 0 {
 		return nil
 	}
 	fee := sdkmath.NewIntFromUint64(amount)
@@ -176,7 +178,15 @@ func (k Keeper) collectGatewayFee(ctx context.Context, payer string, amount uint
 	if err != nil {
 		return err
 	}
-	return k.moveToModule(ctx, addr, authtypes.FeeCollectorName, fee)
+	coins := sdk.NewCoins(sdk.NewCoin(denom.BaseDenom, fee))
+	switch {
+	case k.dk != nil:
+		return k.dk.FundCommunityPool(ctx, coins, addr)
+	case k.bank != nil:
+		return k.moveToModule(ctx, addr, authtypes.FeeCollectorName, fee)
+	default:
+		return fmt.Errorf("bank keeper not set")
+	}
 }
 
 func (k Keeper) collectActionFee(ctx context.Context, payer string) error {

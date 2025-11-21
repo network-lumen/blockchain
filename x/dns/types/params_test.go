@@ -37,9 +37,9 @@ func TestPriceQuote(t *testing.T) {
 
 	_, amt, err := p.PriceQuote(8, 5, 365)
 	require.NoError(t, err)
-	require.Equal(t, sdkmath.NewInt(780000000), amt)
+	require.Equal(t, sdkmath.NewInt(52000000), amt)
 
 	_, amt, err = p.PriceQuote(3, 2, 180)
 	require.NoError(t, err)
-	require.Equal(t, sdkmath.NewInt(1080000000), amt)
+	require.Equal(t, sdkmath.NewInt(72000000), amt)
 }

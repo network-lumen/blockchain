@@ -1,6 +1,8 @@
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 COMMIT := $(shell git log -1 --format='%H')
 APPNAME := lumen
+GO_TEST_SCRIPT := ./devtools/scripts/go_test.sh
+GO_WITH_PKGS_SCRIPT := ./devtools/scripts/go_with_pkgs.sh
 
 # do not override user values
 ifeq (,$(VERSION))
@@ -29,21 +31,21 @@ BUILD_FLAGS := -ldflags '$(ldflags)'
 
 test-unit:
 	@echo Running unit tests...
-	@go test -mod=readonly -v -timeout 30m ./...
+	@$(GO_TEST_SCRIPT) -mod=readonly -v -timeout 30m
 
 test-race:
 	@echo Running unit tests with race condition reporting...
-	@go test -mod=readonly -v -race -timeout 30m ./...
+	@$(GO_TEST_SCRIPT) -mod=readonly -v -race -timeout 30m
 
 test-cover:
 	@echo Running unit tests and creating coverage report...
-	@go test -mod=readonly -v -timeout 30m -coverprofile=$(COVER_FILE) -covermode=atomic ./...
+	@$(GO_TEST_SCRIPT) -mod=readonly -v -timeout 30m -coverprofile=$(COVER_FILE) -covermode=atomic
 	@go tool cover -html=$(COVER_FILE) -o $(COVER_HTML_FILE)
 	@rm $(COVER_FILE)
 
 bench:
 	@echo Running unit tests with benchmarking...
-	@go test -mod=readonly -v -timeout 30m -bench=. ./...
+	@$(GO_TEST_SCRIPT) -mod=readonly -v -timeout 30m -bench=.
 
 test-legacy: govet govulncheck test-unit
 
@@ -69,7 +71,7 @@ build-release: ## Produce cross-platform release archives (wraps devtools/script
 	@bash devtools/scripts/build_release.sh $(ARGS)
 
 test:
-	@go test ./...
+	@$(GO_TEST_SCRIPT)
 
 preflight:
 	@go test ./tests/preflight -count=1
@@ -88,8 +90,8 @@ install-service: ## Generate/install the systemd unit (devtools/scripts/install_
 
 sanity:
 	@bash -c 'set -euo pipefail; \
-		go vet ./...; \
-		go test ./... -count=1; \
+		$(GO_WITH_PKGS_SCRIPT) vet; \
+		$(GO_TEST_SCRIPT) -count=1; \
 		mkdir -p build; \
 		go build -trimpath -buildvcs=false -o ./build/lumend ./cmd/lumend; \
 		export LC_ALL=C; \
@@ -295,7 +297,7 @@ vulncheck-json: vuln-tools
 
 govet:
 	@echo Running go vet...
-	@go vet ./...
+	@$(GO_WITH_PKGS_SCRIPT) vet
 
 govulncheck:
 	@$(MAKE) vulncheck
