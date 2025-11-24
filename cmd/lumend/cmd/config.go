@@ -12,10 +12,8 @@ func initCometBFTConfig() *cmtcfg.Config {
 	cfg.Consensus.TimeoutPropose = 4 * time.Second
 	cfg.Consensus.TimeoutCommit = 4 * time.Second
 
-	cfg.Mempool.Version = "v1"
 	cfg.Mempool.Size = 5000
 	cfg.Mempool.MaxTxsBytes = 1 << 30
-	cfg.Consensus.Block.MaxBytes = 22 * 1024 * 1024
 	return cfg
 }
 

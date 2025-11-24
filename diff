@@ -1,310 +1,315 @@
-diff --git a/CHANGELOG.md b/CHANGELOG.md
-index ad44446..425c761 100644
---- a/CHANGELOG.md
-+++ b/CHANGELOG.md
-@@ -5,6 +5,12 @@
- ### Added
- - Store-level immutability for PQC link-account records in `x/pqc`, so each Cosmos account can register a Dilithium key exactly once.
- - PQC-aware staking transaction wiring: `lumend tx staking delegate`, `redelegate`, `unbond`, and `cancel-unbond` now route through `pqctxext.GenerateOrBroadcastTxCLI`, ensuring PQC signatures are injected for all staking flows.
-+ - Cosmos SDK `x/slashing` module wiring, including keeper registration and genesis integration, so double-sign / downtime evidence can be processed like on a standard SDK chain.
-+ - Cosmos SDK `x/upgrade` module wiring with a safe no-op `"v1"` upgrade handler, enabling governance-driven software upgrades without risking chain halts.
-+ - Explicit CometBFT mempool and consensus configuration (`mempool.version = "v1"`, tuned sizes, and larger `block.max_bytes`) to better accommodate PQC extension options.
-+ - Governance hardening preflight test that validates quorum/threshold/veto and deposit parameters in a mainnet genesis template.
-+ - New end-to-end suites `e2e_slashing.sh` and `e2e_upgrade.sh` covering slashing resilience and software upgrade governance flow.
-+ - Improved `devtools/scripts/bootstrap_validator.sh` defaults for pruning (custom window), `db_backend = "goleveldb"`, and documented seed / persistent peer examples to simplify validator bootstraps.
- 
- ### Changed
- - `MsgLinkAccountPQC` semantics: re-linking an already-linked account (even with the same key material) now returns `ErrAccountAlreadyLinked` instead of being treated as a no-op.
-@@ -23,6 +29,9 @@
-   - Successful PQC-enabled staking delegation (`tx staking delegate`) when PQC is required.
-   - Rejection of staking delegation when `--pqc-enable=false` under PQC-required policy, with a PQC-related error.
- - `make e2e` remains fully green, validating the new PQC behavior alongside existing DNS, gateways, release, governance, tokenomics, and bootstrap suites.
-+ - New `tests/preflight` checks for governance parameters (`quorum`, `threshold`, `veto_threshold`, and `min_deposit` denom) to guard mainnet templates.
-+ - New `devtools/tests/e2e_slashing.sh` scenario that exercises validator downtime and ensures the chain continues to produce blocks and accept PQC-signed transactions.
-+ - New `devtools/tests/e2e_upgrade.sh` scenario that submits, votes, and applies a `"v1"` software upgrade proposal via governance, verifying that the upgrade handler executes without halting the node.
- 
- ### Breaking Changes
- - **PQC account linking is now immutable.** Once a PQC record exists for an account, any subsequent `MsgLinkAccountPQC` for that address is rejected with `ErrAccountAlreadyLinked` (no rotations, no idempotent relink).
-diff --git a/app/app.go b/app/app.go
-index f04af7f..4d55fd2 100644
---- a/app/app.go
-+++ b/app/app.go
-@@ -8,6 +8,7 @@ import (
- 	"cosmossdk.io/depinject"
- 	"cosmossdk.io/log"
- 	storetypes "cosmossdk.io/store/types"
-+	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
- 
- 	dbm "github.com/cosmos/cosmos-db"
- 	"github.com/cosmos/cosmos-sdk/baseapp"
-@@ -28,6 +29,7 @@ import (
- 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
- 	"github.com/cosmos/cosmos-sdk/x/genutil"
- 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-+	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
- 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
- 
- 	"lumen/docs"
-@@ -81,10 +83,12 @@ type App struct {
- 	txConfig          client.TxConfig
- 	interfaceRegistry codectypes.InterfaceRegistry
- 
--	AuthKeeper    authkeeper.AccountKeeper
--	BankKeeper    bankkeeper.Keeper
--	StakingKeeper *stakingkeeper.Keeper
--	DistrKeeper   distrkeeper.Keeper
-+	AuthKeeper     authkeeper.AccountKeeper
-+	BankKeeper     bankkeeper.Keeper
-+	StakingKeeper  *stakingkeeper.Keeper
-+	DistrKeeper    distrkeeper.Keeper
-+	SlashingKeeper slashingkeeper.Keeper
-+	UpgradeKeeper  *upgradekeeper.Keeper
- 
- 	DnsKeeper        dnsmodulekeeper.Keeper
- 	ReleaseKeeper    releasemodulekeeper.Keeper
-@@ -153,6 +157,8 @@ func New(
- 		&app.BankKeeper,
- 		&app.StakingKeeper,
- 		&app.DistrKeeper,
-+		&app.SlashingKeeper,
-+		&app.UpgradeKeeper,
- 		&app.DnsKeeper,
- 		&app.ReleaseKeeper,
- 		&app.GatewaysKeeper,
-@@ -167,6 +173,7 @@ func New(
- 	baseAppOptions = append(baseAppOptions, baseapp.SetOptimisticExecution())
- 
- 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
-+	app.RegisterUpgradeHandlers()
- 	app.SetAnteHandler(app.buildAnteHandler())
- 	app.SetPostHandler(app.buildPostHandler())
- 
-diff --git a/app/app_config.go b/app/app_config.go
-index 797b6a1..f4cadfa 100644
---- a/app/app_config.go
-+++ b/app/app_config.go
-@@ -20,6 +20,8 @@ import (
- 	distrmodulev1 "cosmossdk.io/api/cosmos/distribution/module/v1"
- 	genutilmodulev1 "cosmossdk.io/api/cosmos/genutil/module/v1"
- 	govmodulev1 "cosmossdk.io/api/cosmos/gov/module/v1"
-+	slashingmodulev1 "cosmossdk.io/api/cosmos/slashing/module/v1"
-+	upgrademodulev1 "cosmossdk.io/api/cosmos/upgrade/module/v1"
- 	stakingmodulev1 "cosmossdk.io/api/cosmos/staking/module/v1"
- 	txconfigv1 "cosmossdk.io/api/cosmos/tx/config/v1"
- 	"cosmossdk.io/depinject/appconfig"
-@@ -31,7 +33,9 @@ import (
- 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
- 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
- 	_ "github.com/cosmos/cosmos-sdk/x/staking" // import for side-effects
-+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
- 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-+	upgradetypes "cosmossdk.io/x/upgrade/types"
- 
- 	"github.com/cosmos/cosmos-sdk/runtime"
- 	sdk "github.com/cosmos/cosmos-sdk/types"
-@@ -77,6 +81,7 @@ var (
- 				Config: appconfig.WrapAny(&runtimev1alpha1.Module{
- 					AppName: Name,
- 					PreBlockers: []string{
-+						upgradetypes.ModuleName,
- 						authtypes.ModuleName,
- 					},
- 					BeginBlockers: []string{
-@@ -109,6 +114,7 @@ var (
- 						authtypes.ModuleName,
- 						banktypes.ModuleName,
- 						distrtypes.ModuleName,
-+						slashingtypes.ModuleName,
- 						stakingtypes.ModuleName,
- 						govtypes.ModuleName,
- 						genutiltypes.ModuleName,
-@@ -136,6 +142,12 @@ var (
- 					Authority:                     immutableAuthority,
- 				}),
- 			},
-+			{
-+				Name: slashingtypes.ModuleName,
-+				Config: appconfig.WrapAny(&slashingmodulev1.Module{
-+					Authority: immutableAuthority,
-+				}),
-+			},
- 			{
- 				Name: stakingtypes.ModuleName,
- 				Config: appconfig.WrapAny(&stakingmodulev1.Module{
-@@ -158,6 +170,12 @@ var (
- 					Authority: immutableAuthority,
- 				}),
- 			},
-+			{
-+				Name: upgradetypes.ModuleName,
-+				Config: appconfig.WrapAny(&upgrademodulev1.Module{
-+					Authority: immutableAuthority,
-+				}),
-+			},
- 			{
- 				Name: consensustypes.ModuleName,
- 				Config: appconfig.WrapAny(&consensusmodulev1.Module{
-diff --git a/app/module_basics.go b/app/module_basics.go
-index 32dc2f5..7eee5c1 100644
---- a/app/module_basics.go
-+++ b/app/module_basics.go
-@@ -7,8 +7,11 @@ import (
- 	distrmodule "github.com/cosmos/cosmos-sdk/x/distribution"
- 	genutilmodule "github.com/cosmos/cosmos-sdk/x/genutil"
- 	govmodule "github.com/cosmos/cosmos-sdk/x/gov"
-+	slashingmodule "github.com/cosmos/cosmos-sdk/x/slashing"
- 	stakingmodule "github.com/cosmos/cosmos-sdk/x/staking"
- 
-+	upgrademodule "cosmossdk.io/x/upgrade"
-+
- 	dnsmodule "lumen/x/dns/module"
- 	gatewaysmodule "lumen/x/gateways/module"
- 	pqcmodule "lumen/x/pqc/module"
-@@ -22,6 +25,8 @@ var ModuleBasics = module.NewBasicManager(
- 	bankmodule.AppModuleBasic{},
- 	distrmodule.AppModuleBasic{},
- 	govmodule.AppModuleBasic{},
-+	upgrademodule.AppModuleBasic{},
-+	slashingmodule.AppModuleBasic{},
- 	stakingmodule.AppModuleBasic{},
- 	genutilmodule.AppModuleBasic{},
- 	dnsmodule.AppModule{},
-diff --git a/cmd/lumend/cmd/config.go b/cmd/lumend/cmd/config.go
-index de394ca..6d82a96 100644
---- a/cmd/lumend/cmd/config.go
-+++ b/cmd/lumend/cmd/config.go
-@@ -12,6 +12,11 @@ func initCometBFTConfig() *cmtcfg.Config {
- 	cfg.Consensus.TimeoutPropose = 4 * time.Second
- 	cfg.Consensus.TimeoutCommit = 4 * time.Second
- 
-+	cfg.Mempool.Version = "v1"
-+	cfg.Mempool.Size = 5000
-+	cfg.Mempool.MaxTxsBytes = 1 << 30
-+	cfg.Consensus.Block.MaxBytes = 22 * 1024 * 1024
-+
- 	return cfg
- }
- 
-diff --git a/devtools/scripts/bootstrap_validator.sh b/devtools/scripts/bootstrap_validator.sh
-index 7ea89b0..4d7e981 100755
---- a/devtools/scripts/bootstrap_validator.sh
-+++ b/devtools/scripts/bootstrap_validator.sh
-@@ -114,6 +114,33 @@ echo "[6/8] Creating gentx with stake $STAKE"
- echo "[7/8] Collecting gentxs"
- "$BINARY" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
- 
-+CONFIG_DIR="$HOME_DIR/config"
-+APP_TOML="$CONFIG_DIR/app.toml"
-+CONFIG_TOML="$CONFIG_DIR/config.toml"
-+
-+if [[ -f "$APP_TOML" ]]; then
-+  # Set pruning defaults (custom: keep 100 recent, prune frequently).
-+  sed -i.bak 's/^pruning *=.*/pruning = "custom"/' "$APP_TOML" || true
-+  sed -i.bak 's/^pruning-keep-recent *=.*/pruning-keep-recent = "100"/' "$APP_TOML" || true
-+  sed -i.bak 's/^pruning-keep-every *=.*/pruning-keep-every = "0"/' "$APP_TOML" || true
-+  sed -i.bak 's/^pruning-interval *=.*/pruning-interval = "1000"/' "$APP_TOML" || true
-+fi
-+
-+if [[ -f "$CONFIG_TOML" ]]; then
-+  # Ensure goleveldb backend by default.
-+  sed -i.bak 's/^db_backend *=.*/db_backend = "goleveldb"/' "$CONFIG_TOML" || true
-+
-+  # Add commented seed / peers recommendations without forcing values.
-+  if ! grep -q "Lumen testnet recommended seeds" "$CONFIG_TOML" 2>/dev/null; then
-+    cat <<'EOF' >>"$CONFIG_TOML"
-+
-+# Lumen testnet recommended seeds / peers (example only, override as needed):
-+# seeds = "nodeid1@host1:26656,nodeid2@host2:26656"
-+# persistent_peers = "nodeid1@host1:26656,nodeid2@host2:26656"
-+EOF
-+  fi
-+fi
-+
- if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
-   echo "[8/8] Installing systemd service"
-   LUMEN_HOME="$HOME_DIR" BIN_PATH="$BINARY" bash "$(dirname "$0")/install_service.sh" ${LUMEN_INSTALL_SERVICE_ARGS:-}
-diff --git a/devtools/tests/test_all.sh b/devtools/tests/test_all.sh
-index 473564c..314023e 100755
---- a/devtools/tests/test_all.sh
-+++ b/devtools/tests/test_all.sh
-@@ -42,6 +42,8 @@ add_job "e2e_send_tax" "bash '$ROOT_DIR/devtools/tests/e2e_send_tax.sh' --skip-b
- add_job "e2e_dns_auction" "bash '$ROOT_DIR/devtools/tests/e2e_dns_auction.sh' --skip-build --mode prod"
- add_job "e2e_release" "bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-build"
- add_job "e2e_gov" "bash '$ROOT_DIR/devtools/tests/e2e_gov.sh' --skip-build"
-+add_job "e2e_upgrade" "bash '$ROOT_DIR/devtools/tests/e2e_upgrade.sh' --skip-build"
-+add_job "e2e_slashing" "bash '$ROOT_DIR/devtools/tests/e2e_slashing.sh' --skip-build"
- add_job "e2e_gateways" "bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
- add_job "e2e_tokenomics" "bash '$ROOT_DIR/devtools/tests/e2e_tokenomics.sh' --skip-build"
- add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
-diff --git a/tests/preflight/preflight_test.go b/tests/preflight/preflight_test.go
-index 69b189f..9f49e31 100644
---- a/tests/preflight/preflight_test.go
-+++ b/tests/preflight/preflight_test.go
-@@ -4,6 +4,7 @@ import (
- 	"bufio"
- 	"bytes"
- 	"context"
-+	"encoding/json"
- 	"os"
- 	"path/filepath"
- 	"regexp"
-@@ -202,6 +203,59 @@ func TestDocs(t *testing.T) {
- 	}
- }
- 
-+func TestGenesisGovParamsHardened(t *testing.T) {
-+	repoRoot := findRepoRoot(t)
-+	path := filepath.Join(repoRoot, "tests", "preflight", "genesis_mainnet_template.json")
-+
-+	raw, ok := readFileIfExists(t, path)
-+	if !ok {
-+		t.Skipf("genesis template %s not found; create it before mainnet launch", path)
-+	}
-+
-+	type deposit struct {
-+		Denom  string `json:"denom"`
-+		Amount string `json:"amount"`
-+	}
-+	type govParams struct {
-+		Quorum        string    `json:"quorum"`
-+		Threshold     string    `json:"threshold"`
-+		VetoThreshold string    `json:"veto_threshold"`
-+		MinDeposit    []deposit `json:"min_deposit"`
-+	}
-+	var genesis struct {
-+		AppState struct {
-+			Gov struct {
-+				Params govParams `json:"params"`
-+			} `json:"gov"`
-+		} `json:"app_state"`
-+	}
-+
-+	if err := json.Unmarshal([]byte(raw), &genesis); err != nil {
-+		t.Fatalf("failed to unmarshal genesis template %s: %v", path, err)
-+	}
-+
-+	params := genesis.AppState.Gov.Params
-+
-+	quorum, err := sdkmath.LegacyNewDecFromStr(params.Quorum)
-+	require.NoError(t, err, "invalid gov quorum")
-+	threshold, err := sdkmath.LegacyNewDecFromStr(params.Threshold)
-+	require.NoError(t, err, "invalid gov threshold")
-+	veto, err := sdkmath.LegacyNewDecFromStr(params.VetoThreshold)
-+	require.NoError(t, err, "invalid gov veto_threshold")
-+
-+	minQuorum := sdkmath.LegacyMustNewDecFromStr("0.67")
-+	minThreshold := sdkmath.LegacyMustNewDecFromStr("0.75")
-+	maxVeto := sdkmath.LegacyMustNewDecFromStr("0.334")
-+
-+	require.True(t, quorum.GTE(minQuorum), "quorum must be >= %s (got %s)", minQuorum, quorum)
-+	require.True(t, threshold.GTE(minThreshold), "threshold must be >= %s (got %s)", minThreshold, threshold)
-+	require.True(t, veto.LTE(maxVeto), "veto_threshold must be <= %s (got %s)", maxVeto, veto)
-+
-+	require.NotEmpty(t, params.MinDeposit, "min_deposit must not be empty")
-+	require.Equal(t, "ulmn", strings.TrimSpace(params.MinDeposit[0].Denom), "min_deposit denom must be ulmn")
-+	require.NotEmpty(t, strings.TrimSpace(params.MinDeposit[0].Amount), "min_deposit amount must be set")
-+}
-+
- func TestFailOnNonZeroMinGasPrices(t *testing.T) {
- 	opts := testAppOptions{
- 		server.FlagMinGasPrices: "0.1ulmn",
+diff --git a/diff b/diff
+index ebf785e..e69de29 100644
+--- a/diff
++++ b/diff
+@@ -1,310 +0,0 @@
+-diff --git a/CHANGELOG.md b/CHANGELOG.md
+-index ad44446..425c761 100644
+---- a/CHANGELOG.md
+-+++ b/CHANGELOG.md
+-@@ -5,6 +5,12 @@
+- ### Added
+- - Store-level immutability for PQC link-account records in `x/pqc`, so each Cosmos account can register a Dilithium key exactly once.
+- - PQC-aware staking transaction wiring: `lumend tx staking delegate`, `redelegate`, `unbond`, and `cancel-unbond` now route through `pqctxext.GenerateOrBroadcastTxCLI`, ensuring PQC signatures are injected for all staking flows.
+-+ - Cosmos SDK `x/slashing` module wiring, including keeper registration and genesis integration, so double-sign / downtime evidence can be processed like on a standard SDK chain.
+-+ - Cosmos SDK `x/upgrade` module wiring with a safe no-op `"v1"` upgrade handler, enabling governance-driven software upgrades without risking chain halts.
+-+ - Explicit CometBFT mempool and consensus configuration (`mempool.version = "v1"`, tuned sizes, and larger `block.max_bytes`) to better accommodate PQC extension options.
+-+ - Governance hardening preflight test that validates quorum/threshold/veto and deposit parameters in a mainnet genesis template.
+-+ - New end-to-end suites `e2e_slashing.sh` and `e2e_upgrade.sh` covering slashing resilience and software upgrade governance flow.
+-+ - Improved `devtools/scripts/bootstrap_validator.sh` defaults for pruning (custom window), `db_backend = "goleveldb"`, and documented seed / persistent peer examples to simplify validator bootstraps.
+- 
+- ### Changed
+- - `MsgLinkAccountPQC` semantics: re-linking an already-linked account (even with the same key material) now returns `ErrAccountAlreadyLinked` instead of being treated as a no-op.
+-@@ -23,6 +29,9 @@
+-   - Successful PQC-enabled staking delegation (`tx staking delegate`) when PQC is required.
+-   - Rejection of staking delegation when `--pqc-enable=false` under PQC-required policy, with a PQC-related error.
+- - `make e2e` remains fully green, validating the new PQC behavior alongside existing DNS, gateways, release, governance, tokenomics, and bootstrap suites.
+-+ - New `tests/preflight` checks for governance parameters (`quorum`, `threshold`, `veto_threshold`, and `min_deposit` denom) to guard mainnet templates.
+-+ - New `devtools/tests/e2e_slashing.sh` scenario that exercises validator downtime and ensures the chain continues to produce blocks and accept PQC-signed transactions.
+-+ - New `devtools/tests/e2e_upgrade.sh` scenario that submits, votes, and applies a `"v1"` software upgrade proposal via governance, verifying that the upgrade handler executes without halting the node.
+- 
+- ### Breaking Changes
+- - **PQC account linking is now immutable.** Once a PQC record exists for an account, any subsequent `MsgLinkAccountPQC` for that address is rejected with `ErrAccountAlreadyLinked` (no rotations, no idempotent relink).
+-diff --git a/app/app.go b/app/app.go
+-index f04af7f..4d55fd2 100644
+---- a/app/app.go
+-+++ b/app/app.go
+-@@ -8,6 +8,7 @@ import (
+- 	"cosmossdk.io/depinject"
+- 	"cosmossdk.io/log"
+- 	storetypes "cosmossdk.io/store/types"
+-+	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
+- 
+- 	dbm "github.com/cosmos/cosmos-db"
+- 	"github.com/cosmos/cosmos-sdk/baseapp"
+-@@ -28,6 +29,7 @@ import (
+- 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
+- 	"github.com/cosmos/cosmos-sdk/x/genutil"
+- 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+-+	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
+- 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+- 
+- 	"lumen/docs"
+-@@ -81,10 +83,12 @@ type App struct {
+- 	txConfig          client.TxConfig
+- 	interfaceRegistry codectypes.InterfaceRegistry
+- 
+--	AuthKeeper    authkeeper.AccountKeeper
+--	BankKeeper    bankkeeper.Keeper
+--	StakingKeeper *stakingkeeper.Keeper
+--	DistrKeeper   distrkeeper.Keeper
+-+	AuthKeeper     authkeeper.AccountKeeper
+-+	BankKeeper     bankkeeper.Keeper
+-+	StakingKeeper  *stakingkeeper.Keeper
+-+	DistrKeeper    distrkeeper.Keeper
+-+	SlashingKeeper slashingkeeper.Keeper
+-+	UpgradeKeeper  *upgradekeeper.Keeper
+- 
+- 	DnsKeeper        dnsmodulekeeper.Keeper
+- 	ReleaseKeeper    releasemodulekeeper.Keeper
+-@@ -153,6 +157,8 @@ func New(
+- 		&app.BankKeeper,
+- 		&app.StakingKeeper,
+- 		&app.DistrKeeper,
+-+		&app.SlashingKeeper,
+-+		&app.UpgradeKeeper,
+- 		&app.DnsKeeper,
+- 		&app.ReleaseKeeper,
+- 		&app.GatewaysKeeper,
+-@@ -167,6 +173,7 @@ func New(
+- 	baseAppOptions = append(baseAppOptions, baseapp.SetOptimisticExecution())
+- 
+- 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
+-+	app.RegisterUpgradeHandlers()
+- 	app.SetAnteHandler(app.buildAnteHandler())
+- 	app.SetPostHandler(app.buildPostHandler())
+- 
+-diff --git a/app/app_config.go b/app/app_config.go
+-index 797b6a1..f4cadfa 100644
+---- a/app/app_config.go
+-+++ b/app/app_config.go
+-@@ -20,6 +20,8 @@ import (
+- 	distrmodulev1 "cosmossdk.io/api/cosmos/distribution/module/v1"
+- 	genutilmodulev1 "cosmossdk.io/api/cosmos/genutil/module/v1"
+- 	govmodulev1 "cosmossdk.io/api/cosmos/gov/module/v1"
+-+	slashingmodulev1 "cosmossdk.io/api/cosmos/slashing/module/v1"
+-+	upgrademodulev1 "cosmossdk.io/api/cosmos/upgrade/module/v1"
+- 	stakingmodulev1 "cosmossdk.io/api/cosmos/staking/module/v1"
+- 	txconfigv1 "cosmossdk.io/api/cosmos/tx/config/v1"
+- 	"cosmossdk.io/depinject/appconfig"
+-@@ -31,7 +33,9 @@ import (
+- 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+- 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
+- 	_ "github.com/cosmos/cosmos-sdk/x/staking" // import for side-effects
+-+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+- 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+-+	upgradetypes "cosmossdk.io/x/upgrade/types"
+- 
+- 	"github.com/cosmos/cosmos-sdk/runtime"
+- 	sdk "github.com/cosmos/cosmos-sdk/types"
+-@@ -77,6 +81,7 @@ var (
+- 				Config: appconfig.WrapAny(&runtimev1alpha1.Module{
+- 					AppName: Name,
+- 					PreBlockers: []string{
+-+						upgradetypes.ModuleName,
+- 						authtypes.ModuleName,
+- 					},
+- 					BeginBlockers: []string{
+-@@ -109,6 +114,7 @@ var (
+- 						authtypes.ModuleName,
+- 						banktypes.ModuleName,
+- 						distrtypes.ModuleName,
+-+						slashingtypes.ModuleName,
+- 						stakingtypes.ModuleName,
+- 						govtypes.ModuleName,
+- 						genutiltypes.ModuleName,
+-@@ -136,6 +142,12 @@ var (
+- 					Authority:                     immutableAuthority,
+- 				}),
+- 			},
+-+			{
+-+				Name: slashingtypes.ModuleName,
+-+				Config: appconfig.WrapAny(&slashingmodulev1.Module{
+-+					Authority: immutableAuthority,
+-+				}),
+-+			},
+- 			{
+- 				Name: stakingtypes.ModuleName,
+- 				Config: appconfig.WrapAny(&stakingmodulev1.Module{
+-@@ -158,6 +170,12 @@ var (
+- 					Authority: immutableAuthority,
+- 				}),
+- 			},
+-+			{
+-+				Name: upgradetypes.ModuleName,
+-+				Config: appconfig.WrapAny(&upgrademodulev1.Module{
+-+					Authority: immutableAuthority,
+-+				}),
+-+			},
+- 			{
+- 				Name: consensustypes.ModuleName,
+- 				Config: appconfig.WrapAny(&consensusmodulev1.Module{
+-diff --git a/app/module_basics.go b/app/module_basics.go
+-index 32dc2f5..7eee5c1 100644
+---- a/app/module_basics.go
+-+++ b/app/module_basics.go
+-@@ -7,8 +7,11 @@ import (
+- 	distrmodule "github.com/cosmos/cosmos-sdk/x/distribution"
+- 	genutilmodule "github.com/cosmos/cosmos-sdk/x/genutil"
+- 	govmodule "github.com/cosmos/cosmos-sdk/x/gov"
+-+	slashingmodule "github.com/cosmos/cosmos-sdk/x/slashing"
+- 	stakingmodule "github.com/cosmos/cosmos-sdk/x/staking"
+- 
+-+	upgrademodule "cosmossdk.io/x/upgrade"
+-+
+- 	dnsmodule "lumen/x/dns/module"
+- 	gatewaysmodule "lumen/x/gateways/module"
+- 	pqcmodule "lumen/x/pqc/module"
+-@@ -22,6 +25,8 @@ var ModuleBasics = module.NewBasicManager(
+- 	bankmodule.AppModuleBasic{},
+- 	distrmodule.AppModuleBasic{},
+- 	govmodule.AppModuleBasic{},
+-+	upgrademodule.AppModuleBasic{},
+-+	slashingmodule.AppModuleBasic{},
+- 	stakingmodule.AppModuleBasic{},
+- 	genutilmodule.AppModuleBasic{},
+- 	dnsmodule.AppModule{},
+-diff --git a/cmd/lumend/cmd/config.go b/cmd/lumend/cmd/config.go
+-index de394ca..6d82a96 100644
+---- a/cmd/lumend/cmd/config.go
+-+++ b/cmd/lumend/cmd/config.go
+-@@ -12,6 +12,11 @@ func initCometBFTConfig() *cmtcfg.Config {
+- 	cfg.Consensus.TimeoutPropose = 4 * time.Second
+- 	cfg.Consensus.TimeoutCommit = 4 * time.Second
+- 
+-+	cfg.Mempool.Version = "v1"
+-+	cfg.Mempool.Size = 5000
+-+	cfg.Mempool.MaxTxsBytes = 1 << 30
+-+	cfg.Consensus.Block.MaxBytes = 22 * 1024 * 1024
+-+
+- 	return cfg
+- }
+- 
+-diff --git a/devtools/scripts/bootstrap_validator.sh b/devtools/scripts/bootstrap_validator.sh
+-index 7ea89b0..4d7e981 100755
+---- a/devtools/scripts/bootstrap_validator.sh
+-+++ b/devtools/scripts/bootstrap_validator.sh
+-@@ -114,6 +114,33 @@ echo "[6/8] Creating gentx with stake $STAKE"
+- echo "[7/8] Collecting gentxs"
+- "$BINARY" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
+- 
+-+CONFIG_DIR="$HOME_DIR/config"
+-+APP_TOML="$CONFIG_DIR/app.toml"
+-+CONFIG_TOML="$CONFIG_DIR/config.toml"
+-+
+-+if [[ -f "$APP_TOML" ]]; then
+-+  # Set pruning defaults (custom: keep 100 recent, prune frequently).
+-+  sed -i.bak 's/^pruning *=.*/pruning = "custom"/' "$APP_TOML" || true
+-+  sed -i.bak 's/^pruning-keep-recent *=.*/pruning-keep-recent = "100"/' "$APP_TOML" || true
+-+  sed -i.bak 's/^pruning-keep-every *=.*/pruning-keep-every = "0"/' "$APP_TOML" || true
+-+  sed -i.bak 's/^pruning-interval *=.*/pruning-interval = "1000"/' "$APP_TOML" || true
+-+fi
+-+
+-+if [[ -f "$CONFIG_TOML" ]]; then
+-+  # Ensure goleveldb backend by default.
+-+  sed -i.bak 's/^db_backend *=.*/db_backend = "goleveldb"/' "$CONFIG_TOML" || true
+-+
+-+  # Add commented seed / peers recommendations without forcing values.
+-+  if ! grep -q "Lumen testnet recommended seeds" "$CONFIG_TOML" 2>/dev/null; then
+-+    cat <<'EOF' >>"$CONFIG_TOML"
+-+
+-+# Lumen testnet recommended seeds / peers (example only, override as needed):
+-+# seeds = "nodeid1@host1:26656,nodeid2@host2:26656"
+-+# persistent_peers = "nodeid1@host1:26656,nodeid2@host2:26656"
+-+EOF
+-+  fi
+-+fi
+-+
+- if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
+-   echo "[8/8] Installing systemd service"
+-   LUMEN_HOME="$HOME_DIR" BIN_PATH="$BINARY" bash "$(dirname "$0")/install_service.sh" ${LUMEN_INSTALL_SERVICE_ARGS:-}
+-diff --git a/devtools/tests/test_all.sh b/devtools/tests/test_all.sh
+-index 473564c..314023e 100755
+---- a/devtools/tests/test_all.sh
+-+++ b/devtools/tests/test_all.sh
+-@@ -42,6 +42,8 @@ add_job "e2e_send_tax" "bash '$ROOT_DIR/devtools/tests/e2e_send_tax.sh' --skip-b
+- add_job "e2e_dns_auction" "bash '$ROOT_DIR/devtools/tests/e2e_dns_auction.sh' --skip-build --mode prod"
+- add_job "e2e_release" "bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-build"
+- add_job "e2e_gov" "bash '$ROOT_DIR/devtools/tests/e2e_gov.sh' --skip-build"
+-+add_job "e2e_upgrade" "bash '$ROOT_DIR/devtools/tests/e2e_upgrade.sh' --skip-build"
+-+add_job "e2e_slashing" "bash '$ROOT_DIR/devtools/tests/e2e_slashing.sh' --skip-build"
+- add_job "e2e_gateways" "bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
+- add_job "e2e_tokenomics" "bash '$ROOT_DIR/devtools/tests/e2e_tokenomics.sh' --skip-build"
+- add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
+-diff --git a/tests/preflight/preflight_test.go b/tests/preflight/preflight_test.go
+-index 69b189f..9f49e31 100644
+---- a/tests/preflight/preflight_test.go
+-+++ b/tests/preflight/preflight_test.go
+-@@ -4,6 +4,7 @@ import (
+- 	"bufio"
+- 	"bytes"
+- 	"context"
+-+	"encoding/json"
+- 	"os"
+- 	"path/filepath"
+- 	"regexp"
+-@@ -202,6 +203,59 @@ func TestDocs(t *testing.T) {
+- 	}
+- }
+- 
+-+func TestGenesisGovParamsHardened(t *testing.T) {
+-+	repoRoot := findRepoRoot(t)
+-+	path := filepath.Join(repoRoot, "tests", "preflight", "genesis_mainnet_template.json")
+-+
+-+	raw, ok := readFileIfExists(t, path)
+-+	if !ok {
+-+		t.Skipf("genesis template %s not found; create it before mainnet launch", path)
+-+	}
+-+
+-+	type deposit struct {
+-+		Denom  string `json:"denom"`
+-+		Amount string `json:"amount"`
+-+	}
+-+	type govParams struct {
+-+		Quorum        string    `json:"quorum"`
+-+		Threshold     string    `json:"threshold"`
+-+		VetoThreshold string    `json:"veto_threshold"`
+-+		MinDeposit    []deposit `json:"min_deposit"`
+-+	}
+-+	var genesis struct {
+-+		AppState struct {
+-+			Gov struct {
+-+				Params govParams `json:"params"`
+-+			} `json:"gov"`
+-+		} `json:"app_state"`
+-+	}
+-+
+-+	if err := json.Unmarshal([]byte(raw), &genesis); err != nil {
+-+		t.Fatalf("failed to unmarshal genesis template %s: %v", path, err)
+-+	}
+-+
+-+	params := genesis.AppState.Gov.Params
+-+
+-+	quorum, err := sdkmath.LegacyNewDecFromStr(params.Quorum)
+-+	require.NoError(t, err, "invalid gov quorum")
+-+	threshold, err := sdkmath.LegacyNewDecFromStr(params.Threshold)
+-+	require.NoError(t, err, "invalid gov threshold")
+-+	veto, err := sdkmath.LegacyNewDecFromStr(params.VetoThreshold)
+-+	require.NoError(t, err, "invalid gov veto_threshold")
+-+
+-+	minQuorum := sdkmath.LegacyMustNewDecFromStr("0.67")
+-+	minThreshold := sdkmath.LegacyMustNewDecFromStr("0.75")
+-+	maxVeto := sdkmath.LegacyMustNewDecFromStr("0.334")
+-+
+-+	require.True(t, quorum.GTE(minQuorum), "quorum must be >= %s (got %s)", minQuorum, quorum)
+-+	require.True(t, threshold.GTE(minThreshold), "threshold must be >= %s (got %s)", minThreshold, threshold)
+-+	require.True(t, veto.LTE(maxVeto), "veto_threshold must be <= %s (got %s)", maxVeto, veto)
+-+
+-+	require.NotEmpty(t, params.MinDeposit, "min_deposit must not be empty")
+-+	require.Equal(t, "ulmn", strings.TrimSpace(params.MinDeposit[0].Denom), "min_deposit denom must be ulmn")
+-+	require.NotEmpty(t, strings.TrimSpace(params.MinDeposit[0].Amount), "min_deposit amount must be set")
+-+}
+-+
+- func TestFailOnNonZeroMinGasPrices(t *testing.T) {
+- 	opts := testAppOptions{
+- 		server.FlagMinGasPrices: "0.1ulmn",
