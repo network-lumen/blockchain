@@ -89,9 +89,9 @@ func TestLinkAccountPQC_SingleLink(t *testing.T) {
 	require.Equal(t, expectedHash[:], account.PubKeyHash)
 	require.Equal(t, f.ctx.BlockTime().Unix(), account.AddedAt)
 
-	// relinking with the same payload is a no-op
+	// relinking with the same payload must fail (immutable link)
 	_, err = f.msgSrv.LinkAccountPQC(f.ctx, msg)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, types.ErrAccountAlreadyLinked)
 }
 
 func TestLinkAccountPQC_RotationRejected(t *testing.T) {
@@ -107,7 +107,7 @@ func TestLinkAccountPQC_RotationRejected(t *testing.T) {
 	rotate := types.NewMsgLinkAccountPQC(addr, scheme.Name(), newPub)
 	rotate.PowNonce = []byte{0xBB}
 	_, err = f.msgSrv.LinkAccountPQC(f.ctx, rotate)
-	require.ErrorIs(t, err, types.ErrAccountRotationDisabled)
+	require.ErrorIs(t, err, types.ErrAccountAlreadyLinked)
 }
 
 func TestQueryAccount(t *testing.T) {

@@ -32,9 +32,9 @@ var (
 	DefaultAuctionDays uint64 = 7
 
 	DefaultTransferFeeUlmn        uint64 = 1_000_000 // 1 LMN
-	DefaultBidFeeUlmn             uint64 = 1_000   // 0.001 LMN
-	DefaultUpdateRateLimitSeconds uint64 = 60      // one update per minute
-	DefaultUpdatePowDifficulty    uint32 = 12      // ~ 1 in 4096 guesses
+	DefaultBidFeeUlmn             uint64 = 1_000     // 0.001 LMN
+	DefaultUpdateRateLimitSeconds uint64 = 60        // one update per minute
+	DefaultUpdatePowDifficulty    uint32 = 12        // ~ 1 in 4096 guesses
 
 	// DefaultMinPriceUlmnPerMonth is the DAO-controlled floor before multipliers.
 	DefaultMinPriceUlmnPerMonth uint64 = 2_000_000 // 2 LMN / month

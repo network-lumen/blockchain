@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"cosmossdk.io/client/v2/autocli"
 	"cosmossdk.io/depinject"
@@ -21,6 +22,7 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distcli "github.com/cosmos/cosmos-sdk/x/distribution/client/cli"
 	disttypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/spf13/cobra"
 
 	"lumen/app"
@@ -86,6 +88,7 @@ func NewRootCmd() *cobra.Command {
 	patchBankSendCommand(rootCmd)
 	patchGovTxCommand(rootCmd)
 	patchDistributionWithdrawCommand(rootCmd)
+	patchStakingTxCommands(rootCmd)
 
 	return rootCmd
 }
@@ -193,5 +196,174 @@ func patchDistributionWithdrawCommand(root *cobra.Command) {
 		}
 
 		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msgs...)
+	}
+}
+
+func patchStakingTxCommands(root *cobra.Command) {
+	path := []string{"tx", "staking"}
+	stakingCmd, _, err := root.Find(path)
+	if err != nil || stakingCmd == nil {
+		return
+	}
+
+	patchStakingDelegateCommand(stakingCmd)
+	patchStakingRedelegateCommand(stakingCmd)
+	patchStakingUnbondCommand(stakingCmd)
+	patchStakingCancelUnbondCommand(stakingCmd)
+}
+
+func patchStakingDelegateCommand(stakingCmd *cobra.Command) {
+	cmd, _, err := stakingCmd.Find([]string{"delegate"})
+	if err != nil || cmd == nil {
+		return
+	}
+
+	cmd.Args = cobra.ExactArgs(2)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		clientCtx, err := client.GetClientTxContext(cmd)
+		if err != nil {
+			return err
+		}
+
+		signingCtx := clientCtx.TxConfig.SigningContext()
+		if signingCtx == nil {
+			return fmt.Errorf("pqc: signing context unavailable")
+		}
+
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[0]); err != nil {
+			return err
+		}
+
+		amount, err := sdk.ParseCoinNormalized(args[1])
+		if err != nil {
+			return err
+		}
+
+		delAddr := clientCtx.GetFromAddress()
+		if delAddr == nil {
+			return fmt.Errorf("pqc: missing from address")
+		}
+
+		msg := stakingtypes.NewMsgDelegate(delAddr.String(), args[0], amount)
+		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+	}
+}
+
+func patchStakingRedelegateCommand(stakingCmd *cobra.Command) {
+	cmd, _, err := stakingCmd.Find([]string{"redelegate"})
+	if err != nil || cmd == nil {
+		return
+	}
+
+	cmd.Args = cobra.ExactArgs(3)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		clientCtx, err := client.GetClientTxContext(cmd)
+		if err != nil {
+			return err
+		}
+
+		signingCtx := clientCtx.TxConfig.SigningContext()
+		if signingCtx == nil {
+			return fmt.Errorf("pqc: signing context unavailable")
+		}
+
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[0]); err != nil {
+			return err
+		}
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[1]); err != nil {
+			return err
+		}
+
+		amount, err := sdk.ParseCoinNormalized(args[2])
+		if err != nil {
+			return err
+		}
+
+		delAddr := clientCtx.GetFromAddress()
+		if delAddr == nil {
+			return fmt.Errorf("pqc: missing from address")
+		}
+
+		msg := stakingtypes.NewMsgBeginRedelegate(delAddr.String(), args[0], args[1], amount)
+		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+	}
+}
+
+func patchStakingUnbondCommand(stakingCmd *cobra.Command) {
+	cmd, _, err := stakingCmd.Find([]string{"unbond"})
+	if err != nil || cmd == nil {
+		return
+	}
+
+	cmd.Args = cobra.ExactArgs(2)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		clientCtx, err := client.GetClientTxContext(cmd)
+		if err != nil {
+			return err
+		}
+
+		signingCtx := clientCtx.TxConfig.SigningContext()
+		if signingCtx == nil {
+			return fmt.Errorf("pqc: signing context unavailable")
+		}
+
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[0]); err != nil {
+			return err
+		}
+
+		amount, err := sdk.ParseCoinNormalized(args[1])
+		if err != nil {
+			return err
+		}
+
+		delAddr := clientCtx.GetFromAddress()
+		if delAddr == nil {
+			return fmt.Errorf("pqc: missing from address")
+		}
+
+		msg := stakingtypes.NewMsgUndelegate(delAddr.String(), args[0], amount)
+		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
+	}
+}
+
+func patchStakingCancelUnbondCommand(stakingCmd *cobra.Command) {
+	cmd, _, err := stakingCmd.Find([]string{"cancel-unbond"})
+	if err != nil || cmd == nil {
+		return
+	}
+
+	cmd.Args = cobra.ExactArgs(3)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		clientCtx, err := client.GetClientTxContext(cmd)
+		if err != nil {
+			return err
+		}
+
+		signingCtx := clientCtx.TxConfig.SigningContext()
+		if signingCtx == nil {
+			return fmt.Errorf("pqc: signing context unavailable")
+		}
+
+		if _, err := signingCtx.ValidatorAddressCodec().StringToBytes(args[0]); err != nil {
+			return err
+		}
+
+		amount, err := sdk.ParseCoinNormalized(args[1])
+		if err != nil {
+			return err
+		}
+
+		creationHeight, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid height: %s", args[2])
+		}
+
+		delAddr := clientCtx.GetFromAddress()
+		if delAddr == nil {
+			return fmt.Errorf("pqc: missing from address")
+		}
+
+		msg := stakingtypes.NewMsgCancelUnbondingDelegation(delAddr.String(), args[0], creationHeight, amount)
+		return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
 	}
 }

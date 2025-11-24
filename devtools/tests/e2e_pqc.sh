@@ -202,6 +202,7 @@ keys_add_quiet "$SENDER"
 keys_add_quiet "$RECIPIENT"
 
 ADDR_VALIDATOR=$("$BIN" keys show "$VALIDATOR" -a --keyring-backend "$KEYRING" --home "$HOME_DIR")
+VALOPER_ADDR=$("$BIN" keys show "$VALIDATOR" --bech val --address --keyring-backend "$KEYRING" --home "$HOME_DIR")
 ADDR_SENDER=$("$BIN" keys show "$SENDER" -a --keyring-backend "$KEYRING" --home "$HOME_DIR")
 ADDR_RECIPIENT=$("$BIN" keys show "$RECIPIENT" -a --keyring-backend "$KEYRING" --home "$HOME_DIR")
 
@@ -275,6 +276,30 @@ LINK_HASH=$(echo "$LINK_RES" | jq -r '.txhash')
 CODE=$(wait_tx "$LINK_HASH")
 [ "$CODE" = "0" ] || { echo "link-account failed (code=$CODE)"; exit 1; }
 
+echo "==> PQC second link must fail (immutable)"
+FAIL_LOG=$(mktemp)
+if "$BIN" tx pqc link-account \
+	--from "$SENDER" \
+	--scheme "$SCHEME" \
+	--pubkey "$PQC_PUB_SENDER" \
+	--chain-id "$CHAIN_ID" \
+	--keyring-backend "$KEYRING" \
+	--home "$HOME_DIR" \
+	--yes \
+	--fees "$TX_FEES" \
+	--broadcast-mode sync \
+	-o json >"$FAIL_LOG" 2>&1; then
+	echo "error: second link-account unexpectedly succeeded" >&2
+	cat "$FAIL_LOG" >&2
+	exit 1
+fi
+
+if grep -qiE "pqc.*(already linked|immutable)" "$FAIL_LOG"; then
+	echo "[OK] second link-account rejected as immutable"
+else
+	echo "warning: second link-account failed without explicit immutability error" >&2
+fi
+
 ONCHAIN_SCHEME=$("$BIN" q pqc account "$ADDR_SENDER" --node "$RPC" --output json | jq -r '.account.scheme // .info.scheme // empty')
 if [ "$ONCHAIN_SCHEME" != "$SCHEME" ]; then
 	echo "error: expected on-chain scheme '$SCHEME', got '$ONCHAIN_SCHEME'" >&2
@@ -314,6 +339,43 @@ if grep -qiE "pqc.*(missing|required|signature)" "$FAIL_LOG"; then
 	echo "[OK] PQC-disabled transfer rejected with PQC error"
 else
 	echo "warning: PQC-disabled transfer failed without explicit PQC error" >&2
+fi
+
+echo "==> PQC-enabled staking delegation should pass"
+DELEGATE_OK=$("$BIN" tx staking delegate "$VALOPER_ADDR" "$AMOUNT" \
+	--from "$SENDER" \
+	--chain-id "$CHAIN_ID" \
+	--keyring-backend "$KEYRING" \
+	--home "$HOME_DIR" \
+	--yes \
+	--fees "$TX_FEES" \
+	--broadcast-mode sync \
+	-o json)
+echo "$DELEGATE_OK" | jq
+DELEGATE_HASH=$(echo "$DELEGATE_OK" | jq -r '.txhash')
+DELEGATE_CODE=$(wait_tx "$DELEGATE_HASH")
+[ "$DELEGATE_CODE" = "0" ] || { echo "PQC-enabled delegation failed: code=$DELEGATE_CODE" >&2; exit 1; }
+
+echo "==> PQC-disabled staking delegation should fail"
+FAIL_LOG=$(mktemp)
+if "$BIN" tx staking delegate "$VALOPER_ADDR" "$AMOUNT" \
+	--from "$SENDER" \
+	--pqc-enable=false \
+	--chain-id "$CHAIN_ID" \
+	--keyring-backend "$KEYRING" \
+	--home "$HOME_DIR" \
+	--yes \
+	--fees "$TX_FEES" \
+	--broadcast-mode sync >"$FAIL_LOG" 2>&1; then
+	echo "error: PQC-disabled delegation unexpectedly succeeded" >&2
+	cat "$FAIL_LOG" >&2
+	exit 1
+fi
+
+if grep -qiE "pqc.*(missing|required|signature)" "$FAIL_LOG"; then
+	echo "[OK] PQC-disabled delegation rejected with PQC error"
+else
+	echo "warning: PQC-disabled delegation failed without explicit PQC error" >&2
 fi
 
 echo "==> e2e_pqc succeeded"

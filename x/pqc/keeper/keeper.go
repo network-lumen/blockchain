@@ -85,6 +85,12 @@ func (k Keeper) SetAccountPQC(ctx context.Context, addr sdk.AccAddress, info typ
 	if len(info.PubKeyHash) != sha256.Size {
 		return fmt.Errorf("pub_key_hash must be %d bytes", sha256.Size)
 	}
+	// Immutable registry: once a record exists for this address, it cannot be replaced.
+	if _, err := k.Accounts.Get(ctx, info.Addr); err == nil {
+		return types.ErrAccountAlreadyLinked
+	} else if !errors.Is(err, collections.ErrNotFound) {
+		return err
+	}
 	info.PubKeyHash = append([]byte(nil), info.PubKeyHash...)
 	return k.Accounts.Set(ctx, info.Addr, info)
 }

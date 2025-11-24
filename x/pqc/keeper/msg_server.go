@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -72,15 +71,12 @@ func (m msgServer) LinkAccountPQC(goCtx context.Context, msg *types.MsgLinkAccou
 		AddedAt:    sdkCtx.BlockTime().Unix(),
 	}
 
-	existing, found, err := m.keeper.GetAccountPQC(goCtx, creatorAddr)
+	_, found, err := m.keeper.GetAccountPQC(goCtx, creatorAddr)
 	if err != nil {
 		return nil, err
 	}
 	if found {
-		if !equalAccount(existing, account) {
-			return nil, types.ErrAccountRotationDisabled
-		}
-		return &types.MsgLinkAccountPQCResponse{}, nil
+		return nil, types.ErrAccountAlreadyLinked
 	}
 
 	if err := m.keeper.SetAccountPQC(goCtx, creatorAddr, account); err != nil {
@@ -128,8 +124,4 @@ func (m msgServer) emitLinkEvent(ctx sdk.Context, addr, scheme string, pubKeyHas
 			sdk.NewAttribute(types.AttributeKeyMinBalanceUsed, params.MinBalanceForLink.String()),
 		),
 	)
-}
-
-func equalAccount(a, b types.AccountPQC) bool {
-	return strings.EqualFold(a.Scheme, b.Scheme) && bytes.Equal(a.PubKeyHash, b.PubKeyHash)
 }

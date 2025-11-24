@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## v1.2.0 — 2025-11-24
+
+### Added
+- Store-level immutability for PQC link-account records in `x/pqc`, so each Cosmos account can register a Dilithium key exactly once.
+- PQC-aware staking transaction wiring: `lumend tx staking delegate`, `redelegate`, `unbond`, and `cancel-unbond` now route through `pqctxext.GenerateOrBroadcastTxCLI`, ensuring PQC signatures are injected for all staking flows.
+
+### Changed
+- `MsgLinkAccountPQC` semantics: re-linking an already-linked account (even with the same key material) now returns `ErrAccountAlreadyLinked` instead of being treated as a no-op.
+- PQC CLI `tx pqc link-account` performs a best-effort registry lookup before broadcasting, surfacing a clear “already linked” PQC error when an account is already registered.
+- No proto definitions or CLI flags were changed; behavior changes are scoped strictly to PQC linking and staking transaction wiring.
+
+### Fixed
+- Prevented accidental PQC key “rotation” by rejecting all attempts to overwrite an existing PQC registry entry, eliminating inconsistencies between on-chain state and local PQC key management.
+
+### Tests
+- `x/pqc/keeper` unit tests updated to assert that:
+  - The first `LinkAccountPQC` call succeeds and the second fails with `ErrAccountAlreadyLinked`.
+  - “Rotation” attempts using a different Dilithium key also fail with `ErrAccountAlreadyLinked`.
+- `devtools/tests/e2e_pqc.sh` extended to cover:
+  - Successful PQC link on the first `tx pqc link-account` and failure on the second link for the same address, with an explicit PQC immutability/“already linked” error.
+  - Successful PQC-enabled staking delegation (`tx staking delegate`) when PQC is required.
+  - Rejection of staking delegation when `--pqc-enable=false` under PQC-required policy, with a PQC-related error.
+- `make e2e` remains fully green, validating the new PQC behavior alongside existing DNS, gateways, release, governance, tokenomics, and bootstrap suites.
+
+### Breaking Changes
+- **PQC account linking is now immutable.** Once a PQC record exists for an account, any subsequent `MsgLinkAccountPQC` for that address is rejected with `ErrAccountAlreadyLinked` (no rotations, no idempotent relink).
+
+
 ## [1.1.0] - 2025-11-21
 
 - **Community pool routing** – All fixed DNS/Gateway fees now fund the community pool via `DistrKeeper.FundCommunityPool`, with fee-collector used only as a fallback.

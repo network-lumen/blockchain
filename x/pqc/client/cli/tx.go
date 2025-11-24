@@ -77,6 +77,13 @@ func LinkAccountPQCCmd() *cobra.Command {
 			if err := ensureMinBalance(cmd.Context(), clientCtx, paramsResp.Params.GetMinBalanceForLink()); err != nil {
 				return err
 			}
+
+			// Best-effort immutability check before broadcasting.
+			addrStr := clientCtx.GetFromAddress().String()
+			if resp, err := query.AccountPQC(cmd.Context(), &types.QueryAccountPQCRequest{Addr: addrStr}); err == nil && resp.Account.Addr != "" {
+				return types.ErrAccountAlreadyLinked
+			}
+
 			powNonce, err := computePowNonce(pubKey, paramsResp.Params.PowDifficultyBits)
 			if err != nil {
 				return err

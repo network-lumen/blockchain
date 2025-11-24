@@ -1,14 +1,13 @@
 package metrics
 
 import (
-	"sync/atomic"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	registerOnce sync.Once
+	registerOnce  sync.Once
 	pqcSignatures = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "lumen",
@@ -28,8 +27,6 @@ var (
 			Buckets:   []float64{0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05},
 		},
 	)
-
-	registered atomic.Bool
 )
 
 func ensureRegistered() {
