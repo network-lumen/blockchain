@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -200,6 +201,59 @@ func TestDocs(t *testing.T) {
 	if !strings.Contains(lic, "MIT") {
 		t.Fatalf("LICENSE: MIT string not found")
 	}
+}
+
+func TestGenesisGovParamsHardened(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	path := filepath.Join(repoRoot, "tests", "preflight", "genesis_mainnet_template.json")
+
+	raw, ok := readFileIfExists(t, path)
+	if !ok {
+		t.Skipf("genesis template %s not found; create it before mainnet launch", path)
+	}
+
+	type deposit struct {
+		Denom  string `json:"denom"`
+		Amount string `json:"amount"`
+	}
+	type govParams struct {
+		Quorum        string    `json:"quorum"`
+		Threshold     string    `json:"threshold"`
+		VetoThreshold string    `json:"veto_threshold"`
+		MinDeposit    []deposit `json:"min_deposit"`
+	}
+	var genesis struct {
+		AppState struct {
+			Gov struct {
+				Params govParams `json:"params"`
+			} `json:"gov"`
+		} `json:"app_state"`
+	}
+
+	if err := json.Unmarshal([]byte(raw), &genesis); err != nil {
+		t.Fatalf("failed to unmarshal genesis template %s: %v", path, err)
+	}
+
+	params := genesis.AppState.Gov.Params
+
+	quorum, err := sdkmath.LegacyNewDecFromStr(params.Quorum)
+	require.NoError(t, err, "invalid gov quorum")
+	threshold, err := sdkmath.LegacyNewDecFromStr(params.Threshold)
+	require.NoError(t, err, "invalid gov threshold")
+	veto, err := sdkmath.LegacyNewDecFromStr(params.VetoThreshold)
+	require.NoError(t, err, "invalid gov veto_threshold")
+
+	minQuorum := sdkmath.LegacyMustNewDecFromStr("0.67")
+	minThreshold := sdkmath.LegacyMustNewDecFromStr("0.75")
+	maxVeto := sdkmath.LegacyMustNewDecFromStr("0.334")
+
+	require.True(t, quorum.GTE(minQuorum), "quorum must be >= %s (got %s)", minQuorum, quorum)
+	require.True(t, threshold.GTE(minThreshold), "threshold must be >= %s (got %s)", minThreshold, threshold)
+	require.True(t, veto.LTE(maxVeto), "veto_threshold must be <= %s (got %s)", maxVeto, veto)
+
+	require.NotEmpty(t, params.MinDeposit, "min_deposit must not be empty")
+	require.Equal(t, "ulmn", strings.TrimSpace(params.MinDeposit[0].Denom), "min_deposit denom must be ulmn")
+	require.NotEmpty(t, strings.TrimSpace(params.MinDeposit[0].Amount), "min_deposit amount must be set")
 }
 
 func TestFailOnNonZeroMinGasPrices(t *testing.T) {

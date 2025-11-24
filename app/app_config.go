@@ -20,9 +20,12 @@ import (
 	distrmodulev1 "cosmossdk.io/api/cosmos/distribution/module/v1"
 	genutilmodulev1 "cosmossdk.io/api/cosmos/genutil/module/v1"
 	govmodulev1 "cosmossdk.io/api/cosmos/gov/module/v1"
+	slashingmodulev1 "cosmossdk.io/api/cosmos/slashing/module/v1"
 	stakingmodulev1 "cosmossdk.io/api/cosmos/staking/module/v1"
 	txconfigv1 "cosmossdk.io/api/cosmos/tx/config/v1"
+	upgrademodulev1 "cosmossdk.io/api/cosmos/upgrade/module/v1"
 	"cosmossdk.io/depinject/appconfig"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	_ "github.com/cosmos/cosmos-sdk/x/bank" // import for side-effects
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	_ "github.com/cosmos/cosmos-sdk/x/consensus" // import for side-effects
@@ -30,6 +33,7 @@ import (
 	_ "github.com/cosmos/cosmos-sdk/x/distribution" // import for side-effects
 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	_ "github.com/cosmos/cosmos-sdk/x/staking" // import for side-effects
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
@@ -77,10 +81,12 @@ var (
 				Config: appconfig.WrapAny(&runtimev1alpha1.Module{
 					AppName: Name,
 					PreBlockers: []string{
+						upgradetypes.ModuleName,
 						authtypes.ModuleName,
 					},
 					BeginBlockers: []string{
 						distrtypes.ModuleName,
+						slashingtypes.ModuleName,
 						stakingtypes.ModuleName,
 						govtypes.ModuleName,
 						dnsmoduletypes.ModuleName,
@@ -91,6 +97,7 @@ var (
 					},
 					EndBlockers: []string{
 						stakingtypes.ModuleName,
+						slashingtypes.ModuleName,
 						govtypes.ModuleName,
 						dnsmoduletypes.ModuleName,
 						releasemoduletypes.ModuleName,
@@ -109,6 +116,8 @@ var (
 						authtypes.ModuleName,
 						banktypes.ModuleName,
 						distrtypes.ModuleName,
+						upgradetypes.ModuleName,
+						slashingtypes.ModuleName,
 						stakingtypes.ModuleName,
 						govtypes.ModuleName,
 						genutiltypes.ModuleName,
@@ -137,6 +146,12 @@ var (
 				}),
 			},
 			{
+				Name: slashingtypes.ModuleName,
+				Config: appconfig.WrapAny(&slashingmodulev1.Module{
+					Authority: immutableAuthority,
+				}),
+			},
+			{
 				Name: stakingtypes.ModuleName,
 				Config: appconfig.WrapAny(&stakingmodulev1.Module{
 					Bech32PrefixValidator: AccountAddressPrefix + "valoper",
@@ -155,6 +170,12 @@ var (
 			{
 				Name: distrtypes.ModuleName,
 				Config: appconfig.WrapAny(&distrmodulev1.Module{
+					Authority: immutableAuthority,
+				}),
+			},
+			{
+				Name: upgradetypes.ModuleName,
+				Config: appconfig.WrapAny(&upgrademodulev1.Module{
 					Authority: immutableAuthority,
 				}),
 			},

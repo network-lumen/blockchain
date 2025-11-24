@@ -8,6 +8,7 @@ import (
 	"cosmossdk.io/depinject"
 	"cosmossdk.io/log"
 	storetypes "cosmossdk.io/store/types"
+	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -28,6 +29,7 @@ import (
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 
 	"lumen/docs"
@@ -81,10 +83,12 @@ type App struct {
 	txConfig          client.TxConfig
 	interfaceRegistry codectypes.InterfaceRegistry
 
-	AuthKeeper    authkeeper.AccountKeeper
-	BankKeeper    bankkeeper.Keeper
-	StakingKeeper *stakingkeeper.Keeper
-	DistrKeeper   distrkeeper.Keeper
+	AuthKeeper     authkeeper.AccountKeeper
+	BankKeeper     bankkeeper.Keeper
+	StakingKeeper  *stakingkeeper.Keeper
+	DistrKeeper    distrkeeper.Keeper
+	SlashingKeeper slashingkeeper.Keeper
+	UpgradeKeeper  *upgradekeeper.Keeper
 
 	DnsKeeper        dnsmodulekeeper.Keeper
 	ReleaseKeeper    releasemodulekeeper.Keeper
@@ -153,6 +157,8 @@ func New(
 		&app.BankKeeper,
 		&app.StakingKeeper,
 		&app.DistrKeeper,
+		&app.SlashingKeeper,
+		&app.UpgradeKeeper,
 		&app.DnsKeeper,
 		&app.ReleaseKeeper,
 		&app.GatewaysKeeper,
@@ -167,6 +173,7 @@ func New(
 	baseAppOptions = append(baseAppOptions, baseapp.SetOptimisticExecution())
 
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
+	app.RegisterUpgradeHandlers()
 	app.SetAnteHandler(app.buildAnteHandler())
 	app.SetPostHandler(app.buildPostHandler())
 

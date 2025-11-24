@@ -5,6 +5,12 @@
 ### Added
 - Store-level immutability for PQC link-account records in `x/pqc`, so each Cosmos account can register a Dilithium key exactly once.
 - PQC-aware staking transaction wiring: `lumend tx staking delegate`, `redelegate`, `unbond`, and `cancel-unbond` now route through `pqctxext.GenerateOrBroadcastTxCLI`, ensuring PQC signatures are injected for all staking flows.
+ - Cosmos SDK `x/slashing` module wiring, including keeper registration and genesis integration, so double-sign / downtime evidence can be processed like on a standard SDK chain.
+ - Cosmos SDK `x/upgrade` module wiring with a safe no-op `"v1"` upgrade handler, enabling governance-driven software upgrades without risking chain halts.
+ - Explicit CometBFT mempool and consensus configuration (`mempool.version = "v1"`, tuned sizes, and larger `block.max_bytes`) to better accommodate PQC extension options.
+ - Governance hardening preflight test that validates quorum/threshold/veto and deposit parameters in a mainnet genesis template.
+ - New end-to-end suites `e2e_slashing.sh` and `e2e_upgrade.sh` covering slashing resilience and software upgrade governance flow.
+ - Improved `devtools/scripts/bootstrap_validator.sh` defaults for pruning (custom window), `db_backend = "goleveldb"`, and documented seed / persistent peer examples to simplify validator bootstraps.
 
 ### Changed
 - `MsgLinkAccountPQC` semantics: re-linking an already-linked account (even with the same key material) now returns `ErrAccountAlreadyLinked` instead of being treated as a no-op.
@@ -23,6 +29,9 @@
   - Successful PQC-enabled staking delegation (`tx staking delegate`) when PQC is required.
   - Rejection of staking delegation when `--pqc-enable=false` under PQC-required policy, with a PQC-related error.
 - `make e2e` remains fully green, validating the new PQC behavior alongside existing DNS, gateways, release, governance, tokenomics, and bootstrap suites.
+ - New `tests/preflight` checks for governance parameters (`quorum`, `threshold`, `veto_threshold`, and `min_deposit` denom) to guard mainnet templates.
+ - New `devtools/tests/e2e_slashing.sh` scenario that exercises validator downtime and ensures the chain continues to produce blocks and accept PQC-signed transactions.
+ - New `devtools/tests/e2e_upgrade.sh` scenario that submits, votes, and applies a `"v1"` software upgrade proposal via governance, verifying that the upgrade handler executes without halting the node.
 
 ### Breaking Changes
 - **PQC account linking is now immutable.** Once a PQC record exists for an account, any subsequent `MsgLinkAccountPQC` for that address is rejected with `ErrAccountAlreadyLinked` (no rotations, no idempotent relink).

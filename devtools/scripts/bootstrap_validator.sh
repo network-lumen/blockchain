@@ -114,6 +114,33 @@ echo "[6/8] Creating gentx with stake $STAKE"
 echo "[7/8] Collecting gentxs"
 "$BINARY" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
 
+CONFIG_DIR="$HOME_DIR/config"
+APP_TOML="$CONFIG_DIR/app.toml"
+CONFIG_TOML="$CONFIG_DIR/config.toml"
+
+if [[ -f "$APP_TOML" ]]; then
+  # Set pruning defaults (custom: keep 100 recent, prune frequently).
+  sed -i.bak 's/^pruning *=.*/pruning = "custom"/' "$APP_TOML" || true
+  sed -i.bak 's/^pruning-keep-recent *=.*/pruning-keep-recent = "100"/' "$APP_TOML" || true
+  sed -i.bak 's/^pruning-keep-every *=.*/pruning-keep-every = "0"/' "$APP_TOML" || true
+  sed -i.bak 's/^pruning-interval *=.*/pruning-interval = "1000"/' "$APP_TOML" || true
+fi
+
+if [[ -f "$CONFIG_TOML" ]]; then
+  # Ensure goleveldb backend by default.
+  sed -i.bak 's/^db_backend *=.*/db_backend = "goleveldb"/' "$CONFIG_TOML" || true
+
+  # Add commented seed / peers recommendations without forcing values.
+  if ! grep -q "Lumen testnet recommended seeds" "$CONFIG_TOML" 2>/dev/null; then
+    cat <<'EOF' >>"$CONFIG_TOML"
+
+# Lumen testnet recommended seeds / peers (example only, override as needed):
+# seeds = "nodeid1@host1:26656,nodeid2@host2:26656"
+# persistent_peers = "nodeid1@host1:26656,nodeid2@host2:26656"
+EOF
+  fi
+fi
+
 if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
   echo "[8/8] Installing systemd service"
   LUMEN_HOME="$HOME_DIR" BIN_PATH="$BINARY" bash "$(dirname "$0")/install_service.sh" ${LUMEN_INSTALL_SERVICE_ARGS:-}

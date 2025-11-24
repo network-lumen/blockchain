@@ -7,7 +7,10 @@ import (
 	distrmodule "github.com/cosmos/cosmos-sdk/x/distribution"
 	genutilmodule "github.com/cosmos/cosmos-sdk/x/genutil"
 	govmodule "github.com/cosmos/cosmos-sdk/x/gov"
+	slashingmodule "github.com/cosmos/cosmos-sdk/x/slashing"
 	stakingmodule "github.com/cosmos/cosmos-sdk/x/staking"
+
+	upgrademodule "cosmossdk.io/x/upgrade"
 
 	dnsmodule "lumen/x/dns/module"
 	gatewaysmodule "lumen/x/gateways/module"
@@ -22,6 +25,8 @@ var ModuleBasics = module.NewBasicManager(
 	bankmodule.AppModuleBasic{},
 	distrmodule.AppModuleBasic{},
 	govmodule.AppModuleBasic{},
+	upgrademodule.AppModuleBasic{},
+	slashingmodule.AppModuleBasic{},
 	stakingmodule.AppModuleBasic{},
 	genutilmodule.AppModuleBasic{},
 	dnsmodule.AppModule{},
