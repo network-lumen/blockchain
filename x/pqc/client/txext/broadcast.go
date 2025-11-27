@@ -2,6 +2,7 @@ package txext
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -85,6 +86,10 @@ func broadcastTxWithPQC(
 	txf clienttx.Factory,
 	msgs ...types.Msg,
 ) error {
+	if pqcDebug {
+		fmt.Fprintf(os.Stderr, "[pqc-cli] broadcastTxWithPQC: msgs=%d, generateOnly=%v, simulate=%v\n", len(msgs), clientCtx.GenerateOnly, clientCtx.Simulate)
+	}
+
 	txf, err := txf.Prepare(clientCtx)
 	if err != nil {
 		return err
@@ -97,15 +102,33 @@ func broadcastTxWithPQC(
 			return fmt.Errorf("cannot estimate gas in offline mode")
 		}
 
-		_, adjusted, err := clienttx.CalculateGas(clientCtx, txf, msgs...)
-		if err != nil {
-			return err
-		}
+		// When no gRPC client is available (common in simple CLI + RPC-only
+		// setups), gracefully degrade by skipping simulation and falling back
+		// to a conservative default gas limit rather than failing with a
+		// PQC-specific error.
+		if clientCtx.GRPCClient == nil {
+			if pqcDebug {
+				fmt.Fprintln(os.Stderr, "[pqc-cli] broadcastTxWithPQC: skipping gas simulation (no gRPC client)")
+			}
+			skipSimulation = true
+		} else {
+			adjusted, err := simulateWithPQC(cmd, clientCtx, txf, msgs...)
+			if err != nil {
+				return err
+			}
 
-		txf = txf.WithGas(adjusted)
-		_, _ = fmt.Fprintf(os.Stderr, "%s\n", clienttx.GasEstimateResponse{GasEstimate: txf.Gas()})
-	} else if skipSimulation && txf.Gas() == 0 {
-		txf = txf.WithGas(clientflags.DefaultGasLimit)
+			txf = txf.WithGas(adjusted)
+			_, _ = fmt.Fprintf(os.Stderr, "%s\n", clienttx.GasEstimateResponse{GasEstimate: txf.Gas()})
+		}
+	}
+
+	if skipSimulation && txf.Gas() == 0 {
+		// PQC adds additional bytes and ante-handler work, so the SDK's
+		// DefaultGasLimit (200k) can be slightly too low for some paths such
+		// as MsgCreateValidator under PQC_REQUIRED. Bump the default by 50%
+		// when we cannot simulate, to avoid spurious out-of-gas failures.
+		const pqcDefaultGas = clientflags.DefaultGasLimit * 3 / 2 // 300k
+		txf = txf.WithGas(pqcDefaultGas)
 	}
 
 	if clientCtx.Simulate && !skipSimulation {
@@ -172,8 +195,54 @@ func broadcastTxWithPQC(
 		_ = clientCtx.PrintProto(res)
 		return fmt.Errorf("transaction failed (code=%d): %s", res.Code, res.RawLog)
 	}
-
 	return clientCtx.PrintProto(res)
+}
+
+// simulateWithPQC performs a gas estimation round-trip using a transaction
+// that already includes PQC extension data. This avoids "missing pqc
+// signature extension" errors during simulation when the chain enforces a
+// PQC-required policy.
+func simulateWithPQC(
+	cmd *cobra.Command,
+	clientCtx client.Context,
+	txf clienttx.Factory,
+	msgs ...types.Msg,
+) (uint64, error) {
+	// Build an unsigned tx from the factory and attach standard signatures.
+	txBuilder, err := txf.BuildUnsignedTx(msgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := clienttx.Sign(cmd.Context(), txf, clientCtx.FromName, txBuilder, true); err != nil {
+		return 0, err
+	}
+
+	// Inject PQC signatures and extension options for simulation.
+	injected, err := InjectPQCPostSign(clientCtx, txBuilder)
+	if err != nil {
+		return 0, err
+	}
+	if injected {
+		if err := clienttx.Sign(cmd.Context(), txf, clientCtx.FromName, txBuilder, true); err != nil {
+			return 0, err
+		}
+	}
+
+	txBytes, err := clientCtx.TxConfig.TxEncoder()(txBuilder.GetTx())
+	if err != nil {
+		return 0, err
+	}
+
+	txSvcClient := txtypes.NewServiceClient(clientCtx.GRPCClient)
+	simRes, err := txSvcClient.Simulate(context.Background(), &txtypes.SimulateRequest{
+		TxBytes: txBytes,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
 }
 
 func makeAuxSignerData(clientCtx client.Context, f clienttx.Factory, msgs ...types.Msg) (txtypes.AuxSignerData, error) {

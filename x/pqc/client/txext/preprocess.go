@@ -43,6 +43,9 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 	if err != nil {
 		return false, err
 	}
+	if pqcDebug {
+		fmt.Fprintf(os.Stderr, "[pqc-cli] InjectPQCPostSign: enabled=%v, scheme=%s\n", opts.Enabled, opts.Scheme)
+	}
 	if !opts.Enabled {
 		if err := applyPQCExtension(builder, clientCtx.Codec, nil); err != nil {
 			return false, err
@@ -60,6 +63,9 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 	if err != nil {
 		return false, fmt.Errorf("pqc: fetch signers: %w", err)
 	}
+	if pqcDebug {
+		fmt.Fprintf(os.Stderr, "[pqc-cli] found %d tx signers\n", len(rawSigners))
+	}
 	if len(rawSigners) == 0 {
 		return false, nil
 	}
@@ -73,7 +79,21 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 		return false, fmt.Errorf("pqc: active backend %q does not match requested scheme %q", scheme.Name(), opts.Scheme)
 	}
 
-	store, err := pqckeys.LoadStore(clientCtx.HomeDir)
+	// Load the local PQC keystore, honoring the same environment
+	// variables as the pqc-* key management commands so that
+	// encrypted stores work for transaction injection as well.
+	var storeOpts []pqckeys.StoreOption
+	if passEnv := strings.TrimSpace(os.Getenv("LUMEN_PQC_PASSPHRASE")); passEnv != "" {
+		storeOpts = append(storeOpts, pqckeys.WithPassphrase([]byte(passEnv)))
+	} else if path := strings.TrimSpace(os.Getenv("LUMEN_PQC_PASSPHRASE_FILE")); path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			if p := strings.TrimSpace(string(data)); p != "" {
+				storeOpts = append(storeOpts, pqckeys.WithPassphrase([]byte(p)))
+			}
+		}
+	}
+
+	store, err := pqckeys.LoadStore(clientCtx.HomeDir, storeOpts...)
 	if err != nil {
 		return false, err
 	}
@@ -82,7 +102,13 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 	if err != nil {
 		return false, err
 	}
-	required := params == nil || params.Policy == pqctypes.PqcPolicy_PQC_POLICY_REQUIRED
+	// When params cannot be loaded (no gRPC, offline genesis tooling, etc.),
+	// treat PQC as optional from the CLI's perspective and let the chain's
+	// ante handler enforce policy once a node is available.
+	required := false
+	if params != nil && params.Policy == pqctypes.PqcPolicy_PQC_POLICY_REQUIRED {
+		required = true
+	}
 	if params != nil && params.MinScheme != "" && !strings.EqualFold(params.MinScheme, opts.Scheme) {
 		return false, fmt.Errorf("pqc: chain requires min scheme %q (client configured %q)", params.MinScheme, opts.Scheme)
 	}
@@ -107,6 +133,15 @@ func InjectPQCPostSign(clientCtx client.Context, builder client.TxBuilder) (bool
 
 		accNum, _, err := clientCtx.AccountRetriever.GetAccountNumberSequence(clientCtx, addr)
 		if err != nil {
+			if pqcDebug {
+				fmt.Fprintf(os.Stderr, "[pqc-cli] skip signer=%s: account lookup failed: %v\n", addrStr, err)
+			}
+			// In optional mode (params unavailable or policy not REQUIRED),
+			// degrade gracefully and let base ante handlers report account
+			// errors instead of failing in the PQC injector.
+			if !required {
+				continue
+			}
 			return false, fmt.Errorf("pqc: fetch account number for %s: %w", addrStr, err)
 		}
 
@@ -204,9 +239,11 @@ func parseOptions(clientCtx client.Context) (pqcOptions, error) {
 		Enabled: true,
 		Scheme:  pqctypes.SchemeDilithium3,
 	}
-
 	var v *viper.Viper = clientCtx.Viper
 	if v == nil {
+		if pqcDebug {
+			fmt.Fprintf(os.Stderr, "[pqc-cli] parseOptions: no viper in clientCtx (using defaults: enabled=%v, scheme=%s)\n", opts.Enabled, opts.Scheme)
+		}
 		return opts, nil
 	}
 
@@ -219,6 +256,17 @@ func parseOptions(clientCtx client.Context) (pqcOptions, error) {
 
 	fromVals := v.GetStringSlice(FlagFrom)
 	keyVals := v.GetStringSlice(FlagKey)
+
+	if pqcDebug {
+		fmt.Fprintf(
+			os.Stderr,
+			"[pqc-cli] parseOptions: enable=%v scheme=%s pqc-from=%v pqc-key=%v\n",
+			opts.Enabled,
+			opts.Scheme,
+			fromVals,
+			keyVals,
+		)
+	}
 
 	if len(keyVals) != 0 && len(fromVals) != 0 && len(keyVals) != len(fromVals) {
 		return opts, fmt.Errorf("pqc: --%s and --%s must be provided the same number of times", FlagFrom, FlagKey)

@@ -104,7 +104,9 @@ keys_add_quiet() {
 wait_http() {
 	local url="$1"
 	for _ in $(seq 1 120); do
-		curl -sSf "$url" >/dev/null 2>&1 && return 0
+		# Treat any successful TCP/HTTP response (including 404) as "service up".
+		# We only care that the port is open and the process is listening.
+		curl -sS "$url" >/dev/null 2>&1 && return 0
 		sleep 0.5
 	done
 	echo "error: timeout waiting for $url" >&2

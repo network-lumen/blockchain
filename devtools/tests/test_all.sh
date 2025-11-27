@@ -49,6 +49,7 @@ add_job "e2e_tokenomics" "bash '$ROOT_DIR/devtools/tests/e2e_tokenomics.sh' --sk
 add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
 add_job "e2e_pqc_cli" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc_cli.sh'"
 add_job "e2e_bootstrap_validator" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_bootstrap_validator.sh'"
+add_job "e2e_pqc_tx_paths" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc_tx_paths.sh' --skip-build"
 
 add_job "smoke REST" "bash '$ROOT_DIR/devtools/tests/smoke_rest.sh'"
 

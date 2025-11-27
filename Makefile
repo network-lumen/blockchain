@@ -110,6 +110,9 @@ e2e-pqc: ## Run the dedicated PQC e2e flow (devtools/tests/e2e_pqc.sh)
 e2e-pqc-cli: ## Run the CLI-centric PQC flow (devtools/tests/e2e_pqc_cli.sh)
 	@BIN=./build/lumend bash devtools/tests/e2e_pqc_cli.sh $(ARGS)
 
+e2e-pqc-tx-paths: ## Run PQC tx-path coverage (create-validator + delegate)
+	@BIN=./build/lumend bash devtools/tests/e2e_pqc_tx_paths.sh $(ARGS)
+
 e2e-bootstrap-validator: ## Run bootstrap validator e2e flow (devtools/tests/e2e_bootstrap_validator.sh)
 	@BIN=./build/lumend bash devtools/tests/e2e_bootstrap_validator.sh $(ARGS)
 
