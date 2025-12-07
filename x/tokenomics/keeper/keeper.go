@@ -25,9 +25,10 @@ type Keeper struct {
 	Params      collections.Item[types.Params]
 	TotalMinted collections.Item[string]
 
-	bank    types.BankKeeper
-	distr   types.DistributionKeeper
-	staking types.StakingKeeper
+	bank     types.BankKeeper
+	distr    types.DistributionKeeper
+	staking  types.StakingKeeper
+	slashing types.SlashingKeeper
 }
 
 func NewKeeper(
@@ -88,6 +89,13 @@ func (k *Keeper) SetStakingKeeper(s types.StakingKeeper) {
 	k.staking = s
 }
 
+func (k *Keeper) SetSlashingKeeper(s types.SlashingKeeper) {
+	if s == nil {
+		return
+	}
+	k.slashing = s
+}
+
 func (k Keeper) GetTotalMintedUlmn(ctx context.Context) sdkmath.Int {
 	stored, err := k.TotalMinted.Get(ctx)
 	if err != nil {
@@ -119,6 +127,14 @@ func (k Keeper) HasStakingKeeper() bool {
 	return k.staking != nil
 }
 
+func (k Keeper) HasSlashingKeeper() bool {
+	return k.slashing != nil
+}
+
+func (k Keeper) SlashingKeeper() types.SlashingKeeper {
+	return k.slashing
+}
+
 func (k Keeper) MintToFeeCollector(ctx sdk.Context, coins sdk.Coins) {
 	if !k.HasBankKeeper() {
 		panic("tokenomics bank keeper is not set")
@@ -127,6 +143,22 @@ func (k Keeper) MintToFeeCollector(ctx sdk.Context, coins sdk.Coins) {
 		panic(err)
 	}
 	if err := k.bank.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, coins); err != nil {
+		panic(err)
+	}
+}
+
+func (k Keeper) MintToCommunityPool(ctx sdk.Context, coins sdk.Coins) {
+	if !k.HasBankKeeper() || !k.HasDistributionKeeper() {
+		return
+	}
+	if coins.Empty() {
+		return
+	}
+	if err := k.bank.MintCoins(ctx, types.ModuleName, coins); err != nil {
+		panic(err)
+	}
+	depositor := authtypes.NewModuleAddress(types.ModuleName)
+	if err := k.distr.FundCommunityPool(ctx, coins, depositor); err != nil {
 		panic(err)
 	}
 }

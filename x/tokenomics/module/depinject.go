@@ -13,6 +13,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
+	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
@@ -39,6 +41,7 @@ type ModuleInputs struct {
 	BankKeeper         bankkeeper.Keeper
 	StakingKeeper      *stakingkeeper.Keeper
 	DistributionKeeper distrkeeper.Keeper
+	SlashingKeeper     slashingkeeper.Keeper
 }
 
 type ModuleOutputs struct {
@@ -60,6 +63,7 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 		k.SetStakingKeeper(stakingAdapter{sk: in.StakingKeeper})
 	}
 	k.SetDistributionKeeper(distributionAdapter{dk: in.DistributionKeeper})
+	k.SetSlashingKeeper(slashingAdapter{sk: in.SlashingKeeper})
 	m := NewAppModule(in.Cdc, k)
 	return ModuleOutputs{TokenomicsKeeper: k, Module: m}
 }
@@ -80,6 +84,10 @@ func (d distributionAdapter) WithdrawValidatorCommission(ctx context.Context, va
 	return d.dk.WithdrawValidatorCommission(ctx, valAddr)
 }
 
+func (d distributionAdapter) FundCommunityPool(ctx context.Context, amount sdk.Coins, depositor sdk.AccAddress) error {
+	return d.dk.FundCommunityPool(ctx, amount, depositor)
+}
+
 type stakingAdapter struct{ sk *stakingkeeper.Keeper }
 
 func (s stakingAdapter) IterateValidators(ctx context.Context, fn func(index int64, validator stTypes.ValidatorI) (stop bool)) {
@@ -88,4 +96,14 @@ func (s stakingAdapter) IterateValidators(ctx context.Context, fn func(index int
 
 func (s stakingAdapter) ValidatorAddressCodec() address.Codec {
 	return s.sk.ValidatorAddressCodec()
+}
+
+type slashingAdapter struct{ sk slashingkeeper.Keeper }
+
+func (s slashingAdapter) GetParams(ctx context.Context) (slashingtypes.Params, error) {
+	return s.sk.GetParams(ctx)
+}
+
+func (s slashingAdapter) SetParams(ctx context.Context, params slashingtypes.Params) error {
+	return s.sk.SetParams(ctx, params)
 }

@@ -14,6 +14,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"lumen/x/tokenomics/keeper"
@@ -56,16 +57,25 @@ func (m *bankMock) SendCoinsFromModuleToModule(_ context.Context, senderModule, 
 }
 
 type distributionMock struct {
-	calls []sdk.ValAddress
+	calls              []sdk.ValAddress
+	communityPoolMints []sdk.Coins
 }
 
 func newDistributionMock() *distributionMock {
-	return &distributionMock{calls: []sdk.ValAddress{}}
+	return &distributionMock{
+		calls:              []sdk.ValAddress{},
+		communityPoolMints: []sdk.Coins{},
+	}
 }
 
 func (m *distributionMock) WithdrawValidatorCommission(_ context.Context, valAddr sdk.ValAddress) (sdk.Coins, error) {
 	m.calls = append(m.calls, valAddr)
 	return sdk.NewCoins(), nil
+}
+
+func (m *distributionMock) FundCommunityPool(_ context.Context, amount sdk.Coins, _ sdk.AccAddress) error {
+	m.communityPoolMints = append(m.communityPoolMints, amount)
+	return nil
 }
 
 type stakingMock struct {
@@ -89,12 +99,32 @@ func (s *stakingMock) ValidatorAddressCodec() address.Codec {
 	return s.codec
 }
 
+type slashingMock struct {
+	params slashingtypes.Params
+}
+
+func newSlashingMock() *slashingMock {
+	return &slashingMock{
+		params: slashingtypes.DefaultParams(),
+	}
+}
+
+func (s *slashingMock) GetParams(_ context.Context) (slashingtypes.Params, error) {
+	return s.params, nil
+}
+
+func (s *slashingMock) SetParams(_ context.Context, params slashingtypes.Params) error {
+	s.params = params
+	return nil
+}
+
 type fixture struct {
 	sdkCtx sdk.Context
 	keeper keeper.Keeper
 	bank   *bankMock
 	dist   *distributionMock
 	stake  *stakingMock
+	slash  *slashingMock
 }
 
 func initFixture(t *testing.T) *fixture {
@@ -131,6 +161,9 @@ func initFixture(t *testing.T) *fixture {
 	k.SetDistributionKeeper(dist)
 	k.SetStakingKeeper(stake)
 
+	slash := newSlashingMock()
+	k.SetSlashingKeeper(slash)
+
 	if err := k.SetParams(sdkCtx, types.DefaultParams()); err != nil {
 		t.Fatalf("failed to set params: %v", err)
 	}
@@ -144,6 +177,7 @@ func initFixture(t *testing.T) *fixture {
 		bank:   bank,
 		dist:   dist,
 		stake:  stake,
+		slash:  slash,
 	}
 }
 
@@ -262,5 +296,42 @@ func TestBeginBlocker_DistributionInterval(t *testing.T) {
 
 	if len(f.dist.calls) != 1 {
 		t.Fatalf("expected distribution withdraw to be triggered once, got %d", len(f.dist.calls))
+	}
+}
+
+func TestBeginBlocker_MintsCommunityPoolOnDoubleSignSlash(t *testing.T) {
+	f := initFixture(t)
+
+	params := types.Params{
+		TxTaxRate:                  types.DefaultTxTaxRate,
+		InitialRewardPerBlockLumn:  0,
+		HalvingIntervalBlocks:      0,
+		SupplyCapLumn:              0,
+		Decimals:                   types.DefaultDecimals,
+		Denom:                      types.DefaultDenom,
+		DistributionIntervalBlocks: 0,
+		MinSendUlmn:                types.DefaultMinSendUlmn,
+	}
+	if err := f.keeper.SetParams(f.sdkCtx, params); err != nil {
+		t.Fatalf("set params: %v", err)
+	}
+
+	burned := sdk.NewCoin(types.DefaultDenom, sdkmath.NewInt(1000))
+	f.sdkCtx.EventManager().EmitEvent(
+		sdk.NewEvent(
+			slashingtypes.EventTypeSlash,
+			sdk.NewAttribute(slashingtypes.AttributeKeyReason, slashingtypes.AttributeValueDoubleSign),
+			sdk.NewAttribute(slashingtypes.AttributeKeyBurnedCoins, burned.String()),
+		),
+	)
+
+	f.keeper.BeginBlocker(f.sdkCtx)
+
+	if len(f.dist.communityPoolMints) != 1 {
+		t.Fatalf("expected 1 community pool mint, got %d", len(f.dist.communityPoolMints))
+	}
+	got := f.dist.communityPoolMints[0].AmountOf(types.DefaultDenom)
+	if !got.Equal(burned.Amount) {
+		t.Fatalf("expected community pool mint %s, got %s", burned.Amount, got)
 	}
 }

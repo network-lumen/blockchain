@@ -1,5 +1,14 @@
 # CHANGELOG
 
+
+## v1.3.0 — 2025-11-24
+
+- Slashing: double-sign infractions now use a 10% fraction (via `slash_fraction_double_sign = 0.10` in the slashing params), and the burned amount reported by `x/slashing` is mirrored into the community pool by `x/tokenomics` so that an equivalent amount of `ulmn` is credited to the community pool on every double-sign event.
+- Slashing: new `MsgUpdateSlashingDowntimeParams` in `x/tokenomics` lets the chain authority safely tune downtime penalties with built-in bounds:
+  - `slash_fraction_downtime` must be between 0 and 0.05 (0–5%).
+  - `downtime_jail_duration` must be between 60s and 48h.
+  - Double-sign slashing parameters remain immutable and are not exposed by this message.
+
 ## v1.2.0 — 2025-11-24
 
 ### Added

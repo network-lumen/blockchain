@@ -3,7 +3,9 @@ set -euo pipefail
 
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "${SOURCE_DIR}/lib_pqc.sh"
+. "${SOURCE_DIR}/lib_gov.sh"
 pqc_require_bins
+gov_require_bins
 
 HOME_E2E=$(mktemp -d -t lumen-e2e-slashing-XXXXXX)
 export HOME="$HOME_E2E"
@@ -124,6 +126,28 @@ init_chain() {
     --keyring-backend "$KEYRING" \
     --home "$HOME_DIR" >/dev/null
   "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
+  # Speed up governance so we can exercise proposals in this e2e.
+  local tmp
+  tmp=$(mktemp)
+  jq '.app_state.gov.params = {
+      min_deposit:[{denom:"ulmn",amount:"10000000"}],
+      expedited_min_deposit:[{denom:"ulmn",amount:"50000000"}],
+      max_deposit_period:"8s",
+      voting_period:"8s",
+      expedited_voting_period:"4s",
+      quorum:"0.670000000000000000",
+      threshold:"0.750000000000000000",
+      expedited_threshold:"0.850000000000000000",
+      veto_threshold:"0.334000000000000000",
+      min_initial_deposit_ratio:"0.000000000000000000",
+      proposal_cancel_ratio:"0.000000000000000000",
+      proposal_cancel_dest:"",
+      burn_proposal_deposit_prevote:false,
+      burn_vote_quorum:false,
+      burn_vote_veto:false,
+      min_deposit_ratio:"0.010000000000000000"
+    }' "$HOME_DIR/config/genesis.json" >"$tmp"
+  mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
   pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
@@ -179,6 +203,87 @@ send_pqc_tx() {
   fi
 }
 
+slashing_query_params() {
+  "$BIN" query slashing params \
+    --node "$NODE" \
+    --home "$HOME_DIR" \
+    -o json | jq '.params'
+}
+
+slashing_test_downtime_params_update() {
+  step "Resolve gov authority for slashing params"
+  GOV_AUTHORITY=$(gov_resolve_authority)
+  if [ -z "$GOV_AUTHORITY" ] || [ "$GOV_AUTHORITY" = "null" ]; then
+    echo "failed to resolve gov authority address" >&2
+    exit 1
+  fi
+
+  step "Query initial slashing params"
+  local before_json before_frac before_jail
+  before_json=$(slashing_query_params)
+  before_frac=$(echo "$before_json" | jq -r '.slash_fraction_downtime')
+  before_jail=$(echo "$before_json" | jq -r '.downtime_jail_duration')
+
+  step "Gov: propose invalid downtime fraction (>5%)"
+  local bad_msg bad_pid bad_json
+  bad_msg=$(jq -cn --arg auth "$GOV_AUTHORITY" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingDowntimeParams", "authority":$auth, "slash_fraction_downtime":"0.5", "downtime_jail_duration":"600s"}')
+  gov_submit_single_msg_proposal "$bad_msg" "Bad slashing downtime params" "should fail" "10000000ulmn" || true
+  bad_pid="$GOV_LAST_PROPOSAL_ID"
+  if [ -n "$bad_pid" ]; then
+    gov_cast_vote "$bad_pid" validator yes
+    gov_wait_status "$bad_pid" "PROPOSAL_STATUS_FAILED"
+  fi
+  bad_json=$(slashing_query_params)
+  if [ "$(echo "$bad_json" | jq -r '.slash_fraction_downtime')" != "$before_frac" ]; then
+    echo "slash_fraction_downtime changed after invalid proposal" >&2
+    exit 1
+  fi
+  if [ "$(echo "$bad_json" | jq -r '.downtime_jail_duration')" != "$before_jail" ]; then
+    echo "downtime_jail_duration changed after invalid proposal" >&2
+    exit 1
+  fi
+
+  step "Gov: propose update with wrong authority"
+  local wrong_msg wrong_pid wrong_json
+  wrong_msg=$(jq -cn --arg auth "$VAL_ADDR" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingDowntimeParams", "authority":$auth, "slash_fraction_downtime":"0.02", "downtime_jail_duration":"600s"}')
+  gov_submit_single_msg_proposal "$wrong_msg" "Wrong authority slashing params" "should fail" "10000000ulmn" || true
+  wrong_pid="$GOV_LAST_PROPOSAL_ID"
+  if [ -n "$wrong_pid" ]; then
+    gov_cast_vote "$wrong_pid" validator yes
+    gov_wait_status "$wrong_pid" "PROPOSAL_STATUS_FAILED"
+  fi
+  wrong_json=$(slashing_query_params)
+  if [ "$(echo "$wrong_json" | jq -r '.slash_fraction_downtime')" != "$before_frac" ]; then
+    echo "slash_fraction_downtime changed after wrong-authority proposal" >&2
+    exit 1
+  fi
+  if [ "$(echo "$wrong_json" | jq -r '.downtime_jail_duration')" != "$before_jail" ]; then
+    echo "downtime_jail_duration changed after wrong-authority proposal" >&2
+    exit 1
+  fi
+
+  step "Gov: propose valid downtime params update (2% / 120s)"
+  local good_msg good_pid final_json final_frac final_jail
+  good_msg=$(jq -cn --arg auth "$GOV_AUTHORITY" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingDowntimeParams", "authority":$auth, "slash_fraction_downtime":"0.02", "downtime_jail_duration":"120s"}')
+  gov_submit_single_msg_proposal "$good_msg" "Update slashing downtime params" "set fraction=0.02 and jail=120s" "10000000ulmn"
+  good_pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$good_pid" validator yes
+  gov_wait_status "$good_pid" "PROPOSAL_STATUS_PASSED"
+
+  final_json=$(slashing_query_params)
+  final_frac=$(echo "$final_json" | jq -r '.slash_fraction_downtime')
+  final_jail=$(echo "$final_json" | jq -r '.downtime_jail_duration')
+  if [ "$final_frac" = "$before_frac" ] || [ "$final_jail" = "$before_jail" ]; then
+    echo "expected downtime params to change after valid proposal" >&2
+    echo "before: $before_frac / $before_jail" >&2
+    echo "after : $final_frac / $final_jail" >&2
+    exit 1
+  fi
+}
+
 main() {
   build
   init_chain
@@ -187,6 +292,8 @@ main() {
   step "Setup PQC signer accounts"
   setup_pqc_signer validator
   setup_pqc_signer signer
+
+  slashing_test_downtime_params_update
 
   step "Wait for initial blocks"
   wait_height 3
@@ -215,4 +322,3 @@ main() {
 }
 
 main "$@"
-

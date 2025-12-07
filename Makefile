@@ -218,9 +218,13 @@ staticcheck:
 	  printf "%s\n" "$$filtered"; \
 	  exit 1; \
 	fi; \
-	echo "ok: staticcheck (generated SA1019 filtered)"
+echo "ok: staticcheck (generated SA1019 filtered)"
 
 .PHONY: staticcheck
+
+static: staticcheck
+
+.PHONY: static
 
 ####################
 ###  Vulnerable  ###
@@ -293,6 +297,10 @@ vulncheck-json: vuln-tools
 	fi
 
 .PHONY: vuln-tools vulncheck vulncheck-json
+
+vuln: vulncheck
+
+.PHONY: vuln
 
 ###################
 ### Development ###

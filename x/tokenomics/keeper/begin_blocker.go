@@ -3,10 +3,12 @@ package keeper
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
@@ -14,6 +16,8 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 	if !k.HasBankKeeper() {
 		return
 	}
+
+	k.handleSlashEvents(ctx)
 
 	params := k.GetParams(ctx)
 	if params.InitialRewardPerBlockLumn == 0 || params.SupplyCapLumn == 0 {
@@ -98,5 +102,49 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 			}
 			return false
 		})
+	}
+}
+
+func (k Keeper) handleSlashEvents(ctx sdk.Context) {
+	if !k.HasDistributionKeeper() {
+		return
+	}
+
+	events := ctx.EventManager().Events()
+	if len(events) == 0 {
+		return
+	}
+
+	for _, ev := range events {
+		if ev.Type != slashingtypes.EventTypeSlash {
+			continue
+		}
+
+		var reason string
+		var burnedRaw string
+
+		for _, attr := range ev.Attributes {
+			key := string(attr.Key)
+			switch key {
+			case slashingtypes.AttributeKeyReason:
+				reason = string(attr.Value)
+			case slashingtypes.AttributeKeyBurnedCoins:
+				burnedRaw = string(attr.Value)
+			}
+		}
+
+		if reason != slashingtypes.AttributeValueDoubleSign {
+			continue
+		}
+		if strings.TrimSpace(burnedRaw) == "" {
+			continue
+		}
+
+		coins, err := sdk.ParseCoinsNormalized(burnedRaw)
+		if err != nil || !coins.IsAllPositive() {
+			continue
+		}
+
+		k.MintToCommunityPool(ctx, coins)
 	}
 }
