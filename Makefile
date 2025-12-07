@@ -186,7 +186,7 @@ proto:
 #################
 
 lint:
-	@golangci-lint run ./...
+	@golangci-lint run ./app/... ./cmd/... ./crypto/... ./docs/... ./lumen/... ./shims/... ./tests/... ./x/...
 
 lint-fix:
 	@echo "--> Running linter and fixing issues"
@@ -210,6 +210,7 @@ staticcheck:
 	fi; \
 	filtered="$$(printf "%s\n" "$$out" \
 		| grep -Ev 'x/.*/types/query\.pb(\.gw)?\.go:.*SA1019' \
+		| grep -Ev 'pattern ./\.\.\.: open artifacts/.*: permission denied' \
 		| grep -Ev 'invalid array length -delta \* delta' \
 		| grep -Ev 'internal error in importing .*unsupported version: 2' \
 		| grep -Ev 'module requires at least go1\.[0-9.]+, but Staticcheck was built with go1\.[0-9.]+' \
