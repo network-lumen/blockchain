@@ -469,3 +469,5 @@ tool (
 
 // Local shim for compatibility with newer Go toolchains.
 replace github.com/bytedance/sonic => ./shims/sonic
+
+replace github.com/cometbft/cometbft => github.com/cometbft/cometbft-sec-tachyon v0.38.21-0.20260113214209-9ac677707f85
