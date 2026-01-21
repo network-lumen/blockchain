@@ -235,6 +235,9 @@ echo "==> Starting node"
 		--rpc.laddr "tcp://${RPC_HOST}:${RPC_PORT}" \
 		--p2p.laddr "tcp://0.0.0.0:0" \
 		--rpc.pprof_laddr "" \
+		--api.enable=false \
+		--grpc.enable=false \
+		--grpc-web.enable=false \
 		--minimum-gas-prices 0ulmn >"$LOG_FILE" 2>&1
 ) &
 sleep 1
@@ -439,15 +442,23 @@ run_tx_ok "gov vote yes" \
 	--fees "$TX_FEES"
 
 echo "==> Additional staking flows (edit-validator / unbond / redelegate / cancel-unbond) should be PQC-safe"
+EDIT_MONIKER="pqc-txpaths-edited"
 run_tx_ok "staking edit-validator" \
 	tx staking edit-validator \
 	--from "$NEWVAL" \
-	--moniker "pqc-txpaths-edited" \
+	--new-moniker "$EDIT_MONIKER" \
 	--chain-id "$CHAIN_ID" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
 	--yes \
 	--fees "$TX_FEES"
+
+VAL_JSON=$("$BIN" q staking validator "$VALOPER_NEWVAL" --home "$HOME_DIR" -o json)
+ONCHAIN_MONIKER=$(echo "$VAL_JSON" | jq -r '.validator.description.moniker // .description.moniker // empty')
+if [ "$ONCHAIN_MONIKER" != "$EDIT_MONIKER" ]; then
+	echo "error: edit-validator did not update moniker (got=$ONCHAIN_MONIKER expected=$EDIT_MONIKER)" >&2
+	exit 1
+fi
 
 run_tx_ok "staking unbond" \
 	tx staking unbond "$VALOPER_BOOTSTRAP" 500000ulmn \

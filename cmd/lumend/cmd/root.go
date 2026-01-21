@@ -27,6 +27,7 @@ import (
 	distcli "github.com/cosmos/cosmos-sdk/x/distribution/client/cli"
 	disttypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+	stakingcli "github.com/cosmos/cosmos-sdk/x/staking/client/cli"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -516,15 +517,37 @@ func patchStakingEditValidatorCommand(stakingCmd *cobra.Command) {
 			return fmt.Errorf("pqc: missing from address")
 		}
 
-		moniker, _ := cmd.Flags().GetString("moniker")
-		identity, _ := cmd.Flags().GetString("identity")
-		website, _ := cmd.Flags().GetString("website")
-		security, _ := cmd.Flags().GetString("security-contact")
-		details, _ := cmd.Flags().GetString("details")
+		moniker := stakingtypes.DoNotModifyDesc
+		if cmd.Flags().Lookup(stakingcli.FlagEditMoniker) != nil {
+			moniker, _ = cmd.Flags().GetString(stakingcli.FlagEditMoniker)
+		} else if cmd.Flags().Lookup(stakingcli.FlagMoniker) != nil {
+			moniker, _ = cmd.Flags().GetString(stakingcli.FlagMoniker)
+		}
+
+		identity := stakingtypes.DoNotModifyDesc
+		if cmd.Flags().Lookup(stakingcli.FlagIdentity) != nil {
+			identity, _ = cmd.Flags().GetString(stakingcli.FlagIdentity)
+		}
+
+		website := stakingtypes.DoNotModifyDesc
+		if cmd.Flags().Lookup(stakingcli.FlagWebsite) != nil {
+			website, _ = cmd.Flags().GetString(stakingcli.FlagWebsite)
+		}
+
+		security := stakingtypes.DoNotModifyDesc
+		if cmd.Flags().Lookup(stakingcli.FlagSecurityContact) != nil {
+			security, _ = cmd.Flags().GetString(stakingcli.FlagSecurityContact)
+		}
+
+		details := stakingtypes.DoNotModifyDesc
+		if cmd.Flags().Lookup(stakingcli.FlagDetails) != nil {
+			details, _ = cmd.Flags().GetString(stakingcli.FlagDetails)
+		}
+
 		description := stakingtypes.NewDescription(moniker, identity, website, security, details)
 
 		var newRate *math.LegacyDec
-		if commissionRate, _ := cmd.Flags().GetString("commission-rate"); commissionRate != "" {
+		if commissionRate, _ := cmd.Flags().GetString(stakingcli.FlagCommissionRate); commissionRate != "" {
 			rate, err := math.LegacyNewDecFromStr(commissionRate)
 			if err != nil {
 				return fmt.Errorf("invalid new commission rate: %w", err)
@@ -533,7 +556,7 @@ func patchStakingEditValidatorCommand(stakingCmd *cobra.Command) {
 		}
 
 		var newMinSelfDelegation *math.Int
-		if minSelfDelegationStr, _ := cmd.Flags().GetString("min-self-delegation"); minSelfDelegationStr != "" {
+		if minSelfDelegationStr, _ := cmd.Flags().GetString(stakingcli.FlagMinSelfDelegation); minSelfDelegationStr != "" {
 			msd, ok := math.NewIntFromString(minSelfDelegationStr)
 			if !ok {
 				return fmt.Errorf("minimum self delegation must be a positive integer")
