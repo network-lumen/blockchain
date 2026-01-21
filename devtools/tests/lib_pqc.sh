@@ -174,9 +174,10 @@ pqc_wait_ready() {
 	for url in "$rpc/status" "$api/"; do
 		local ok=0
 		for _ in $(seq 1 120); do
-			if curl -sSf "$url" >/dev/null 2>&1; then
-				ok=1
-				break
+			if [ "$url" = "$api/" ]; then
+				curl -sS "$url" >/dev/null 2>&1 && ok=1 && break
+			else
+				curl -sSf "$url" >/dev/null 2>&1 && ok=1 && break
 			fi
 			sleep 0.5
 		done

@@ -20,4 +20,12 @@ var (
 	// Example composite key: {channel:"beta", platform:"linux-amd64", kind:"daemon"} → releaseID.
 	// Used to fetch the unique tuple without scanning every stored release.
 	ByTripleKey = collections.NewPrefix("release/by_cpk")
+
+	// Escrow and expiry state for strict release lifecycle hardening.
+	EscrowAmountKey    = collections.NewPrefix("release/escrow_amount")
+	EscrowPublisherKey = collections.NewPrefix("release/escrow_publisher")
+	ExpiryByIDKey      = collections.NewPrefix("release/expiry_by_id")
+	ExpiryQueueKey     = collections.NewPrefix("release/expiry_queue")
+	StateVersionKey    = collections.NewPrefix("release/state_version")
+	ExpiryTTLKey       = collections.NewPrefix("release/expiry_ttl")
 )

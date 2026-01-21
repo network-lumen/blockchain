@@ -12,6 +12,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 
 	"lumen/x/release/keeper"
 	"lumen/x/release/types"
@@ -36,8 +37,9 @@ type ModuleInputs struct {
 	Cdc          codec.Codec
 	AddressCodec address.Codec
 
-	AuthKeeper types.AuthKeeper
-	BankKeeper bankkeeper.Keeper
+	AuthKeeper         types.AuthKeeper
+	BankKeeper         bankkeeper.Keeper
+	DistributionKeeper distrkeeper.Keeper
 }
 
 type ModuleOutputs struct {
@@ -59,6 +61,7 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 		authority,
 	)
 	k.SetBankKeeper(bankAdapter{bk: in.BankKeeper})
+	k.SetDistributionKeeper(distributionAdapter{dk: in.DistributionKeeper})
 	m := NewAppModule(in.Cdc, k, in.AuthKeeper, bankAdapter{bk: in.BankKeeper})
 
 	return ModuleOutputs{ReleaseKeeper: k, Module: m}
@@ -81,4 +84,10 @@ func (b bankAdapter) SendCoinsFromModuleToModule(ctx context.Context, from, to s
 }
 func (b bankAdapter) SendCoins(ctx context.Context, from, to sdk.AccAddress, amt sdk.Coins) error {
 	return b.bk.SendCoins(ctx, from, to, amt)
+}
+
+type distributionAdapter struct{ dk distrkeeper.Keeper }
+
+func (d distributionAdapter) FundCommunityPool(ctx context.Context, amount sdk.Coins, depositor sdk.AccAddress) error {
+	return d.dk.FundCommunityPool(ctx, amount, depositor)
 }
