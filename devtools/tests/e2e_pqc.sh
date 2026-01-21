@@ -17,15 +17,27 @@ BIN=${BIN:-"$DIR/build/lumend"}
 : "${LUMEN_BUILD_TAGS:=dev}"
 CHAIN_ID=${CHAIN_ID:-pqc-e2e}
 RPC_HOST=${RPC_HOST:-127.0.0.1}
-RPC_PORT=${RPC_PORT:-26657}
 API_HOST=${API_HOST:-127.0.0.1}
-API_PORT=${API_PORT:-1317}
 GRPC_HOST=${GRPC_HOST:-127.0.0.1}
-GRPC_PORT=${GRPC_PORT:-9090}
+
+: "${DISABLE_PPROF:=1}"
+: "${GRPC_WEB_ENABLE:=0}"
+
+# Avoid port collisions when running locally by defaulting to a random base port.
+if [ -z "${RANDOM_PORT_BASE:-}" ]; then
+	RANDOM_PORT_BASE=$(( (RANDOM % 1000) + 30000 ))
+fi
+: "${RPC_PORT:=$RANDOM_PORT_BASE}"
+: "${API_PORT:=$((RANDOM_PORT_BASE + 60))}"
+: "${GRPC_PORT:=$((RANDOM_PORT_BASE + 120))}"
+: "${P2P_PORT:=$((RANDOM_PORT_BASE + 180))}"
+
 RPC="http://${RPC_HOST}:${RPC_PORT}"
 API="http://${API_HOST}:${API_PORT}"
+RPC_LADDR="${RPC_LADDR:-tcp://${RPC_HOST}:${RPC_PORT}}"
+API_ADDR="${API_ADDR:-tcp://${API_HOST}:${API_PORT}}"
+GRPC_ADDR="${GRPC_ADDR:-${GRPC_HOST}:${GRPC_PORT}}"
 P2P_HOST="${P2P_HOST:-0.0.0.0}"
-P2P_PORT="${P2P_PORT:-26656}"
 P2P_LADDR="${P2P_LADDR:-tcp://${P2P_HOST}:${P2P_PORT}}"
 SCHEME=${SCHEME:-dilithium3}
 AMOUNT=${AMOUNT:-1000ulmn}
@@ -103,14 +115,14 @@ keys_add_quiet() {
 
 wait_http() {
 	local url="$1"
-	for _ in $(seq 1 120); do
-		# Treat any successful TCP/HTTP response (including 404) as "service up".
-		# We only care that the port is open and the process is listening.
-		curl -sS "$url" >/dev/null 2>&1 && return 0
+	local tries="${WAIT_HTTP_TRIES:-240}"
+	for _ in $(seq 1 "$tries"); do
+		# Any 2xx response means the service is up and responding.
+		curl --connect-timeout 1 --max-time 2 -sSf "$url" >/dev/null 2>&1 && return 0
 		sleep 0.5
 	done
 	echo "error: timeout waiting for $url" >&2
-	head -n 60 "$LOG_FILE" 2>/dev/null >&2 || true
+	tail -n 120 "$LOG_FILE" 2>/dev/null >&2 || true
 	return 1
 }
 
@@ -182,7 +194,11 @@ import_and_link_local() {
 		--home "$HOME_DIR" >/dev/null
 }
 
-if [ "${1:-}" = "--skip-build" ]; then SKIP_BUILD=1; shift; else SKIP_BUILD=0; fi
+SKIP_BUILD=${SKIP_BUILD:-0}
+if [ "${1:-}" = "--skip-build" ]; then
+	SKIP_BUILD=1
+	shift
+fi
 if [ "$SKIP_BUILD" != "1" ]; then
 	build_cmd=(go build -trimpath -ldflags "-s -w")
 	if [ -n "$LUMEN_BUILD_TAGS" ]; then
@@ -246,17 +262,29 @@ fi
 
 echo "==> Starting node"
 pkill -f "lumend start" >/dev/null 2>&1 || true
+grpc_web_flag=(--grpc-web.enable=false)
+if [ "${GRPC_WEB_ENABLE:-0}" = "1" ]; then
+	grpc_web_flag=(--grpc-web.enable)
+fi
+extra_flags=()
+if [ "${DISABLE_PPROF:-0}" = "1" ]; then
+	extra_flags+=(--rpc.pprof_laddr "")
+fi
 (
 	"$BIN" start \
 		--home "$HOME_DIR" \
-		--rpc.laddr "tcp://${RPC_HOST}:${RPC_PORT}" \
+		--rpc.laddr "$RPC_LADDR" \
 		--p2p.laddr "$P2P_LADDR" \
 		--api.enable \
-		--api.address "tcp://${API_HOST}:${API_PORT}" \
-		--grpc.address "${GRPC_HOST}:${GRPC_PORT}" \
+		--api.address "$API_ADDR" \
+		--grpc.address "$GRPC_ADDR" \
+		"${grpc_web_flag[@]}" \
+		"${extra_flags[@]}" \
 		--minimum-gas-prices 0ulmn >"$LOG_FILE" 2>&1
 ) &
 sleep 1
+echo "Node log (head):"
+head -n 40 "$LOG_FILE" 2>/dev/null || true
 wait_http "$RPC/status"
 wait_http "$API/"
 wait_ready 2
