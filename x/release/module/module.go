@@ -143,6 +143,6 @@ func (am AppModule) BeginBlock(_ context.Context) error {
 	return nil
 }
 
-func (am AppModule) EndBlock(_ context.Context) error {
-	return nil
+func (am AppModule) EndBlock(ctx context.Context) error {
+	return am.keeper.EndBlocker(ctx)
 }

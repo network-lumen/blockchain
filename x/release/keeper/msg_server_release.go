@@ -97,39 +97,46 @@ func (m msgServer) PublishRelease(ctx context.Context, msg *types.MsgPublishRele
 	if !containsString(params.AllowedPublishers, msg.Creator) {
 		return nil, errorsmod.Wrap(types.ErrUnauthorizedPublisher, "creator not allowed")
 	}
-	if _, err := m.addressCodec.StringToBytes(msg.Creator); err != nil {
+	creatorBz, err := m.addressCodec.StringToBytes(msg.Creator)
+	if err != nil {
 		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
 	}
+	creatorAddr := sdk.AccAddress(creatorBz)
 
 	r := msg.Release
 	if err := validateReleaseForPublish(params, &r); err != nil {
 		return nil, errorsmod.Wrapf(types.ErrInvalidRequest, "%s", err.Error())
 	}
 
-	// fee escrow will be added when params + proto updated
-
 	last, _ := m.ReleaseSeq.Peek(ctx)
 	nextID := last + 1
-	if err := m.ReleaseSeq.Set(ctx, nextID); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "seq set failed")
-	}
 
 	r.Id = nextID
 	r.Publisher = msg.Creator
 	r.CreatedAt = m.nowUnix(ctx)
 	r.Yanked = false
+	r.Status = types.Release_PENDING
+	r.EmergencyOk = false
+	r.EmergencyUntil = 0
+
+	if err := m.chargeEscrow(ctx, nextID, creatorAddr, params.PublishFeeUlmn); err != nil {
+		return nil, err
+	}
+	if params.MaxPendingTtl > 0 {
+		if err := m.enqueueExpiry(ctx, nextID, r.CreatedAt+int64(params.MaxPendingTtl)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := m.ReleaseSeq.Set(ctx, nextID); err != nil {
+		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "seq set failed")
+	}
 
 	if err := m.Release.Set(ctx, nextID, r); err != nil {
 		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "store release failed")
 	}
 	if err := m.ByVersion.Set(ctx, r.Version, nextID); err != nil {
 		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "index byVersion failed")
-	}
-	for _, a := range r.Artifacts {
-		k := tripleKey(r.Channel, a.Platform, a.Kind)
-		if err := m.ByTriple.Set(ctx, k, nextID); err != nil {
-			return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "index byTriple failed")
-		}
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
@@ -161,45 +168,25 @@ func (m msgServer) YankRelease(ctx context.Context, msg *types.MsgYankRelease) (
 		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, err.Error())
 	}
 	if r.Yanked {
+		// Idempotent: ensure escrow is not left behind.
+		_ = m.forfeitEscrowToCommunityPool(ctx, r.Id)
 		return &types.MsgYankReleaseResponse{}, nil
 	}
-	r.Yanked = true
-	if err := m.Release.Set(ctx, r.Id, r); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "update release failed")
+	if r.Status != types.Release_PENDING {
+		return nil, errorsmod.Wrap(types.ErrNotPending, "release must be pending to yank")
 	}
 
-	for _, a := range r.Artifacts {
-		triple := tripleKey(r.Channel, a.Platform, a.Kind)
-		var latest uint64
-		last, _ := m.ReleaseSeq.Peek(ctx)
-		for id := last; id >= 1; id-- {
-			rr, err := m.Release.Get(ctx, id)
-			if err != nil {
-				continue
-			}
-			if rr.Channel != r.Channel || rr.Yanked {
-				continue
-			}
-			matched := false
-			for _, aa := range rr.Artifacts {
-				if strings.EqualFold(aa.Platform, a.Platform) && strings.EqualFold(aa.Kind, a.Kind) {
-					matched = true
-					break
-				}
-			}
-			if matched {
-				latest = id
-				break
-			}
-			if id == 1 {
-				break
-			}
-		}
-		if latest == 0 {
-			_ = m.ByTriple.Remove(ctx, triple)
-		} else {
-			_ = m.ByTriple.Set(ctx, triple, latest)
-		}
+	if err := m.dequeueExpiry(ctx, r.Id); err != nil {
+		return nil, err
+	}
+	if err := m.forfeitEscrowToCommunityPool(ctx, r.Id); err != nil {
+		return nil, err
+	}
+	r.Yanked = true
+	r.EmergencyOk = false
+	r.EmergencyUntil = 0
+	if err := m.Release.Set(ctx, r.Id, r); err != nil {
+		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "update release failed")
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
@@ -226,6 +213,12 @@ func (m msgServer) MirrorRelease(ctx context.Context, msg *types.MsgMirrorReleas
 			return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "release %d not found", msg.Id)
 		}
 		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, err.Error())
+	}
+	if r.Yanked {
+		return nil, errorsmod.Wrap(types.ErrNotAuthorized, "release is yanked")
+	}
+	if r.Status != types.Release_PENDING {
+		return nil, errorsmod.Wrap(types.ErrNotPending, "release must be pending to mirror")
 	}
 	if int(msg.ArtifactIndex) < 0 || int(msg.ArtifactIndex) >= len(r.Artifacts) {
 		return nil, errorsmod.Wrapf(types.ErrInvalidRequest, "artifact_index out of range")

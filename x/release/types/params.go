@@ -9,14 +9,24 @@ func NewParams(
 	maxURLsPerArt uint32,
 	maxSigsPerArt uint32,
 	maxNotesLen uint32,
+	publishFeeUlmn uint64,
+	maxPendingTTL uint64,
+	daoPublishers []string,
+	rejectRefundBps uint32,
+	requireValidationForStable bool,
 ) Params {
 	return Params{
-		AllowedPublishers: allowedPublishers,
-		Channels:          channels,
-		MaxArtifacts:      maxArtifacts,
-		MaxUrlsPerArt:     maxURLsPerArt,
-		MaxSigsPerArt:     maxSigsPerArt,
-		MaxNotesLen:       maxNotesLen,
+		AllowedPublishers:          allowedPublishers,
+		Channels:                   channels,
+		MaxArtifacts:               maxArtifacts,
+		MaxUrlsPerArt:              maxURLsPerArt,
+		MaxSigsPerArt:              maxSigsPerArt,
+		MaxNotesLen:                maxNotesLen,
+		PublishFeeUlmn:             publishFeeUlmn,
+		MaxPendingTtl:              maxPendingTTL,
+		DaoPublishers:              daoPublishers,
+		RejectRefundBps:            rejectRefundBps,
+		RequireValidationForStable: requireValidationForStable,
 	}
 }
 
@@ -28,6 +38,11 @@ func DefaultParams() Params {
 		8,                          // MaxURLsPerArt
 		4,                          // MaxSigsPerArt
 		512,                        // MaxNotesLen
+		0,                          // PublishFeeUlmn
+		0,                          // MaxPendingTtl (expiry disabled)
+		[]string{},                 // DaoPublishers (deprecated/ignored)
+		0,                          // RejectRefundBps
+		false,                      // RequireValidationForStable
 	)
 }
 
@@ -56,6 +71,9 @@ func (p Params) Validate() error {
 	}
 	if p.MaxNotesLen == 0 {
 		return fmt.Errorf("max_notes_len must be > 0")
+	}
+	if p.RejectRefundBps > 10000 {
+		return fmt.Errorf("reject_refund_bps must be <= 10000")
 	}
 	return nil
 }

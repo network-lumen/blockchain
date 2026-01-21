@@ -22,6 +22,10 @@ type BankKeeper interface {
 	SendCoinsFromModuleToModule(ctx context.Context, senderModule string, recipientModule string, amt sdk.Coins) error
 }
 
+type DistributionKeeper interface {
+	FundCommunityPool(ctx context.Context, amount sdk.Coins, depositor sdk.AccAddress) error
+}
+
 type ParamSubspace interface {
 	Get(context.Context, []byte, interface{})
 	Set(context.Context, []byte, interface{})

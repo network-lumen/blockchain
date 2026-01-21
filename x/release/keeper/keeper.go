@@ -28,7 +28,18 @@ type Keeper struct {
 	ByVersion  collections.Map[string, uint64]
 	ByTriple   collections.Map[string, uint64]
 
-	bank types.BankKeeper
+	bank  types.BankKeeper
+	distr types.DistributionKeeper
+
+	// Hardening state.
+	StateVersion collections.Item[uint64]
+	ExpiryTTL    collections.Item[uint64]
+
+	EscrowAmount    collections.Map[uint64, uint64]
+	EscrowPublisher collections.Map[uint64, string]
+
+	ExpiryByID  collections.Map[uint64, int64]
+	ExpiryQueue collections.Map[collections.Pair[int64, uint64], bool]
 }
 
 func NewKeeper(
@@ -54,6 +65,21 @@ func NewKeeper(
 		ReleaseSeq: collections.NewSequence(sb, types.ReleaseSeqKey, "release_seq"),
 		ByVersion:  collections.NewMap(sb, types.ByVersionKey, "by_version", collections.StringKey, collections.Uint64Value),
 		ByTriple:   collections.NewMap(sb, types.ByTripleKey, "by_cpk", collections.StringKey, collections.Uint64Value),
+
+		StateVersion: collections.NewItem(sb, types.StateVersionKey, "state_version", collections.Uint64Value),
+		ExpiryTTL:    collections.NewItem(sb, types.ExpiryTTLKey, "expiry_ttl", collections.Uint64Value),
+
+		EscrowAmount:    collections.NewMap(sb, types.EscrowAmountKey, "escrow_amount", collections.Uint64Key, collections.Uint64Value),
+		EscrowPublisher: collections.NewMap(sb, types.EscrowPublisherKey, "escrow_publisher", collections.Uint64Key, collections.StringValue),
+
+		ExpiryByID: collections.NewMap(sb, types.ExpiryByIDKey, "expiry_by_id", collections.Uint64Key, collections.Int64Value),
+		ExpiryQueue: collections.NewMap(
+			sb,
+			types.ExpiryQueueKey,
+			"expiry_queue",
+			collections.PairKeyCodec(collections.Int64Key, collections.Uint64Key),
+			collections.BoolValue,
+		),
 	}
 
 	schema, err := sb.Build()
@@ -88,3 +114,5 @@ func (k Keeper) nowUnix(ctx context.Context) int64 {
 }
 
 func (k *Keeper) SetBankKeeper(b types.BankKeeper) { k.bank = b }
+
+func (k *Keeper) SetDistributionKeeper(d types.DistributionKeeper) { k.distr = d }

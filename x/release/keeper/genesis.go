@@ -19,8 +19,11 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 		if err := k.ByVersion.Set(ctx, r.Version, r.Id); err != nil {
 			return err
 		}
-		if !r.Yanked {
+		if !r.Yanked && r.Status == types.Release_VALIDATED {
 			for _, a := range r.Artifacts {
+				if a == nil {
+					continue
+				}
 				if err := k.ByTriple.Set(ctx, tripleKey(r.Channel, a.Platform, a.Kind), r.Id); err != nil {
 					return err
 				}

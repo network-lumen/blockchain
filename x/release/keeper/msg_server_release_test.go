@@ -2,6 +2,7 @@ package keeper_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"lumen/app"
 	"lumen/x/release/keeper"
@@ -30,6 +32,8 @@ type releaseFixture struct {
 	authority string
 	addressBz []byte
 	addrCodec coreaddress.Codec
+	bank      *bankMock
+	distr     *distributionMock
 }
 
 func newReleaseFixture(t *testing.T) *releaseFixture {
@@ -51,6 +55,10 @@ func newReleaseFixture(t *testing.T) *releaseFixture {
 
 	k := keeper.NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc, addrCodec, authorityBz)
 	require.NoError(t, k.SetParams(ctx, types.DefaultParams()))
+	bank := newBankMock()
+	distr := &distributionMock{bank: bank}
+	k.SetBankKeeper(bank)
+	k.SetDistributionKeeper(distr)
 
 	return &releaseFixture{
 		ctx:       ctx,
@@ -59,6 +67,8 @@ func newReleaseFixture(t *testing.T) *releaseFixture {
 		authority: authorityStr,
 		addressBz: authorityBz,
 		addrCodec: addrCodec,
+		bank:      bank,
+		distr:     distr,
 	}
 }
 
@@ -70,8 +80,70 @@ func (f *releaseFixture) storeRelease(t *testing.T, id uint64) {
 		Channel:   "beta",
 		Artifacts: []*types.Artifact{{Platform: "linux", Kind: "daemon", Sha256Hex: strings.Repeat("a", 64), Urls: []string{"https://example.com/bin"}}},
 		Status:    types.Release_PENDING,
+		CreatedAt: f.ctx.BlockTime().Unix(),
 	}
 	require.NoError(t, f.keeper.Release.Set(f.ctx, id, release))
+}
+
+type bankMock struct {
+	balances map[string]sdk.Coins
+}
+
+func newBankMock() *bankMock { return &bankMock{balances: map[string]sdk.Coins{}} }
+
+func (b *bankMock) SpendableCoins(_ context.Context, addr sdk.AccAddress) sdk.Coins {
+	return b.balances[addr.String()]
+}
+
+func (b *bankMock) SendCoins(ctx context.Context, fromAddr, toAddr sdk.AccAddress, amt sdk.Coins) error {
+	return b.send(ctx, fromAddr.String(), toAddr.String(), amt)
+}
+
+func (b *bankMock) SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error {
+	return b.send(ctx, senderAddr.String(), moduleKey(recipientModule), amt)
+}
+
+func (b *bankMock) SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error {
+	return b.send(ctx, moduleKey(senderModule), recipientAddr.String(), amt)
+}
+
+func (b *bankMock) SendCoinsFromModuleToModule(ctx context.Context, senderModule, recipientModule string, amt sdk.Coins) error {
+	return b.send(ctx, moduleKey(senderModule), moduleKey(recipientModule), amt)
+}
+
+func moduleKey(module string) string { return authtypes.NewModuleAddress(module).String() }
+
+func (b *bankMock) send(_ context.Context, fromKey, toKey string, amt sdk.Coins) error {
+	if amt.IsZero() {
+		return nil
+	}
+	fromBal := b.balances[fromKey]
+	if !fromBal.IsAllGTE(amt) {
+		return fmt.Errorf("insufficient funds: %s < %s", fromBal, amt)
+	}
+	b.balances[fromKey] = fromBal.Sub(amt...)
+	b.balances[toKey] = b.balances[toKey].Add(amt...)
+	return nil
+}
+
+func (b *bankMock) setBalance(addr string, coins sdk.Coins) { b.balances[addr] = coins }
+
+type distributionMock struct {
+	bank          *bankMock
+	communityPool sdk.Coins
+}
+
+func (d *distributionMock) FundCommunityPool(_ context.Context, amount sdk.Coins, depositor sdk.AccAddress) error {
+	// Simulate a real community pool credit by removing funds from the depositor
+	// and tracking them in the fee pool accumulator.
+	if amount.IsZero() {
+		return nil
+	}
+	if err := d.bank.send(context.Background(), depositor.String(), "community_pool", amount); err != nil {
+		return err
+	}
+	d.communityPool = d.communityPool.Add(amount...)
+	return nil
 }
 
 func TestMsgServerValidateRelease(t *testing.T) {
@@ -88,12 +160,12 @@ func TestMsgServerValidateRelease(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, types.Release_VALIDATED, release.Status)
 
-	// idempotent
+	// PENDING-only: second validation must fail.
 	_, err = f.msgSrv.ValidateRelease(f.ctx, &types.MsgValidateRelease{
 		Authority: f.authority,
 		Id:        1,
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func TestMsgServerValidateReleaseUnauthorized(t *testing.T) {
@@ -124,6 +196,13 @@ func TestMsgServerRejectRelease(t *testing.T) {
 	require.False(t, release.EmergencyOk)
 	require.Zero(t, release.EmergencyUntil)
 
+	// PENDING-only: second rejection must fail.
+	_, err = f.msgSrv.RejectRelease(f.ctx, &types.MsgRejectRelease{
+		Authority: f.authority,
+		Id:        1,
+	})
+	require.Error(t, err)
+
 	other := sdk.AccAddress(bytes.Repeat([]byte{0x02}, 20)).String()
 	_, err = f.msgSrv.RejectRelease(f.ctx, &types.MsgRejectRelease{
 		Authority: other,
@@ -141,31 +220,6 @@ func TestMsgServerSetEmergency(t *testing.T) {
 		Id:           1,
 		EmergencyOk:  true,
 		EmergencyTtl: 30,
-	})
-	require.NoError(t, err)
-
-	release, err := f.keeper.Release.Get(f.ctx, 1)
-	require.NoError(t, err)
-	require.True(t, release.EmergencyOk)
-	require.Equal(t, f.ctx.BlockTime().Unix()+30, release.EmergencyUntil)
-
-	_, err = f.msgSrv.SetEmergency(f.ctx, &types.MsgSetEmergency{
-		Creator:     f.authority,
-		Id:          1,
-		EmergencyOk: false,
-	})
-	require.NoError(t, err)
-
-	release, err = f.keeper.Release.Get(f.ctx, 1)
-	require.NoError(t, err)
-	require.False(t, release.EmergencyOk)
-	require.Zero(t, release.EmergencyUntil)
-
-	other := sdk.AccAddress(bytes.Repeat([]byte{0x03}, 20)).String()
-	_, err = f.msgSrv.SetEmergency(f.ctx, &types.MsgSetEmergency{
-		Creator:     other,
-		Id:          1,
-		EmergencyOk: true,
 	})
 	require.Error(t, err)
 }

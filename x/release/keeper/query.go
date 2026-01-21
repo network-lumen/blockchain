@@ -84,6 +84,11 @@ func (q queryServer) Latest(ctx context.Context, req *types.QueryLatestRequest) 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
+	// Defense-in-depth: even if the index is polluted (e.g. pre-upgrade state),
+	// Latest must never return a non-validated or yanked release.
+	if r.Yanked || r.Status != types.Release_VALIDATED {
+		return nil, status.Error(codes.NotFound, "not found")
+	}
 	rr := r
 	return &types.QueryReleaseResponse{Release: &rr}, nil
 }

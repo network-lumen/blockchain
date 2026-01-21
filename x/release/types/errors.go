@@ -10,4 +10,5 @@ var (
 	ErrInvalidRequest        = errors.Register(ModuleName, 1102, "invalid request")
 	ErrNotPending            = errors.Register(ModuleName, 1103, "release not in pending state")
 	ErrNotAuthorized         = errors.Register(ModuleName, 1104, "not authorized")
+	ErrDisabled              = errors.Register(ModuleName, 1105, "disabled")
 )
