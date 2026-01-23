@@ -38,7 +38,7 @@ require (
 	cosmossdk.io/x/tx v0.14.0
 	cosmossdk.io/x/upgrade v0.2.0
 	github.com/cloudflare/circl v1.6.1
-	github.com/cometbft/cometbft v0.38.19
+	github.com/cometbft/cometbft v0.38.21
 	github.com/cosmos/cosmos-db v1.1.1
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.53.3
@@ -469,5 +469,3 @@ tool (
 
 // Local shim for compatibility with newer Go toolchains.
 replace github.com/bytedance/sonic => ./shims/sonic
-
-replace github.com/cometbft/cometbft => github.com/cometbft/cometbft-sec-tachyon v0.38.21-0.20260113214209-9ac677707f85
