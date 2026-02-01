@@ -176,7 +176,7 @@ var (
 			{
 				Name: upgradetypes.ModuleName,
 				Config: appconfig.WrapAny(&upgrademodulev1.Module{
-					Authority: immutableAuthority,
+					Authority: mustModuleAuthority(govtypes.ModuleName),
 				}),
 			},
 			{

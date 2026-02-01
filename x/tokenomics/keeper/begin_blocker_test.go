@@ -130,16 +130,16 @@ type fixture struct {
 func initFixture(t *testing.T) *fixture {
 	t.Helper()
 
+	cfg := sdk.GetConfig()
+	cfg.SetBech32PrefixForAccount("lmn", "lmnpub")
+	cfg.SetBech32PrefixForValidator("lmnvaloper", "lmnvaloperpub")
+	cfg.SetBech32PrefixForConsensusNode("lmnvalcons", "lmnvalconspub")
+
 	encCfg := moduletestutil.MakeTestEncodingConfig(module.AppModule{})
 	addrCodec := addresscodec.NewBech32Codec(sdk.GetConfig().GetBech32AccountAddrPrefix())
 	storeKey := storetypes.NewKVStoreKey(types.StoreKey)
 	storeService := runtime.NewKVStoreService(storeKey)
 	sdkCtx := testutil.DefaultContextWithDB(t, storeKey, storetypes.NewTransientStoreKey("transient_test")).Ctx
-
-	cfg := sdk.GetConfig()
-	cfg.SetBech32PrefixForAccount("lmn", "lmnpub")
-	cfg.SetBech32PrefixForValidator("lmnvaloper", "lmnvaloperpub")
-	cfg.SetBech32PrefixForConsensusNode("lmnvalcons", "lmnvalconspub")
 
 	authority := authtypes.NewModuleAddress(types.GovModuleName)
 

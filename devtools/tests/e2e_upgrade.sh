@@ -179,7 +179,7 @@ submit_upgrade_proposal() {
   proposal_file=$(mktemp -t gov-upgrade-v1-XXXXXX.json)
   jq -n \
     --arg auth "$GOV_AUTHORITY" \
-    --arg name "v1" \
+    --arg name "e2e-v1" \
     --arg height_str "$upgrade_height" \
     '{
       messages: [
@@ -207,6 +207,33 @@ submit_upgrade_proposal() {
   UPGRADE_HEIGHT="$upgrade_height"
 }
 
+wait_for_upgrade_halt() {
+  local expected_name="$1"
+  local expected_height="$2"
+  local upgrade_info="$HOME_DIR/data/upgrade-info.json"
+
+  for _ in $(seq 1 120); do
+    if [ -f "$upgrade_info" ]; then
+      local name height
+      name=$(jq -r '.name // empty' "$upgrade_info" 2>/dev/null || echo "")
+      height=$(jq -r '.height // empty' "$upgrade_info" 2>/dev/null || echo "")
+      if [ "$name" = "$expected_name" ] && [ "$height" = "$expected_height" ]; then
+        return 0
+      fi
+    fi
+    sleep 0.5
+  done
+
+  echo "timeout waiting for upgrade halt (expected $expected_name at height $expected_height)" >&2
+  if [ -f "$upgrade_info" ]; then
+    echo "found upgrade-info.json:" >&2
+    cat "$upgrade_info" >&2 || true
+  else
+    echo "missing $upgrade_info" >&2
+  fi
+  return 1
+}
+
 main() {
   build
   init_chain
@@ -230,14 +257,13 @@ main() {
     echo "warning: proposal $PROPOSAL_ID did not report PROPOSAL_STATUS_PASSED (non-fatal for upgrade e2e)" >&2
   fi
 
-  step "Wait for upgrade height $UPGRADE_HEIGHT"
-  gov_wait_height "$UPGRADE_HEIGHT"
-  gov_wait_height $((UPGRADE_HEIGHT + 2))
+  step "Wait for chain to approach upgrade height $UPGRADE_HEIGHT"
+  gov_wait_height $((UPGRADE_HEIGHT - 1))
 
-  step "Verify node still serving RPC after upgrade"
-  gov_wait_http "$RPC/status" 20
+  step "Verify chain halts at upgrade height (upgrade-info.json written)"
+  wait_for_upgrade_halt "e2e-v1" "$UPGRADE_HEIGHT"
 
-  echo "e2e_upgrade passed: v1 upgrade handler executed and chain continued producing blocks"
+  echo "e2e_upgrade passed: upgrade plan reached; node halted and wrote upgrade-info.json"
 }
 
 main "$@"

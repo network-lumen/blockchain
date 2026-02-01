@@ -284,6 +284,82 @@ slashing_test_downtime_params_update() {
   fi
 }
 
+slashing_test_liveness_params_update() {
+  step "Resolve gov authority for slashing liveness params"
+  GOV_AUTHORITY=$(gov_resolve_authority)
+  if [ -z "$GOV_AUTHORITY" ] || [ "$GOV_AUTHORITY" = "null" ]; then
+    echo "failed to resolve gov authority address" >&2
+    exit 1
+  fi
+
+  step "Query initial slashing liveness params"
+  local before_json before_window before_min
+  before_json=$(slashing_query_params)
+  before_window=$(echo "$before_json" | jq -r '.signed_blocks_window')
+  before_min=$(echo "$before_json" | jq -r '.min_signed_per_window')
+
+  step "Gov: propose invalid liveness params (window=0)"
+  local bad_msg bad_pid bad_json
+  bad_msg=$(jq -cn --arg auth "$GOV_AUTHORITY" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingLivenessParams", "authority":$auth, "signed_blocks_window":"0", "min_signed_per_window":"0.9"}')
+  gov_submit_single_msg_proposal "$bad_msg" "Bad slashing liveness params" "should fail" "10000000ulmn" || true
+  bad_pid="$GOV_LAST_PROPOSAL_ID"
+  if [ -n "$bad_pid" ]; then
+    gov_cast_vote "$bad_pid" validator yes
+    gov_wait_status "$bad_pid" "PROPOSAL_STATUS_FAILED"
+  fi
+  bad_json=$(slashing_query_params)
+  if [ "$(echo "$bad_json" | jq -r '.signed_blocks_window')" != "$before_window" ]; then
+    echo "signed_blocks_window changed after invalid proposal" >&2
+    exit 1
+  fi
+  if [ "$(echo "$bad_json" | jq -r '.min_signed_per_window')" != "$before_min" ]; then
+    echo "min_signed_per_window changed after invalid proposal" >&2
+    exit 1
+  fi
+
+  step "Gov: propose liveness params update with wrong authority"
+  local wrong_msg wrong_pid wrong_json
+  wrong_msg=$(jq -cn --arg auth "$VAL_ADDR" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingLivenessParams", "authority":$auth, "signed_blocks_window":"200", "min_signed_per_window":"0.9"}')
+  gov_submit_single_msg_proposal "$wrong_msg" "Wrong authority slashing liveness" "should fail" "10000000ulmn" || true
+  wrong_pid="$GOV_LAST_PROPOSAL_ID"
+  if [ -n "$wrong_pid" ]; then
+    gov_cast_vote "$wrong_pid" validator yes
+    gov_wait_status "$wrong_pid" "PROPOSAL_STATUS_FAILED"
+  fi
+  wrong_json=$(slashing_query_params)
+  if [ "$(echo "$wrong_json" | jq -r '.signed_blocks_window')" != "$before_window" ]; then
+    echo "signed_blocks_window changed after wrong-authority proposal" >&2
+    exit 1
+  fi
+  if [ "$(echo "$wrong_json" | jq -r '.min_signed_per_window')" != "$before_min" ]; then
+    echo "min_signed_per_window changed after wrong-authority proposal" >&2
+    exit 1
+  fi
+
+  step "Gov: propose valid liveness params update (window=200 / min=0.9)"
+  local good_msg good_pid final_json final_window final_min
+  good_msg=$(jq -cn --arg auth "$GOV_AUTHORITY" \
+    '{"@type":"/lumen.tokenomics.v1.MsgUpdateSlashingLivenessParams", "authority":$auth, "signed_blocks_window":"200", "min_signed_per_window":"0.9"}')
+  gov_submit_single_msg_proposal "$good_msg" "Update slashing liveness params" "set window=200 and min_signed=0.9" "10000000ulmn"
+  good_pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$good_pid" validator yes
+  gov_wait_status "$good_pid" "PROPOSAL_STATUS_PASSED"
+
+  final_json=$(slashing_query_params)
+  final_window=$(echo "$final_json" | jq -r '.signed_blocks_window')
+  final_min=$(echo "$final_json" | jq -r '.min_signed_per_window')
+  if [ "$final_window" != "200" ]; then
+    echo "expected signed_blocks_window=200, got $final_window" >&2
+    exit 1
+  fi
+  if [ "$final_min" != "0.900000000000000000" ]; then
+    echo "expected min_signed_per_window=0.900000000000000000, got $final_min" >&2
+    exit 1
+  fi
+}
+
 main() {
   build
   init_chain
@@ -294,6 +370,7 @@ main() {
   setup_pqc_signer signer
 
   slashing_test_downtime_params_update
+  slashing_test_liveness_params_update
 
   step "Wait for initial blocks"
   wait_height 3
@@ -318,7 +395,7 @@ main() {
   step "Send PQC-protected tx after downtime"
   send_pqc_tx "$VAL_ADDR" "2000ulmn"
 
-  echo "e2e_slashing passed: downtime did not halt chain and PQC txs succeed"
+  echo "e2e_slashing passed: governance slashing params updated; downtime did not halt chain and PQC txs succeed"
 }
 
 main "$@"
