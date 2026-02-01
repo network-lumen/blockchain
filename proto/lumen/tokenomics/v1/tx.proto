@@ -15,6 +15,7 @@ service Msg {
 
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
   rpc UpdateSlashingDowntimeParams(MsgUpdateSlashingDowntimeParams) returns (MsgUpdateSlashingDowntimeParamsResponse);
+  rpc UpdateSlashingLivenessParams(MsgUpdateSlashingLivenessParams) returns (MsgUpdateSlashingLivenessParamsResponse);
 }
 
 message MsgUpdateParams {
@@ -43,3 +44,19 @@ message MsgUpdateSlashingDowntimeParams {
 }
 
 message MsgUpdateSlashingDowntimeParamsResponse {}
+
+message MsgUpdateSlashingLivenessParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "lumen/x/tokenomics/MsgUpdateSlashingLivenessParams";
+
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // signed_blocks_window is the number of recent blocks considered when tracking validator liveness.
+  int64 signed_blocks_window = 2;
+
+  // min_signed_per_window is the minimum signed block ratio required for a validator to be considered live,
+  // encoded as a decimal string, e.g. "0.95" for 95%.
+  string min_signed_per_window = 3;
+}
+
+message MsgUpdateSlashingLivenessParamsResponse {}

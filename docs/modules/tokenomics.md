@@ -9,8 +9,10 @@ to validators. All transactions are gasless—module fees and taxes fund validat
 ## Transactions (`lumend tx tokenomics …`)
 
 - `update-params` – Governance-only; sets the parameter set described below. Authority is the governance module address.
+- `update-slashing-downtime-params` – Governance-only; updates slashing downtime controls (jail duration + downtime slashing fraction).
+- `update-slashing-liveness-params` – Governance-only; updates slashing liveness controls (signed blocks window + minimum signed ratio).
 
-The module has no user-facing transactions beyond parameter updates.
+The module has no user-facing transactions beyond governance parameter updates.
 
 ## Parameters (`GET /lumen/tokenomics/v1/params`)
 
