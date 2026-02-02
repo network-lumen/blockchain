@@ -44,6 +44,7 @@ add_job "e2e_release" "bash '$ROOT_DIR/devtools/tests/e2e_release.sh' --skip-bui
 add_job "e2e_gov" "bash '$ROOT_DIR/devtools/tests/e2e_gov.sh' --skip-build"
 add_job "e2e_upgrade" "bash '$ROOT_DIR/devtools/tests/e2e_upgrade.sh' --skip-build"
 add_job "e2e_slashing" "bash '$ROOT_DIR/devtools/tests/e2e_slashing.sh' --skip-build"
+add_job "e2e_slashing_window" "bash '$ROOT_DIR/devtools/tests/e2e_slashing_window.sh' --skip-build"
 add_job "e2e_gateways" "bash '$ROOT_DIR/devtools/tests/e2e_gateways.sh' --skip-build"
 add_job "e2e_tokenomics" "bash '$ROOT_DIR/devtools/tests/e2e_tokenomics.sh' --skip-build"
 add_job "e2e_pqc" "BIN='$ROOT_DIR/build/lumend' bash '$ROOT_DIR/devtools/tests/e2e_pqc.sh'"
