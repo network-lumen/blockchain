@@ -23,4 +23,10 @@ func (app *App) RegisterUpgradeHandlers() {
 		// No-op state transition, but still run migrations so module versions are updated.
 		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
 	})
+
+	app.UpgradeKeeper.SetUpgradeHandler("v1.4.3", func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+		// No-op state transition, but still run migrations so module versions are updated.
+		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
+	})
+
 }
