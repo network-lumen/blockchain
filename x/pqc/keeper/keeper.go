@@ -24,7 +24,8 @@ type Keeper struct {
 	Params   collections.Item[types.Params]
 	Accounts collections.Map[string, types.AccountPQC]
 
-	bank types.BankKeeper
+	authority string
+	bank      types.BankKeeper
 }
 
 func NewKeeper(
@@ -54,6 +55,14 @@ func (k Keeper) Scheme() dilithium.Scheme {
 
 func (k *Keeper) SetBankKeeper(bank types.BankKeeper) {
 	k.bank = bank
+}
+
+func (k *Keeper) SetAuthority(authority string) {
+	k.authority = authority
+}
+
+func (k Keeper) GetAuthority() string {
+	return k.authority
 }
 
 func (k Keeper) BankKeeper() types.BankKeeper {

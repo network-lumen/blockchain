@@ -273,7 +273,7 @@ func TestFailOnNonZeroMinGasPrices(t *testing.T) {
 
 func TestGaslessOnly(t *testing.T) {
 	ctx := sdk.NewContext(nil, tmproto.Header{}, false, sdklog.NewNopLogger())
-	decorator := app.NewZeroFeeDecorator()
+	decorator := app.NewSelectiveFeeDecorator()
 
 	fee := sdk.NewCoins(sdk.NewInt64Coin(tokenomicstypes.DefaultDenom, 5))
 	_, err := decorator.AnteHandle(ctx, preflightMinSendTx{fee: fee}, false, preflightNoopAnte)

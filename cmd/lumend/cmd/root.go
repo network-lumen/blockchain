@@ -29,6 +29,10 @@ import (
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingcli "github.com/cosmos/cosmos-sdk/x/staking/client/cli"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	transfermodule "github.com/cosmos/ibc-go/v10/modules/apps/transfer"
+	ibcmodule "github.com/cosmos/ibc-go/v10/modules/core"
+	ibcexported "github.com/cosmos/ibc-go/v10/modules/core/exported"
+	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -56,6 +60,10 @@ func NewRootCmd() *cobra.Command {
 	); err != nil {
 		panic(err)
 	}
+
+	moduleBasicManager[ibcexported.ModuleName] = ibcmodule.AppModuleBasic{}
+	moduleBasicManager["transfer"] = transfermodule.AppModuleBasic{}
+	moduleBasicManager[ibctm.ModuleName] = ibctm.AppModuleBasic{}
 
 	rootCmd := &cobra.Command{
 		Use:           app.Name + "d",

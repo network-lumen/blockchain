@@ -9,6 +9,9 @@ import (
 	govmodule "github.com/cosmos/cosmos-sdk/x/gov"
 	slashingmodule "github.com/cosmos/cosmos-sdk/x/slashing"
 	stakingmodule "github.com/cosmos/cosmos-sdk/x/staking"
+	transfermodule "github.com/cosmos/ibc-go/v10/modules/apps/transfer"
+	ibcmodule "github.com/cosmos/ibc-go/v10/modules/core"
+	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 
 	upgrademodule "cosmossdk.io/x/upgrade"
 
@@ -29,6 +32,9 @@ var ModuleBasics = module.NewBasicManager(
 	slashingmodule.AppModuleBasic{},
 	stakingmodule.AppModuleBasic{},
 	genutilmodule.AppModuleBasic{},
+	ibcmodule.AppModuleBasic{},
+	transfermodule.AppModuleBasic{},
+	ibctm.AppModuleBasic{},
 	dnsmodule.AppModule{},
 	gatewaysmodule.AppModule{},
 	pqcmodule.AppModule{},

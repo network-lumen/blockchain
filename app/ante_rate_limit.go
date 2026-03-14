@@ -61,6 +61,13 @@ func (d *RateLimitDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate boo
 	if simulate || !ctx.IsCheckTx() {
 		return next(ctx, tx, simulate)
 	}
+	requiresFee, err := requiresIBCFee(tx.GetMsgs())
+	if err != nil {
+		return ctx, err
+	}
+	if requiresFee {
+		return next(ctx, tx, simulate)
+	}
 	signer := firstSigner(tx, d.akAddr)
 	if signer == "" {
 		return next(ctx, tx, simulate)

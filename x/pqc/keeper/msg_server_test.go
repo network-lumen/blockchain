@@ -49,6 +49,8 @@ func newFixture(t *testing.T) *fixture {
 	cdc := codec.NewProtoCodec(ir)
 
 	keeper := pqckeeper.NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc)
+	authority := sdk.AccAddress(bytes.Repeat([]byte{0x09}, 20)).String()
+	keeper.SetAuthority(authority)
 	params := types.DefaultParams()
 	params.PowDifficultyBits = 0
 	require.NoError(t, keeper.SetParams(ctx, params))
@@ -176,4 +178,30 @@ func TestLinkAccountPQC_InvalidPow(t *testing.T) {
 	msg, _ := f.newMessage(t)
 	_, err := f.msgSrv.LinkAccountPQC(f.ctx, msg)
 	require.ErrorIs(t, err, types.ErrInvalidPow)
+}
+
+func TestUpdateParams(t *testing.T) {
+	f := newFixture(t)
+
+	params := types.DefaultParams()
+	params.IbcRelayerAllowlist = []string{sdk.AccAddress(bytes.Repeat([]byte{0x02}, 20)).String()}
+
+	_, err := f.msgSrv.UpdateParams(f.ctx, &types.MsgUpdateParams{
+		Authority: f.keeper.GetAuthority(),
+		Params:    params,
+	})
+	require.NoError(t, err)
+
+	stored := f.keeper.GetParams(f.ctx)
+	require.Equal(t, params.IbcRelayerAllowlist, stored.IbcRelayerAllowlist)
+}
+
+func TestUpdateParamsRejectsWrongAuthority(t *testing.T) {
+	f := newFixture(t)
+
+	_, err := f.msgSrv.UpdateParams(f.ctx, &types.MsgUpdateParams{
+		Authority: sdk.AccAddress(bytes.Repeat([]byte{0x03}, 20)).String(),
+		Params:    types.DefaultParams(),
+	})
+	require.Error(t, err)
 }

@@ -17,6 +17,8 @@ import (
 	signingtypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
+	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
+	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 	protov2 "google.golang.org/protobuf/proto"
 )
 
@@ -96,6 +98,32 @@ func TestRateLimitDecoratorPerBlockCap(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestRateLimitDecoratorSkipsFeeBearingIBCTx(t *testing.T) {
+	decorator := newTestRateLimiter()
+	decorator.perBlockMax = 1
+	decorator.perWindowMax = 1
+	decorator.globalMax = 1
+
+	ctx, next := newRateLimitContext(t)
+	signer := addrBytes(0xDD)
+	msg := ibctransfertypes.NewMsgTransfer(
+		"transfer",
+		"channel-0",
+		sdk.NewInt64Coin("ulmn", 1),
+		sdk.AccAddress(signer).String(),
+		"cosmos1deadbeefdeadbeefdeadbeefdeadbeefm4k3up",
+		clienttypes.ZeroHeight(),
+		1,
+		"",
+	)
+
+	_, err := decorator.AnteHandle(ctx, rateLimitTx{signers: [][]byte{signer}, msgs: []sdk.Msg{msg}}, false, next)
+	require.NoError(t, err)
+
+	_, err = decorator.AnteHandle(ctx, rateLimitTx{signers: [][]byte{signer}, msgs: []sdk.Msg{msg}}, false, next)
+	require.NoError(t, err)
+}
+
 func newRateLimitContext(t *testing.T) (sdk.Context, sdk.AnteHandler) {
 	t.Helper()
 
@@ -128,12 +156,13 @@ func newTestRateLimiter() *RateLimitDecorator {
 
 type rateLimitTx struct {
 	signers [][]byte
+	msgs    []sdk.Msg
 }
 
 var _ sdk.Tx = rateLimitTx{}
 var _ authsigning.SigVerifiableTx = rateLimitTx{}
 
-func (rateLimitTx) GetMsgs() []sdk.Msg                                   { return nil }
+func (m rateLimitTx) GetMsgs() []sdk.Msg                                 { return m.msgs }
 func (rateLimitTx) GetMsgsV2() ([]protov2.Message, error)                { return nil, nil }
 func (rateLimitTx) ValidateBasic() error                                 { return nil }
 func (rateLimitTx) GetMemo() string                                      { return "" }

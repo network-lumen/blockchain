@@ -46,3 +46,16 @@ func TestParamsPowDifficultyBounds(t *testing.T) {
 	params.PowDifficultyBits = 300
 	require.Error(t, params.Validate())
 }
+
+func TestParamsInvalidIBCRelayerAllowlist(t *testing.T) {
+	params := types.DefaultParams()
+	params.IbcRelayerAllowlist = []string{"invalid"}
+	require.Error(t, params.Validate())
+}
+
+func TestParamsRejectDuplicateIBCRelayerAllowlistEntries(t *testing.T) {
+	addr := sdk.AccAddress(make([]byte, 20)).String()
+	params := types.DefaultParams()
+	params.IbcRelayerAllowlist = []string{addr, addr}
+	require.Error(t, params.Validate())
+}

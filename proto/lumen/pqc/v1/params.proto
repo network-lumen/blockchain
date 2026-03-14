@@ -25,4 +25,5 @@ message Params {
     (gogoproto.moretags) = "yaml:\"min_balance_for_link\""
   ];
   uint32 pow_difficulty_bits = 6 [(gogoproto.moretags) = "yaml:\"pow_difficulty_bits\""];
+  repeated string ibc_relayer_allowlist = 7 [(gogoproto.moretags) = "yaml:\"ibc_relayer_allowlist\""];
 }

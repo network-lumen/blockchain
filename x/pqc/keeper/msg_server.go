@@ -23,6 +23,22 @@ func NewMsgServerImpl(k Keeper) types.MsgServer {
 	return &msgServer{keeper: k}
 }
 
+func (m msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
+	if msg == nil {
+		return nil, fmt.Errorf("message cannot be nil")
+	}
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if msg.Authority != m.keeper.GetAuthority() {
+		return nil, errorsmod.Wrapf(sdkerrors.ErrUnauthorized, "invalid authority; expected %s, got %s", m.keeper.GetAuthority(), msg.Authority)
+	}
+	if err := m.keeper.SetParams(goCtx, msg.Params); err != nil {
+		return nil, err
+	}
+	return &types.MsgUpdateParamsResponse{}, nil
+}
+
 func (m msgServer) LinkAccountPQC(goCtx context.Context, msg *types.MsgLinkAccountPQC) (*types.MsgLinkAccountPQCResponse, error) {
 	if msg == nil {
 		return nil, fmt.Errorf("message cannot be nil")

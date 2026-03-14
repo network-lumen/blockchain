@@ -29,8 +29,11 @@ import (
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+	ibctransferkeeper "github.com/cosmos/ibc-go/v10/modules/apps/transfer/keeper"
+	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 
 	"lumen/docs"
 	dnsmodulekeeper "lumen/x/dns/keeper"
@@ -95,6 +98,8 @@ type App struct {
 	GatewaysKeeper   gatewaysmodulekeeper.Keeper
 	TokenomicsKeeper tokenomicsmodulekeeper.Keeper
 	PqcKeeper        pqcmodulekeeper.Keeper
+	IBCKeeper        *ibckeeper.Keeper
+	TransferKeeper   ibctransferkeeper.Keeper
 
 	sm *module.SimulationManager
 
@@ -170,19 +175,24 @@ func New(
 
 	app.DnsKeeper.SetBankKeeper(app.BankKeeper)
 	app.DnsKeeper.SetAccountKeeper(app.AuthKeeper)
+	app.PqcKeeper.SetAuthority(mustModuleAuthority(govtypes.ModuleName))
 	baseAppOptions = append(baseAppOptions, baseapp.SetOptimisticExecution())
 
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
+	app.registerIBC()
+	app.configureStoreLoaders()
+
+	if err := app.Load(loadLatest); err != nil {
+		panic(err)
+	}
+
+	app.registerIBCModules()
 	app.RegisterUpgradeHandlers()
 	app.SetAnteHandler(app.buildAnteHandler())
 	app.SetPostHandler(app.buildPostHandler())
 
 	app.sm = module.NewSimulationManagerFromAppModules(app.ModuleManager.Modules, make(map[string]module.AppModuleSimulation))
 	app.sm.RegisterStoreDecoders()
-
-	if err := app.Load(loadLatest); err != nil {
-		panic(err)
-	}
 
 	app.AppOpts = appOpts
 
@@ -244,7 +254,7 @@ func (app *App) buildAnteHandler() sdk.AnteHandler {
 	return sdk.ChainAnteDecorators(
 		authante.NewSetUpContextDecorator(),
 		NewEnforceZeroMinGasDecorator(),
-		NewZeroFeeDecorator(),
+		NewSelectiveFeeDecorator(),
 		(&RateLimitDecorator{}).Init(ak).WithGatewaysKeeper(&app.GatewaysKeeper),
 		authante.NewValidateBasicDecorator(),
 		authante.NewTxTimeoutHeightDecorator(),

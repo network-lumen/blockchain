@@ -101,6 +101,10 @@ func (d PQCDualSignDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 		signers[i] = sdk.AccAddress(bz)
 	}
 
+	if shouldBypassPQCSigForIBCRelayer(params, msgs, signers) {
+		return next(ctx, tx, simulate)
+	}
+
 	pqcSigs, sigsAvailable, err := d.extractPQCSigs(tx)
 	if err != nil {
 		return ctx, err
@@ -337,4 +341,26 @@ func pendingLinkForSigner(msgs []sdk.Msg, signer sdk.AccAddress) (pqctypes.Accou
 		return account, true
 	}
 	return pqctypes.AccountPQC{}, false
+}
+
+func shouldBypassPQCSigForIBCRelayer(params pqctypes.Params, msgs []sdk.Msg, signers []sdk.AccAddress) bool {
+	if !allIBCRelayerCoreMsgs(msgs) || len(signers) == 0 {
+		return false
+	}
+
+	allowlist := make(map[string]struct{}, len(params.IbcRelayerAllowlist))
+	for _, addr := range params.IbcRelayerAllowlist {
+		allowlist[addr] = struct{}{}
+	}
+	if len(allowlist) == 0 {
+		return false
+	}
+
+	for _, signer := range signers {
+		if _, ok := allowlist[signer.String()]; !ok {
+			return false
+		}
+	}
+
+	return true
 }

@@ -36,6 +36,7 @@ import (
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	_ "github.com/cosmos/cosmos-sdk/x/staking" // import for side-effects
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -59,6 +60,7 @@ var (
 		{Account: gatewaysmoduletypes.ModuleAccountEscrow},
 		{Account: tokenomicsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter}},
 		{Account: minttypes.ModuleName, Permissions: []string{authtypes.Minter}},
+		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
 		{Account: stakingtypes.BondedPoolName, Permissions: []string{authtypes.Burner, stakingtypes.ModuleName}},
 		{Account: stakingtypes.NotBondedPoolName, Permissions: []string{authtypes.Burner, stakingtypes.ModuleName}},
 	}
@@ -70,6 +72,7 @@ var (
 		stakingtypes.BondedPoolName,
 		stakingtypes.NotBondedPoolName,
 		tokenomicsmoduletypes.ModuleName,
+		ibctransfertypes.ModuleName,
 	}
 
 	immutableAuthority = mustModuleAuthority(immutableAuthorityModuleName)

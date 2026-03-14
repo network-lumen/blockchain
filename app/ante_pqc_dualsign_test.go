@@ -26,6 +26,8 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
+	ibcclienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 
 	"google.golang.org/protobuf/proto"
 
@@ -209,6 +211,47 @@ func TestPQCDualSignDecoratorGovMsgRequiresPQC(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestPQCDualSignDecoratorAllowsWhitelistedIBCRelayerTx(t *testing.T) {
+	env := newPQCTestEnv(t)
+	params := defaultParams()
+	addr := env.addresses[0]
+	params.IbcRelayerAllowlist = []string{addr.String()}
+	decorator := env.decorator(params)
+
+	msg := ibcclienttypes.NewMsgRecoverClient(addr.String(), "07-tendermint-0", "07-tendermint-1")
+	baseTx, _, txBytes, _ := env.buildBaseTx([]sdk.Msg{msg})
+	ctx := env.newContext(txBytes)
+
+	tx := pqcWrappedTx{Tx: baseTx, sigs: nil}
+	_, err := decorator.AnteHandle(ctx, tx, false, nextAnte)
+	require.NoError(t, err)
+}
+
+func TestPQCDualSignDecoratorDoesNotBypassIBCTransfer(t *testing.T) {
+	env := newPQCTestEnv(t)
+	params := defaultParams()
+	addr := env.addresses[0]
+	params.IbcRelayerAllowlist = []string{addr.String()}
+	decorator := env.decorator(params)
+
+	msg := ibctransfertypes.NewMsgTransfer(
+		"transfer",
+		"channel-0",
+		sdk.NewInt64Coin("ulmn", 1),
+		addr.String(),
+		"cosmos1deadbeefdeadbeefdeadbeefdeadbeefm4k3up",
+		ibcclienttypes.ZeroHeight(),
+		1,
+		"",
+	)
+	baseTx, _, txBytes, _ := env.buildBaseTx([]sdk.Msg{msg})
+	ctx := env.newContext(txBytes)
+
+	tx := pqcWrappedTx{Tx: baseTx, sigs: nil}
+	_, err := decorator.AnteHandle(ctx, tx, false, nextAnte)
+	require.ErrorIs(t, err, pqctypes.ErrMissingExtension)
+}
+
 func TestPQCDualSignDecoratorOptionalMissingSignature(t *testing.T) {
 	env := newPQCTestEnv(t)
 	params := defaultParams()
@@ -366,6 +409,16 @@ func (env *pqcTestEnv) buildBaseTx(msgs []sdk.Msg) (authsigning.Tx, []sdk.AccAdd
 	txBuilder.SetGasLimit(200000)
 
 	signers := env.uniqueSigners(msgs)
+	if len(signers) == 0 {
+		if sv, ok := txBuilder.GetTx().(authsigning.SigVerifiableTx); ok {
+			rawSigners, err := sv.GetSigners()
+			require.NoError(env.t, err)
+			signers = make([]sdk.AccAddress, len(rawSigners))
+			for i, signer := range rawSigners {
+				signers[i] = sdk.AccAddress(signer)
+			}
+		}
+	}
 	sigs := make([]signingtypes.SignatureV2, len(signers))
 	for i, addr := range signers {
 		account := env.ak.accounts[addr.String()]

@@ -22,3 +22,14 @@ func TestMsgLinkAccountPQCSchemeLimit(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "scheme too long")
 }
+
+func TestMsgUpdateParamsValidateBasic(t *testing.T) {
+	msg := MsgUpdateParams{
+		Authority: sdk.AccAddress(make([]byte, 20)).String(),
+		Params:    DefaultParams(),
+	}
+	require.NoError(t, msg.ValidateBasic())
+
+	msg.Authority = "invalid"
+	require.Error(t, msg.ValidateBasic())
+}

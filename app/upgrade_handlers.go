@@ -5,6 +5,7 @@ import (
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 )
 
 // RegisterUpgradeHandlers installs upgrade handlers for named plans.
@@ -29,4 +30,8 @@ func (app *App) RegisterUpgradeHandlers() {
 		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
 	})
 
+	app.UpgradeKeeper.SetUpgradeHandler(ibcUpgradeName, func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+		app.AuthKeeper.GetModuleAccount(ctx, ibctransfertypes.ModuleName)
+		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
+	})
 }

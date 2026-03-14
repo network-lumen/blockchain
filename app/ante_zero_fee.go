@@ -6,17 +6,35 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-// ZeroFeeDecorator rejects any transaction that includes a non-zero fee.
-type ZeroFeeDecorator struct{}
+// SelectiveFeeDecorator keeps legacy txs gasless and requires fees for IBC txs.
+type SelectiveFeeDecorator struct{}
 
-func NewZeroFeeDecorator() ZeroFeeDecorator { return ZeroFeeDecorator{} }
+func NewSelectiveFeeDecorator() SelectiveFeeDecorator { return SelectiveFeeDecorator{} }
 
-func (d ZeroFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
+func (d SelectiveFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	feeTx, ok := tx.(sdk.FeeTx)
-	if ok {
-		if fees := feeTx.GetFee(); !fees.IsZero() {
+	if !ok {
+		return next(ctx, tx, simulate)
+	}
+
+	requiresFee, err := requiresIBCFee(tx.GetMsgs())
+	if err != nil {
+		return ctx, err
+	}
+
+	fees := feeTx.GetFee()
+	if !requiresFee {
+		if !fees.IsZero() {
 			return ctx, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "gasless tx must have zero fee")
 		}
+		return next(ctx, tx, simulate)
+	}
+
+	if len(fees) != 1 || !fees[0].IsPositive() {
+		return ctx, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "ibc tx must pay a positive ulmn fee")
+	}
+	if fees[0].Denom != sdk.DefaultBondDenom {
+		return ctx, errorsmod.Wrapf(sdkerrors.ErrInvalidRequest, "ibc tx fee denom must be %s", sdk.DefaultBondDenom)
 	}
 	return next(ctx, tx, simulate)
 }

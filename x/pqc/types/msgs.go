@@ -17,6 +17,21 @@ func NewMsgLinkAccountPQC(creator sdk.AccAddress, scheme string, pubKey []byte) 
 	}
 }
 
+func (m *MsgUpdateParams) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(m.GetAuthority()); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "authority: %v", err)
+	}
+	return m.GetParams().Validate()
+}
+
+func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(m.GetAuthority())
+	if err != nil {
+		panic(err)
+	}
+	return []sdk.AccAddress{addr}
+}
+
 func (m *MsgLinkAccountPQC) ValidateBasic() error {
 	if _, err := sdk.AccAddressFromBech32(m.GetCreator()); err != nil {
 		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "creator: %v", err)
