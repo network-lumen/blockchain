@@ -136,8 +136,9 @@ clean:
 
 docs:
 	@DOC_VERSION=$$(git describe --tags --dirty --always); \
+		rm -rf artifacts/docs; \
 		buf generate --template proto/buf.gen.swagger.yaml; \
-		DOC_VERSION="$$DOC_VERSION" python3 -c 'import json, os, pathlib; path = pathlib.Path("docs/static/openapi.json"); data = json.loads(path.read_text()); info = data.get("info", {}); info["version"] = os.environ.get("DOC_VERSION", "").strip() or "unversioned"; data["info"] = info; path.write_text(json.dumps(data, separators=(",", ":")))'; \
+		DOC_VERSION="$$DOC_VERSION" python3 devtools/scripts/merge_openapi.py; \
 		echo "OpenAPI generated (version $$DOC_VERSION)"
 
 .PHONY: docs

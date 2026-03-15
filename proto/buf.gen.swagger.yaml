@@ -12,5 +12,3 @@ plugins:
       - openapi_naming_strategy=fqn
       - json_names_for_fields=false
       - generate_unbound_methods=true
-      - allow_merge=true
-      - merge_file_name=openapi
