@@ -1,5 +1,5 @@
 APPNAME := lumen
-APP_VERSION ?= v1.5.0-ibc
+APP_VERSION ?= v1.5.0
 GO_TEST_SCRIPT := ./devtools/scripts/go_test.sh
 GO_WITH_PKGS_SCRIPT := ./devtools/scripts/go_with_pkgs.sh
 

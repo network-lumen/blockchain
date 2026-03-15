@@ -18,7 +18,7 @@ BIN_OLD="${BIN_OLD:-""}"
 HOME_DIR="${HOME}/.lumen"
 
 OLD_REF="${OLD_REF:-320727d}"
-PLAN_NAME="${PLAN_NAME:-v1.5.0-ibc}"
+PLAN_NAME="${PLAN_NAME:-v1.5.0}"
 BIN_NEW_VERSION="${BIN_NEW_VERSION:-$PLAN_NAME}"
 
 RANDOM_PORT_BASE=${E2E_BASE_PORT:-$(( (RANDOM % 1000) + 36000 ))}
@@ -348,6 +348,43 @@ wait_height_with_bin() {
   return 1
 }
 
+verify_post_upgrade_ibc() {
+  step "Verify transfer module account after upgrade"
+
+  local account_json account_addr account_name
+  account_json=$("$BIN_NEW" query auth module-account transfer --node "$NODE" -o json 2>/dev/null) || {
+    echo "failed to query transfer module account after upgrade" >&2
+    tail -n 200 "$LOG_FILE" >&2 || true
+    exit 1
+  }
+
+  account_addr=$(printf '%s\n' "$account_json" | jq -r '
+    .account.base_account.address
+    // .account.address
+    // .account.value.address
+    // .account.value.base_account.address
+    // .account.base_vesting_account.base_account.address
+    // empty
+  ' | tail -n1)
+  account_name=$(printf '%s\n' "$account_json" | jq -r '
+    .account.name
+    // .account.value.name
+    // empty
+  ' | tail -n1)
+
+  if [ -z "$account_addr" ] || [ "$account_addr" = "null" ]; then
+    echo "transfer module account exists but no address was returned" >&2
+    printf '%s\n' "$account_json" >&2
+    exit 1
+  fi
+
+  if [ -n "$account_name" ] && [ "$account_name" != "transfer" ]; then
+    echo "unexpected transfer module account name after upgrade: $account_name" >&2
+    printf '%s\n' "$account_json" >&2
+    exit 1
+  fi
+}
+
 main() {
   build_old
   build_new_if_needed
@@ -382,6 +419,7 @@ main() {
   step "Restart with new binary; verify chain resumes"
   start_node "$BIN_NEW" "new"
   wait_height_with_bin "$BIN_NEW" $((UPGRADE_HEIGHT + 2))
+  verify_post_upgrade_ibc
 
   step "Verify no upgrade is pending"
   if "$BIN_NEW" query upgrade plan --node "$NODE" -o json 2>/dev/null | jq -e '.plan.name? // empty | length == 0' >/dev/null; then

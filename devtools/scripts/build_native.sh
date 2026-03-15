@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$ROOT_DIR"
 NETWORK_DIR="${NETWORK_DIR:-}"
-VERSION="${VERSION:-v1.5.0-ibc}"
+VERSION="${VERSION:-v1.5.0}"
 COMMIT="${COMMIT:-$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 LDFLAGS="-s -w -X github.com/cosmos/cosmos-sdk/version.Name=lumen -X github.com/cosmos/cosmos-sdk/version.AppName=lumend -X github.com/cosmos/cosmos-sdk/version.Version=$VERSION -X github.com/cosmos/cosmos-sdk/version.Commit=$COMMIT"
 if [[ -n "$NETWORK_DIR" && "$NETWORK_DIR" != /* ]]; then

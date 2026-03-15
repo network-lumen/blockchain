@@ -25,7 +25,7 @@ import (
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 )
 
-const ibcUpgradeName = "v1.5.0-ibc"
+const ibcUpgradeName = "v1.5.0"
 
 type legacyIBCSubspace struct{}
 

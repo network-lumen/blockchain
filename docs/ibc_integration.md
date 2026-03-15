@@ -23,7 +23,7 @@ The chain does not currently document or guarantee support for:
 
 ## Network Version
 
-IBC support is introduced by the on-chain upgrade named `v1.5.0-ibc`.
+IBC support is introduced by the on-chain upgrade named `v1.5.0`.
 
 Integrators should confirm that the target Lumen network has already passed that upgrade before attempting to connect a relayer or open a transfer channel.
 
@@ -202,7 +202,7 @@ The command still uses the normal Lumen PQC client flow. If your integration sig
 
 ## Integration Checklist for a DEX or Counterparty Chain
 
-1. Verify that the target Lumen network already passed upgrade `v1.5.0-ibc`.
+1. Verify that the target Lumen network already passed upgrade `v1.5.0`.
 2. Fund the relayer address on Lumen with `ulmn`.
 3. Add that address to `x/pqc.params.ibc_relayer_allowlist` on Lumen.
 4. Keep node `minimum-gas-prices` at `0ulmn`.
