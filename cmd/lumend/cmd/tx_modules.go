@@ -36,6 +36,7 @@ func newDNSTxCmd() *cobra.Command {
 		newDNSTransferCmd(),
 		newDNSBidCmd(),
 		newDNSSettleCmd(),
+		newDNSPowNonceCmd(),
 		newDNSUpdateCmd(),
 		newDNSUpdateDomainCmd(),
 	)
@@ -260,6 +261,43 @@ func newDNSUpdateCmd() *cobra.Command {
 	return cmd
 }
 
+func newDNSPowNonceCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pow-nonce [identifier] | [domain] [ext]",
+		Short: "Generate a DNS update PoW nonce",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			identifier, err := dnsPowIdentifierFromArgs(args, flagChanged(cmd, "raw"))
+			if err != nil {
+				return err
+			}
+
+			creator, err := dnsPowCreatorFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+
+			difficulty, err := dnsPowDifficultyFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+
+			nonce, err := dnstypes.MineUpdatePowNonce(identifier, creator, difficulty)
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), nonce)
+			return err
+		},
+	}
+	cmd.Flags().Bool("raw", false, "Treat the identifier as raw input instead of normalizing as FQDN")
+	cmd.Flags().String("creator", "", "Explicit creator address (defaults to --from)")
+	cmd.Flags().Uint32("difficulty", 0, "Override PoW difficulty instead of querying dns params")
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
 func newDNSUpdateDomainCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-domain [index] [name] [owner] [records-json] [expire-at]",
@@ -301,6 +339,77 @@ func newDNSUpdateDomainCmd() *cobra.Command {
 	cmd.Flags().Uint64("pow-nonce", 0, "nonce satisfying the update PoW requirement")
 	flags.AddTxFlagsToCmd(cmd)
 	return cmd
+}
+
+func dnsPowIdentifierFromArgs(args []string, raw bool) (string, error) {
+	if len(args) == 2 {
+		domain, ext := dnstypes.NormalizeDomainParts(args[0], args[1])
+		if err := dnstypes.ValidateDomainParts(domain, ext); err != nil {
+			return "", err
+		}
+		return domain + "." + ext, nil
+	}
+
+	identifier := strings.TrimSpace(args[0])
+	if identifier == "" {
+		return "", fmt.Errorf("identifier required")
+	}
+	if raw {
+		return identifier, nil
+	}
+
+	lastDot := strings.LastIndex(identifier, ".")
+	if lastDot <= 0 || lastDot == len(identifier)-1 {
+		return identifier, nil
+	}
+
+	domain, ext := dnstypes.NormalizeDomainParts(identifier[:lastDot], identifier[lastDot+1:])
+	if err := dnstypes.ValidateDomainParts(domain, ext); err != nil {
+		return "", err
+	}
+	return domain + "." + ext, nil
+}
+
+func dnsPowCreatorFromFlags(cmd *cobra.Command) (string, error) {
+	creator, err := cmd.Flags().GetString("creator")
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(creator) != "" {
+		return strings.TrimSpace(creator), nil
+	}
+
+	clientCtx, err := client.GetClientTxContext(cmd)
+	if err != nil {
+		return "", err
+	}
+	return clientCtx.GetFromAddress().String(), nil
+}
+
+func dnsPowDifficultyFromFlags(cmd *cobra.Command) (uint32, error) {
+	difficulty, err := cmd.Flags().GetUint32("difficulty")
+	if err != nil {
+		return 0, err
+	}
+	if flagChanged(cmd, "difficulty") {
+		return difficulty, nil
+	}
+
+	clientCtx, err := client.GetClientQueryContext(cmd)
+	if err != nil {
+		return 0, err
+	}
+	query := dnstypes.NewQueryClient(clientCtx)
+	resp, err := query.Params(cmd.Context(), &dnstypes.QueryParamsRequest{})
+	if err != nil {
+		return 0, err
+	}
+	return resp.Params.UpdatePowDifficulty, nil
+}
+
+func flagChanged(cmd *cobra.Command, name string) bool {
+	flag := cmd.Flags().Lookup(name)
+	return flag != nil && flag.Changed
 }
 
 // Release --------------------------------------------------------------------

@@ -1,11 +1,10 @@
 package keeper
 
 import (
-	"crypto/sha256"
-	"fmt"
-
 	errorsmod "cosmossdk.io/errors"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"lumen/x/dns/types"
 )
 
 func enforceUpdateRateLimit(lastUpdated, now, limit uint64) error {
@@ -25,28 +24,9 @@ func enforceUpdatePoW(identifier, creator string, nonce uint64, difficulty uint3
 	if difficulty == 0 {
 		return nil
 	}
-	payload := fmt.Sprintf("%s|%s|%d", identifier, creator, nonce)
-	sum := sha256.Sum256([]byte(payload))
-	if leadingZeroBits(sum[:]) < difficulty {
+	sum := types.ComputeUpdatePowDigest(identifier, creator, nonce)
+	if types.LeadingZeroBits(sum[:]) < difficulty {
 		return errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "invalid proof-of-work for update")
 	}
 	return nil
-}
-
-func leadingZeroBits(b []byte) uint32 {
-	var count uint32
-	for _, v := range b {
-		if v == 0 {
-			count += 8
-			continue
-		}
-		for i := 7; i >= 0; i-- {
-			if (v>>uint(i))&1 == 0 {
-				count++
-			} else {
-				return count
-			}
-		}
-	}
-	return count
 }

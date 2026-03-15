@@ -78,8 +78,6 @@ func isIBCRelayerCoreMsg(msg sdk.Msg) bool {
 		return true
 	case *clienttypes.MsgUpgradeClient:
 		return true
-	case *clienttypes.MsgSubmitMisbehaviour:
-		return true
 	case *clienttypes.MsgRecoverClient:
 		return true
 	case *clienttypesv2.MsgRegisterCounterparty:

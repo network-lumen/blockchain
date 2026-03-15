@@ -135,7 +135,6 @@ func sampleIBCRelayerCoreMsgs() []sdk.Msg {
 		&clienttypes.MsgCreateClient{},
 		&clienttypes.MsgUpdateClient{},
 		&clienttypes.MsgUpgradeClient{},
-		&clienttypes.MsgSubmitMisbehaviour{},
 		&clienttypes.MsgRecoverClient{},
 		&clienttypesv2.MsgRegisterCounterparty{},
 		&clienttypesv2.MsgUpdateClientConfig{},

@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -56,15 +55,11 @@ func mineNonce(identifier, creator string, difficulty uint32) uint64 {
 	if difficulty > 20 {
 		difficulty = 20
 	}
-	var nonce uint64
-	for {
-		payload := fmt.Sprintf("%s|%s|%d", identifier, creator, nonce)
-		sum := sha256.Sum256([]byte(payload))
-		if leadingZeroBits(sum[:]) >= difficulty {
-			return nonce
-		}
-		nonce++
+	nonce, err := types.MineUpdatePowNonce(identifier, creator, difficulty)
+	if err != nil {
+		panic(err)
 	}
+	return nonce
 }
 
 func normalizeFQDN(domain, ext string) string {
@@ -76,22 +71,4 @@ func randomTXTRecords(r *rand.Rand) []*types.Record {
 	return []*types.Record{
 		{Key: "txt", Value: fmt.Sprintf("sim-%d", r.Int63()), Ttl: 60},
 	}
-}
-
-func leadingZeroBits(b []byte) uint32 {
-	var count uint32
-	for _, v := range b {
-		if v == 0 {
-			count += 8
-			continue
-		}
-		for i := 7; i >= 0; i-- {
-			if (v>>uint(i))&1 == 0 {
-				count++
-			} else {
-				return count
-			}
-		}
-	}
-	return count
 }
