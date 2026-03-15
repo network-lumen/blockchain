@@ -7,6 +7,7 @@ import (
 
 	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
+	clienttypesv2 "github.com/cosmos/ibc-go/v10/modules/core/02-client/v2/types"
 	connectiontypes "github.com/cosmos/ibc-go/v10/modules/core/03-connection/types"
 	channeltypes "github.com/cosmos/ibc-go/v10/modules/core/04-channel/types"
 	channeltypesv2 "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
@@ -80,6 +81,10 @@ func isIBCRelayerCoreMsg(msg sdk.Msg) bool {
 	case *clienttypes.MsgSubmitMisbehaviour:
 		return true
 	case *clienttypes.MsgRecoverClient:
+		return true
+	case *clienttypesv2.MsgRegisterCounterparty:
+		return true
+	case *clienttypesv2.MsgUpdateClientConfig:
 		return true
 	case *connectiontypes.MsgConnectionOpenInit:
 		return true

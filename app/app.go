@@ -181,15 +181,15 @@ func New(
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
 	app.registerIBC()
 	app.configureStoreLoaders()
+	app.RegisterUpgradeHandlers()
+	app.SetAnteHandler(app.buildAnteHandler())
+	app.SetPostHandler(app.buildPostHandler())
 
 	if err := app.Load(loadLatest); err != nil {
 		panic(err)
 	}
 
 	app.registerIBCModules()
-	app.RegisterUpgradeHandlers()
-	app.SetAnteHandler(app.buildAnteHandler())
-	app.SetPostHandler(app.buildPostHandler())
 
 	app.sm = module.NewSimulationManagerFromAppModules(app.ModuleManager.Modules, make(map[string]module.AppModuleSimulation))
 	app.sm.RegisterStoreDecoders()

@@ -1,23 +1,17 @@
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-COMMIT := $(shell git log -1 --format='%H')
 APPNAME := lumen
+APP_VERSION ?= v1.5.0-ibc
 GO_TEST_SCRIPT := ./devtools/scripts/go_test.sh
 GO_WITH_PKGS_SCRIPT := ./devtools/scripts/go_with_pkgs.sh
 
-# do not override user values
-ifeq (,$(VERSION))
-  VERSION := $(shell git describe --exact-match 2>/dev/null)
-  # if VERSION is empty, then populate it with branch name and raw commit hash
-  ifeq (,$(VERSION))
-    VERSION := $(BRANCH)-$(COMMIT)
-  endif
-endif
+VERSION ?= $(APP_VERSION)
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 # Update the ldflags with the app, client & server names
 ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=$(APPNAME) \
 	-X github.com/cosmos/cosmos-sdk/version.AppName=$(APPNAME)d \
 	-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 	-X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT)
+BUILD_LDFLAGS := -s -w $(ldflags)
 
 .PHONY: help
 help: ## Show all documented make targets
@@ -57,12 +51,9 @@ test-legacy: govet govulncheck test-unit
 
 all: build
 
-VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo dev)
-COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-
 build: ## Build lumend for the current platform (Go build)
 	@echo "--> building lumend (local platform)"
-	@go build -trimpath -ldflags "-s -w $(ldflags)" -o build/lumend ./cmd/lumend
+	@go build -trimpath -ldflags "$(BUILD_LDFLAGS)" -o build/lumend ./cmd/lumend
 
 build-native: ## Build lumend via devtools/scripts/build_native.sh (NETWORK_DIR optional)
 	@bash devtools/scripts/build_native.sh $(ARGS)
@@ -93,7 +84,7 @@ sanity:
 		$(GO_WITH_PKGS_SCRIPT) vet; \
 		$(GO_TEST_SCRIPT) -count=1; \
 		mkdir -p build; \
-		go build -trimpath -buildvcs=false -o ./build/lumend ./cmd/lumend; \
+		go build -trimpath -buildvcs=false -ldflags "$(BUILD_LDFLAGS)" -o ./build/lumend ./cmd/lumend; \
 		export LC_ALL=C; \
 		if strings ./build/lumend | grep -qiE '\''(pqc_testonly|\bnoop\b.*pqc)'\''; then \
 		  echo "BAD: test-only/noop PQC symbols found"; exit 1; \
@@ -256,7 +247,7 @@ vulncheck: vuln-tools
 	  exit 1; \
 	fi; \
 	mkdir -p build; \
-	[ -f build/lumend ] || { echo "-> building build/lumend"; go build -o build/lumend ./cmd/lumend; }; \
+	[ -f build/lumend ] || { echo "-> building build/lumend"; go build -trimpath -buildvcs=false -ldflags "$(BUILD_LDFLAGS)" -o build/lumend ./cmd/lumend; }; \
 	tmpjson=$$(mktemp); \
 	if govulncheck -mode=binary -json build/lumend > $$tmpjson; then \
 	  if command -v jq >/dev/null 2>&1; then \
@@ -288,7 +279,7 @@ vulncheck-json: vuln-tools
 	  echo "ok: wrote artifacts/security/govuln-source.json"; \
 	else \
 	  echo "warn: source json failed; trying binary json..."; \
-	  [ -f build/lumend ] || { echo "-> building build/lumend"; go build -o build/lumend ./cmd/lumend; }; \
+	  [ -f build/lumend ] || { echo "-> building build/lumend"; go build -trimpath -buildvcs=false -ldflags "$(BUILD_LDFLAGS)" -o build/lumend ./cmd/lumend; }; \
 	  if govulncheck -mode=binary -json build/lumend > artifacts/security/govuln-binary.json 2>/dev/null; then \
 	    echo "ok: wrote artifacts/security/govuln-binary.json"; \
 	  else \

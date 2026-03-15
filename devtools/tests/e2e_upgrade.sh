@@ -18,7 +18,8 @@ BIN_OLD="${BIN_OLD:-""}"
 HOME_DIR="${HOME}/.lumen"
 
 OLD_REF="${OLD_REF:-320727d}"
-PLAN_NAME="${PLAN_NAME:-v1.4.2}"
+PLAN_NAME="${PLAN_NAME:-v1.5.0-ibc}"
+BIN_NEW_VERSION="${BIN_NEW_VERSION:-$PLAN_NAME}"
 
 RANDOM_PORT_BASE=${E2E_BASE_PORT:-$(( (RANDOM % 1000) + 36000 ))}
 
@@ -58,6 +59,12 @@ step() { printf '\n==== %s\n' "$*"; }
 
 NODE_PID=""
 
+sdk_version_ldflags() {
+  local version="$1"
+  local commit="$2"
+  printf '%s' "-s -w -X github.com/cosmos/cosmos-sdk/version.Name=lumen -X github.com/cosmos/cosmos-sdk/version.AppName=lumend -X github.com/cosmos/cosmos-sdk/version.Version=${version} -X github.com/cosmos/cosmos-sdk/version.Commit=${commit}"
+}
+
 keys_add_quiet() {
   local name="$1"
   printf '\n' | "$BIN_OLD" keys add "$name" --keyring-backend "$KEYRING" --home "$HOME_DIR" >/dev/null 2>&1 || true
@@ -94,7 +101,10 @@ build_old() {
   trap 'git -C "$DIR" worktree remove --force "$wt" >/dev/null 2>&1 || true; rm -rf "$wt" >/dev/null 2>&1 || true' RETURN
 
   BIN_OLD="$HOME_ROOT/lumend-old"
-  local cmd=(go build -trimpath -ldflags "-s -w")
+  local old_version old_commit
+  old_version=$(git -C "$wt" describe --tags --dirty --always 2>/dev/null || echo "$OLD_REF")
+  old_commit=$(git -C "$wt" rev-parse --short HEAD 2>/dev/null || echo "$OLD_REF")
+  local cmd=(go build -trimpath -ldflags "$(sdk_version_ldflags "$old_version" "$old_commit")")
   if [ -n "$LUMEN_BUILD_TAGS" ]; then
     cmd+=(-tags "$LUMEN_BUILD_TAGS")
   fi
@@ -112,7 +122,9 @@ build_new_if_needed() {
     return
   fi
   step "Build new lumend (current)"
-  local cmd=(go build -trimpath -ldflags "-s -w")
+  local new_commit
+  new_commit=$(git -C "$DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)
+  local cmd=(go build -trimpath -ldflags "$(sdk_version_ldflags "$BIN_NEW_VERSION" "$new_commit")")
   if [ -n "$LUMEN_BUILD_TAGS" ]; then
     cmd+=(-tags "$LUMEN_BUILD_TAGS")
   fi
@@ -199,8 +211,16 @@ start_node() {
   "${args[@]}" >"$LOG_FILE" 2>&1 &
   NODE_PID=$!
   sleep 1
-  gov_wait_http "$RPC/status"
-  gov_wait_http "$API/"
+  if ! gov_wait_http "$RPC/status"; then
+    echo "node failed to serve RPC after startup; tail of $LOG_FILE:" >&2
+    tail -n 200 "$LOG_FILE" >&2 || true
+    return 1
+  fi
+  if ! gov_wait_http "$API/"; then
+    echo "node failed to serve API after startup; tail of $LOG_FILE:" >&2
+    tail -n 200 "$LOG_FILE" >&2 || true
+    return 1
+  fi
 }
 
 resolve_upgrade_authority() {

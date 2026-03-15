@@ -8,6 +8,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$ROOT_DIR"
 NETWORK_DIR="${NETWORK_DIR:-}"
+VERSION="${VERSION:-v1.5.0-ibc}"
+COMMIT="${COMMIT:-$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+LDFLAGS="-s -w -X github.com/cosmos/cosmos-sdk/version.Name=lumen -X github.com/cosmos/cosmos-sdk/version.AppName=lumend -X github.com/cosmos/cosmos-sdk/version.Version=$VERSION -X github.com/cosmos/cosmos-sdk/version.Commit=$COMMIT"
 if [[ -n "$NETWORK_DIR" && "$NETWORK_DIR" != /* ]]; then
   NETWORK_DIR="$ROOT_DIR/$NETWORK_DIR"
 fi
@@ -42,7 +45,7 @@ fi
 if [[ "$FALLBACK" -eq 1 ]]; then
   echo "-> fallback go build (linux/amd64)"
   if [[ -d "$SRC_DIR/cmd/lumend" ]]; then
-    go build -o build/lumend ./cmd/lumend
+    go build -trimpath -ldflags "$LDFLAGS" -o build/lumend ./cmd/lumend
   else
     echo "Error: directory cmd/lumend not found. Update build_native.sh accordingly."
     exit 1
@@ -56,7 +59,7 @@ fi
 
 if [[ -d "$SRC_DIR/cmd/lumend" ]]; then
   echo "-> go build windows/amd64"
-  if ! CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o build/lumend.exe ./cmd/lumend; then
+  if ! CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o build/lumend.exe ./cmd/lumend; then
     echo "Warning: failed to build lumend.exe. Continuing with Linux binary only." >&2
   fi
 fi
