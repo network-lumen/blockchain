@@ -300,9 +300,10 @@ func newDNSPowNonceCmd() *cobra.Command {
 
 func newDNSUpdateDomainCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-domain [index] [name] [owner] [records-json] [expire-at]",
-		Short: "Update a domain record (testing helper)",
-		Args:  cobra.ExactArgs(5),
+		Use:    "update-domain [index] [name] [owner] [records-json] [expire-at]",
+		Short:  "Update a domain record (testing helper)",
+		Hidden: true,
+		Args:   cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {

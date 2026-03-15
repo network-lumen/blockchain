@@ -115,10 +115,8 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}, {ProtoField: "name"}, {ProtoField: "owner"}, {ProtoField: "records"}, {ProtoField: "expire_at"}},
 				},
 				{
-					RpcMethod:      "UpdateDomain",
-					Use:            "update-domain [index] [name] [owner] [records] [expire-at]",
-					Short:          "Update domain",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}, {ProtoField: "name"}, {ProtoField: "owner"}, {ProtoField: "records"}, {ProtoField: "expire_at"}},
+					RpcMethod: "UpdateDomain",
+					Skip:      true, // testing helper; user-facing path is tx dns update
 				},
 				{
 					RpcMethod:      "DeleteDomain",
