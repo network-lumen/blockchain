@@ -16,6 +16,7 @@ import (
 
 	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	ibcexported "github.com/cosmos/ibc-go/v10/modules/core/exported"
+	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 )
 
 func TestAppInitializesIBCIntegration(t *testing.T) {
@@ -55,4 +56,14 @@ func TestIBCModuleAccountPermissionsAreRegistered(t *testing.T) {
 	require.ElementsMatch(t, []string{authtypes.Minter, authtypes.Burner}, perms)
 
 	require.True(t, BlockedAddresses()[ibctransfertypes.ModuleName])
+}
+
+func TestIBCInterfacesAreRegistered(t *testing.T) {
+	appOpts := make(simtestutil.AppOptionsMap)
+	appOpts[flags.FlagHome] = t.TempDir()
+	appOpts[server.FlagMinGasPrices] = "0ulmn"
+
+	app := New(sdklog.NewNopLogger(), dbm.NewMemDB(), nil, true, appOpts)
+	require.NoError(t, app.InterfaceRegistry().EnsureRegistered(&ibctm.ClientState{}))
+	require.NoError(t, app.InterfaceRegistry().EnsureRegistered(&ibctm.ConsensusState{}))
 }

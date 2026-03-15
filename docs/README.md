@@ -69,6 +69,7 @@ and API references. All pages are plain Markdown so you can read them on GitHub 
 
 | Topic | File |
 |-------|------|
+| IBC integration guide | [`docs/ibc_integration.md`](ibc_integration.md) |
 | Validator / operator guide | [`docs/validators.md`](validators.md) |
 | Module deep dives | [`docs/modules/*.md`](modules) |
 | Governance & parameters | [`docs/governance.md`](governance.md), [`docs/params.md`](params.md) |

@@ -6,7 +6,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-// SelectiveFeeDecorator keeps legacy txs gasless and requires fees for IBC txs.
+// SelectiveFeeDecorator keeps native Lumen application txs gasless and requires fees for IBC txs.
 type SelectiveFeeDecorator struct{}
 
 func NewSelectiveFeeDecorator() SelectiveFeeDecorator { return SelectiveFeeDecorator{} }

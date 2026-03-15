@@ -122,6 +122,9 @@ e2e-release: ## Release publisher workflow (devtools/tests/e2e_release.sh)
 e2e-gov: ## Governance / DAO parameter workflow (devtools/tests/e2e_gov.sh)
 	@bash devtools/tests/e2e_gov.sh $(ARGS)
 
+e2e-ibc: ## Run the two-chain IBC e2e flow (devtools/tests/e2e_ibc.sh)
+	@BIN=./build/lumend bash devtools/tests/e2e_ibc.sh $(ARGS)
+
 e2e-send-tax: ## Send-tax ante/post handler suite (devtools/tests/e2e_send_tax.sh)
 	@bash devtools/tests/e2e_send_tax.sh $(ARGS)
 
@@ -132,7 +135,7 @@ clean:
 	@rm -rf build/ dist/ artifacts/
 
 .PHONY: build build-native build-release test preflight doc-check pre-release simulate-network install-service sanity \
-	e2e e2e-pqc e2e-dns e2e-dns-auction e2e-gateways e2e-release e2e-gov e2e-send-tax smoke-rest clean
+	e2e e2e-pqc e2e-dns e2e-dns-auction e2e-gateways e2e-release e2e-gov e2e-ibc e2e-send-tax smoke-rest clean
 
 docs:
 	@DOC_VERSION=$$(git describe --tags --dirty --always); \

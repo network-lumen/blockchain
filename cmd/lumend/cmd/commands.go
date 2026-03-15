@@ -116,6 +116,7 @@ func txCommand() *cobra.Command {
 		authcmd.GetSimulateCmd(),
 		pqccli.NewTxCmd(),
 		newDNSTxCmd(),
+		newIBCTransferTxCmd(),
 		newReleaseTxCmd(),
 		newGatewaysTxCmd(),
 	)

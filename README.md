@@ -26,6 +26,7 @@ The codebase is organised as a standard Go module (`module lumen`) and relies on
 
 - 🔐 Security: see [SECURITY.md](./SECURITY.md) and the detailed [docs/Security.md](./docs/Security.md)
 - 🧪 Simulator (Docker): see [docs/simulation.md](./docs/simulation.md)
+- 🌉 IBC integration: see [docs/ibc_integration.md](./docs/ibc_integration.md)
 - 🧩 Changelog: see [CHANGELOG.md](./CHANGELOG.md)
 - 🤝 Contributing: see [CONTRIBUTING.md](./CONTRIBUTING.md)
 

@@ -32,6 +32,10 @@ type legacyIBCSubspace struct{}
 func (legacyIBCSubspace) GetParamSet(_ sdk.Context, _ paramtypes.ParamSet) {}
 
 func (app *App) registerIBC() {
+	ibc.AppModuleBasic{}.RegisterInterfaces(app.interfaceRegistry)
+	ibctransfer.AppModuleBasic{}.RegisterInterfaces(app.interfaceRegistry)
+	ibctm.AppModuleBasic{}.RegisterInterfaces(app.interfaceRegistry)
+
 	ibcStoreKey := storetypes.NewKVStoreKey(ibcexported.StoreKey)
 	transferStoreKey := storetypes.NewKVStoreKey(ibctransfertypes.StoreKey)
 
