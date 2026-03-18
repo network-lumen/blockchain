@@ -34,4 +34,8 @@ func (app *App) RegisterUpgradeHandlers() {
 		app.AuthKeeper.GetModuleAccount(ctx, ibctransfertypes.ModuleName)
 		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
 	})
+
+	app.UpgradeKeeper.SetUpgradeHandler("v1.5.2", func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
+	})
 }
