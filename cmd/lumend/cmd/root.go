@@ -30,7 +30,9 @@ import (
 	stakingcli "github.com/cosmos/cosmos-sdk/x/staking/client/cli"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	transfermodule "github.com/cosmos/ibc-go/v10/modules/apps/transfer"
+	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	ibcmodule "github.com/cosmos/ibc-go/v10/modules/core"
+	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v10/modules/core/exported"
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 	"github.com/spf13/cobra"
@@ -117,6 +119,8 @@ func ProvideClientContext(
 	txConfigOpts tx.ConfigOptions,
 	legacyAmino *codec.LegacyAmino,
 ) client.Context {
+	ensureIBCClientInterfacesRegistered(interfaceRegistry)
+
 	clientCtx := client.Context{}.
 		WithCodec(appCodec).
 		WithInterfaceRegistry(interfaceRegistry).
@@ -136,6 +140,21 @@ func ProvideClientContext(
 	clientCtx = clientCtx.WithTxConfig(txConfig)
 
 	return clientCtx
+}
+
+func ensureIBCClientInterfacesRegistered(interfaceRegistry codectypes.InterfaceRegistry) {
+	if err := interfaceRegistry.EnsureRegistered(&clienttypes.MsgCreateClient{}); err != nil {
+		ibcmodule.AppModuleBasic{}.RegisterInterfaces(interfaceRegistry)
+	}
+	if err := interfaceRegistry.EnsureRegistered(&ibctransfertypes.MsgTransfer{}); err != nil {
+		transfermodule.AppModuleBasic{}.RegisterInterfaces(interfaceRegistry)
+	}
+	if err := interfaceRegistry.EnsureRegistered(&ibctm.ClientState{}); err != nil {
+		ibctm.AppModuleBasic{}.RegisterInterfaces(interfaceRegistry)
+	}
+	if err := interfaceRegistry.EnsureRegistered(&ibctm.ConsensusState{}); err != nil {
+		ibctm.AppModuleBasic{}.RegisterInterfaces(interfaceRegistry)
+	}
 }
 
 func hideLegacyDNSCommands(root *cobra.Command) {

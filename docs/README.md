@@ -59,7 +59,7 @@ and API references. All pages are plain Markdown so you can read them on GitHub 
 
 ### Tooling & Ops
 
-- **AutoCLI:** `lumend tx --help`, `lumend q --help`
+- **AutoCLI / CLI:** `lumend tx --help`, `lumend tx ibc --help`, `lumend q --help`, `lumend q ibc --help`, `lumend q ibc-transfer --help`
 - **Devtools:** build/test/sim scripts live in `devtools/`
 - **Protobuf:** `buf generate --template proto/buf.gen.gogo.yaml`
 - **Security:** run validators with `--minimum-gas-prices 0ulmn`, respect `LUMEN_RL_*`, and front REST with a rate-limited proxy

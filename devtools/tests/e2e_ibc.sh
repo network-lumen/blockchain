@@ -479,6 +479,16 @@ build_binary_if_needed
 step "Verify IBC transfer CLI wrapper"
 "$BIN" tx ibc-transfer transfer --help >/dev/null
 
+step "Verify IBC query CLI wrappers"
+"$BIN" query ibc --help >/dev/null
+"$BIN" query ibc channelv2 --help >/dev/null
+"$BIN" query ibc-transfer --help >/dev/null
+
+step "Verify IBC tx CLI wrappers"
+"$BIN" tx ibc --help >/dev/null
+"$BIN" tx ibc client --help >/dev/null
+"$BIN" tx ibc channelv2 --help >/dev/null
+
 setup_chain a "$VAL_MNEMONIC_A" "$USER_MNEMONIC_A" "$GOOD_RELAYER_MNEMONIC_A" "$BAD_RELAYER_MNEMONIC_A"
 setup_chain b "$VAL_MNEMONIC_B" "$USER_MNEMONIC_B" "$GOOD_RELAYER_MNEMONIC_B" "$BAD_RELAYER_MNEMONIC_B"
 
@@ -534,6 +544,41 @@ assert_open_state "$(relayer_query_state channel "$RELAYER_CHAIN_B" "$B_CHANNEL_
 note "A channel: $A_CHANNEL_ID"
 note "B channel: $B_CHANNEL_ID"
 
+step "Verify IBC query commands against the live chains"
+CLIENT_STATES_JSON=$("$BIN" query ibc client states --node "${RPC_LADDR[a]}" -o json)
+expect_contains "$CLIENT_STATES_JSON" "\"client_id\":\"$A_CLIENT_ID\"" "ibc client states query"
+
+CONNECTIONS_JSON=$("$BIN" query ibc connection connections --node "${RPC_LADDR[a]}" -o json)
+expect_contains "$CONNECTIONS_JSON" "\"id\":\"$A_CONNECTION_ID\"" "ibc connection query"
+
+CHANNELS_JSON=$("$BIN" query ibc channel channels --node "${RPC_LADDR[a]}" -o json)
+expect_contains "$CHANNELS_JSON" "\"channel_id\":\"$A_CHANNEL_ID\"" "ibc channel query"
+expect_contains "$CHANNELS_JSON" "\"port_id\":\"transfer\"" "ibc transfer channel query"
+
+TRANSFER_PARAMS_JSON=$("$BIN" query ibc-transfer params --node "${RPC_LADDR[a]}" -o json)
+expect_contains "$TRANSFER_PARAMS_JSON" "send_enabled" "ibc-transfer params query"
+
+ESCROW_ADDR=$("$BIN" query ibc-transfer escrow-address transfer "$A_CHANNEL_ID" --node "${RPC_LADDR[a]}" | tr -d '\r')
+case "$ESCROW_ADDR" in
+	lmn*) ;;
+	*)
+		echo "error: expected lmn escrow address, got $ESCROW_ADDR" >&2
+		exit 1
+		;;
+esac
+
+step "Smoke test tx ibc client generate-only flow"
+IBC_CLIENT_TX_GEN_JSON=$("$BIN" tx ibc client delete-client-creator "$A_CLIENT_ID" \
+	--from "$RELAYER_KEY_NAME_GOOD" \
+	--home "${HOME_DIR[a]}" \
+	--keyring-backend "$KEYRING" \
+	--chain-id "${CHAIN_ID[a]}" \
+	--node "${RPC_LADDR[a]}" \
+	--fees "$USER_TX_FEES" \
+	--generate-only \
+	--output json)
+expect_contains "$IBC_CLIENT_TX_GEN_JSON" "/ibc.core.client.v1.MsgDeleteClientCreator" "tx ibc client generate-only"
+
 RELAYER_A_AFTER_HANDSHAKE=$(query_balance_amount a "${ADDR_RELAYER_GOOD[a]}" ulmn)
 RELAYER_B_AFTER_HANDSHAKE=$(query_balance_amount b "${ADDR_RELAYER_GOOD[b]}" ulmn)
 expect_lt "$RELAYER_A_AFTER_HANDSHAKE" "$RELAYER_A_START" "relayer A balance after handshake"
@@ -579,7 +624,21 @@ case "$IBC_DENOM_ON_B" in
 		echo "error: expected IBC voucher denom after A->B transfer, got $IBC_DENOM_ON_B" >&2
 		exit 1
 		;;
-esac
+	esac
+
+DENOM_HASH_JSON=$("$BIN" query ibc-transfer denom-hash "transfer/$A_CHANNEL_ID/ulmn" --node "${RPC_LADDR[b]}" -o json)
+DENOM_HASH_ON_B=$(echo "$DENOM_HASH_JSON" | jq -r '.hash // .denom_hash // empty')
+[ -n "$DENOM_HASH_ON_B" ] || { echo "error: missing denom hash from ibc-transfer denom-hash query" >&2; exit 1; }
+
+expect_eq "${IBC_DENOM_ON_B#ibc/}" "$DENOM_HASH_ON_B" "destination voucher hash matches ibc-transfer denom-hash"
+
+DENOM_TRACE_JSON=$("$BIN" query ibc-transfer denom "$IBC_DENOM_ON_B" --node "${RPC_LADDR[b]}" -o json)
+DENOM_TRACE_BASE=$(echo "$DENOM_TRACE_JSON" | jq -r '.denom.base // .denom.base_denom // .base_denom // empty')
+DENOM_TRACE_PORT=$(echo "$DENOM_TRACE_JSON" | jq -r '.denom.trace[0].port_id // empty')
+DENOM_TRACE_CHANNEL=$(echo "$DENOM_TRACE_JSON" | jq -r '.denom.trace[0].channel_id // empty')
+expect_eq "$DENOM_TRACE_BASE" "ulmn" "ibc-transfer denom trace base denom"
+expect_eq "$DENOM_TRACE_PORT" "transfer" "ibc-transfer denom trace port"
+expect_eq "$DENOM_TRACE_CHANNEL" "$A_CHANNEL_ID" "ibc-transfer denom trace channel"
 
 step "Relay B->A return transfer to unescrow native funds"
 B_USER_START=$(query_balance_amount b "${ADDR_USER[b]}" ulmn)
@@ -625,4 +684,5 @@ expect_lt "$RELAYER_B_FINAL" "$RELAYER_B_AFTER_HANDSHAKE" "relayer B balance aft
 
 step "IBC e2e completed"
 note "Covered operational txs: MsgCreateClient, MsgUpdateClient, connection open, channel open, MsgTransfer, MsgRecvPacket, MsgAcknowledgement, MsgTimeout"
+note "Covered CLI surface: query ibc, query ibc-transfer, tx ibc client (generate-only), tx ibc-transfer transfer"
 note "Covered rejection paths: relayer without PQC allowlist, relayer without fee, MsgTransfer without fee, MsgTransfer without PQC, MsgChannelCloseInit on transfer channel"

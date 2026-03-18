@@ -23,6 +23,8 @@ import (
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
+	ibctransfercli "github.com/cosmos/ibc-go/v10/modules/apps/transfer/client/cli"
+	ibccli "github.com/cosmos/ibc-go/v10/modules/core/client/cli"
 
 	"lumen/app"
 	pqccli "lumen/x/pqc/client/cli"
@@ -84,6 +86,8 @@ func queryCommand() *cobra.Command {
 		authcmd.QueryTxCmd(),
 		server.QueryBlockResultsCmd(),
 		pqccli.NewQueryCmd(),
+		ibccli.GetQueryCmd(),
+		ibctransfercli.GetQueryCmd(),
 	)
 
 	return cmd
@@ -115,6 +119,7 @@ func txCommand() *cobra.Command {
 		authcmd.GetDecodeCommand(),
 		authcmd.GetSimulateCmd(),
 		pqccli.NewTxCmd(),
+		ibccli.GetTxCmd(),
 		newDNSTxCmd(),
 		newIBCTransferTxCmd(),
 		newReleaseTxCmd(),

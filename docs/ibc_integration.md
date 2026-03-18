@@ -55,6 +55,20 @@ The same test suite also confirms the following rejection paths:
 - `MsgTransfer` rejected when the user omits the Lumen PQC signature
 - `MsgChannelCloseInit` rejected on the ICS-20 transfer channel by application logic
 
+The same end-to-end coverage also validates the exposed CLI query surface against live chains:
+
+- `lumend query ibc client ...`
+- `lumend query ibc connection ...`
+- `lumend query ibc channel ...`
+- `lumend query ibc-transfer params`
+- `lumend query ibc-transfer escrow-address`
+- `lumend query ibc-transfer denom-hash`
+- `lumend query ibc-transfer denom`
+
+The same suite also smoke-tests the standard IBC client transaction CLI in generate-only mode:
+
+- `lumend tx ibc client ...`
+
 The test entry point is:
 
 ```bash
@@ -124,6 +138,21 @@ lumend tx ibc-transfer transfer [source-channel] [receiver] [amount]
 ```
 
 This command follows the standard Lumen PQC signing path.
+
+The binary also exposes the standard read-only IBC query groups:
+
+```bash
+lumend query ibc ...
+lumend query ibc-transfer ...
+```
+
+For operator and admin workflows, the binary also exposes the standard IBC client transaction group:
+
+```bash
+lumend tx ibc client ...
+```
+
+This is available for Cosmos-standard client/admin flows and is smoke-tested in generate-only mode. The currently validated live handshake path in Lumen still uses `rly`.
 
 ### Relayer core messages
 
@@ -200,6 +229,27 @@ Optional flags:
 
 The command still uses the normal Lumen PQC client flow. If your integration signs transactions outside the Lumen CLI, it must reproduce the same Lumen PQC extension behaviour for user-side `MsgTransfer`.
 
+Read-only operational queries:
+
+```bash
+lumend query ibc client states --node tcp://127.0.0.1:26657
+lumend query ibc connection connections --node tcp://127.0.0.1:26657
+lumend query ibc channel channels --node tcp://127.0.0.1:26657
+lumend query ibc-transfer params --node tcp://127.0.0.1:26657
+lumend query ibc-transfer escrow-address transfer channel-0
+lumend query ibc-transfer denom-hash transfer/channel-0/ulmn --node tcp://127.0.0.1:26657
+```
+
+Generate-only admin smoke test:
+
+```bash
+lumend tx ibc client delete-client-creator 07-tendermint-0 \
+  --from relayer \
+  --fees 1000ulmn \
+  --generate-only \
+  --output json
+```
+
 ## Integration Checklist for a DEX or Counterparty Chain
 
 1. Verify that the target Lumen network already passed upgrade `v1.5.0`.
@@ -231,5 +281,7 @@ Those message types may still be recognized by policy code, but they are not par
 - Fee policy: [`app/ante_zero_fee.go`](../app/ante_zero_fee.go)
 - IBC tx classification: [`app/ibc_tx_policy.go`](../app/ibc_tx_policy.go)
 - PQC bypass logic: [`app/ante_pqc_dualsign.go`](../app/ante_pqc_dualsign.go)
+- Query CLI wiring: [`cmd/lumend/cmd/commands.go`](../cmd/lumend/cmd/commands.go)
+- Root/client CLI wiring: [`cmd/lumend/cmd/root.go`](../cmd/lumend/cmd/root.go)
 - User transfer CLI: [`cmd/lumend/cmd/tx_ibc.go`](../cmd/lumend/cmd/tx_ibc.go)
 - End-to-end test: [`devtools/tests/e2e_ibc.sh`](../devtools/tests/e2e_ibc.sh)
