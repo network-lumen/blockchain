@@ -208,8 +208,10 @@ var (
 				Config: appconfig.WrapAny(&gatewaysmoduletypes.Module{}),
 			},
 			{
-				Name:   pqcmoduletypes.ModuleName,
-				Config: appconfig.WrapAny(&pqcmoduletypes.Module{}),
+				Name: pqcmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&pqcmoduletypes.Module{
+					Authority: mustModuleAuthority(govtypes.ModuleName),
+				}),
 			},
 			{
 				Name:   tokenomicsmoduletypes.ModuleName,

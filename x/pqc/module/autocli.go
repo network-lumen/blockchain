@@ -28,6 +28,9 @@ func (AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 			Service:              types.Msg_serviceDesc.ServiceName,
 			EnhanceCustomCommand: true,
 			RpcCommandOptions: []*autocliv1.RpcCommandOptions{
+				{RpcMethod: "UpdateParams", Skip: true},
+				{RpcMethod: "AddIBCRelayer", Skip: true},
+				{RpcMethod: "RemoveIBCRelayer", Skip: true},
 				{RpcMethod: "LinkAccountPQC", Skip: true},
 			},
 		},

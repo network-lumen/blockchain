@@ -85,6 +85,10 @@ gov_query_dns_params() {
   "$BIN" query dns params --node "$NODE" -o json | jq '.params'
 }
 
+gov_query_pqc_params() {
+  "$BIN" query pqc params --node "$NODE" -o json | jq '.params'
+}
+
 gov_canonical_duration() {
   local value="$1"
   python3 - "$value" <<'PY'

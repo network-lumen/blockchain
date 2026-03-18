@@ -2,17 +2,18 @@
 
 Lumen wires the upstream Cosmos SDK `x/gov` module directly into the application. DAO authority is deliberately scoped:
 only the DNS, gateways, release, and non-fundamental tokenomics knobs accept `MsgUpdateParams`. In addition, the DAO
-can schedule upgrades via `x/upgrade`, and `x/tokenomics` exposes targeted controls for slashing liveness/downtime.
-Core SDK modules (`x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, and `x/pqc`) reject
-governance attempts and require a binary upgrade instead.
+can schedule upgrades via `x/upgrade`, `x/tokenomics` exposes targeted controls for slashing liveness/downtime, and
+`x/pqc` exposes dedicated relayer-allowlist messages for IBC operations. Core SDK modules (`x/auth`, `x/bank`,
+`x/staking`, `x/distribution`, `x/consensus`, and `x/gov`) reject governance attempts and require a binary upgrade
+instead.
 
 ## Module wiring & defaults
 
-- **Authority:** DNS, gateways, release, and tokenomics keepers still receive `authtypes.NewModuleAddress("gov")`.
-  All SDK keepers (auth/bank/staking/distribution/consensus/gov) are wired to an internal `gov-immutable` module
-  address so that `MsgUpdateParams` from the DAO are rejected with `ErrInvalidSigner`. `x/slashing` remains immutable,
-  but tokenomics can update a limited subset of slashing params (liveness/downtime). `x/upgrade` uses the `gov`
-  authority so upgrade plans can be scheduled via governance.
+- **Authority:** DNS, gateways, release, tokenomics, and the dedicated PQC relayer-allowlist messages receive
+  `authtypes.NewModuleAddress("gov")`. All SDK keepers (auth/bank/staking/distribution/consensus/gov) are wired to an
+  internal `gov-immutable` module address so that `MsgUpdateParams` from the DAO are rejected with `ErrInvalidSigner`.
+  `x/slashing` remains immutable, but tokenomics can update a limited subset of slashing params (liveness/downtime).
+  `x/upgrade` uses the `gov` authority so upgrade plans can be scheduled via governance.
 - **Module account:** `gov` owns a burn-enabled module account so that failed/withdrawn deposits can be slashed when
   the relevant burn flags are set.
 - **Metadata cap:** the runtime configuration sets `max_metadata_len = 4096` bytes for proposal metadata.
@@ -28,10 +29,11 @@ governance attempts and require a binary upgrade instead.
 
 ## Immutable vs governable surface
 
-- ✅ Governable: `x/dns`, `x/gateways`, `x/release`, and tokenomics' soft knobs (`tx_tax_rate`, `min_send_ulmn`,
-  `distribution_interval_blocks`), plus `x/upgrade` (software upgrade plans).
-- ❌ Immutable: `x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, `x/pqc`, and the tokenomics
-  supply/currency fields (`denom`, `decimals`, `supply_cap_lumn`, `halving_interval_blocks`,
+- ✅ Governable: `x/dns`, `x/gateways`, `x/release`, tokenomics' soft knobs (`tx_tax_rate`, `min_send_ulmn`,
+  `distribution_interval_blocks`), `x/upgrade` (software upgrade plans), and the dedicated `x/pqc`
+  `MsgAddIBCRelayer` / `MsgRemoveIBCRelayer` flows.
+- ❌ Immutable: `x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, `x/pqc.MsgUpdateParams`,
+  and the tokenomics supply/currency fields (`denom`, `decimals`, `supply_cap_lumn`, `halving_interval_blocks`,
   `initial_reward_per_block_lumn`). Governance proposals that touch these areas will be rejected.
 
 ## Submitting proposals
@@ -74,6 +76,8 @@ lumend tx gov vote 1 yes --from validator --yes
 - **`x/release`:** maintain publisher allowlists, add/remove channels, tweak anti-spam fees, or enforce validation for
   stable releases.
 - **`x/tokenomics`:** adjust the tax rate and distribution cadence. Emission schedule fields are genesis-locked.
+- **`x/pqc`:** add or remove relayer addresses from the IBC PQC-bypass allowlist without reopening the rest of the PQC
+  parameter surface.
 
 ## Operational Guidance
 

@@ -24,12 +24,42 @@ func (m *MsgUpdateParams) ValidateBasic() error {
 	return m.GetParams().Validate()
 }
 
+func (m *MsgAddIBCRelayer) ValidateBasic() error {
+	return validateIBCRelayerAuthorityMsg(m.GetAuthority(), m.GetRelayer())
+}
+
+func (m *MsgAddIBCRelayer) GetSigners() []sdk.AccAddress {
+	return authoritySigners(m.GetAuthority())
+}
+
+func (m *MsgRemoveIBCRelayer) ValidateBasic() error {
+	return validateIBCRelayerAuthorityMsg(m.GetAuthority(), m.GetRelayer())
+}
+
+func (m *MsgRemoveIBCRelayer) GetSigners() []sdk.AccAddress {
+	return authoritySigners(m.GetAuthority())
+}
+
 func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(m.GetAuthority())
+	return authoritySigners(m.GetAuthority())
+}
+
+func authoritySigners(authority string) []sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(authority)
 	if err != nil {
 		panic(err)
 	}
 	return []sdk.AccAddress{addr}
+}
+
+func validateIBCRelayerAuthorityMsg(authority, relayer string) error {
+	if _, err := sdk.AccAddressFromBech32(authority); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "authority: %v", err)
+	}
+	if _, err := sdk.AccAddressFromBech32(relayer); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "relayer: %v", err)
+	}
+	return nil
 }
 
 func (m *MsgLinkAccountPQC) ValidateBasic() error {

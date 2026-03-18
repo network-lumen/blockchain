@@ -33,3 +33,20 @@ func TestMsgUpdateParamsValidateBasic(t *testing.T) {
 	msg.Authority = "invalid"
 	require.Error(t, msg.ValidateBasic())
 }
+
+func TestIBCRelayerAuthorityMessagesValidateBasic(t *testing.T) {
+	authority := sdk.AccAddress(make([]byte, 20)).String()
+	relayer := sdk.AccAddress(make([]byte, 20)).String()
+
+	add := MsgAddIBCRelayer{Authority: authority, Relayer: relayer}
+	require.NoError(t, add.ValidateBasic())
+
+	remove := MsgRemoveIBCRelayer{Authority: authority, Relayer: relayer}
+	require.NoError(t, remove.ValidateBasic())
+
+	add.Relayer = "invalid"
+	require.Error(t, add.ValidateBasic())
+
+	remove.Authority = "invalid"
+	require.Error(t, remove.ValidateBasic())
+}

@@ -6,6 +6,7 @@ import (
 	"cosmossdk.io/depinject"
 	"cosmossdk.io/depinject/appconfig"
 	"github.com/cosmos/cosmos-sdk/codec"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"lumen/x/pqc/keeper"
 	"lumen/x/pqc/types"
@@ -36,7 +37,12 @@ type ModuleOutputs struct {
 }
 
 func ProvideModule(in ModuleInputs) ModuleOutputs {
-	k := keeper.NewKeeper(in.StoreService, in.Cdc)
+	authority := authtypes.NewModuleAddress(types.GovModuleName).String()
+	if in.Config != nil && in.Config.Authority != "" {
+		authority = authtypes.NewModuleAddressOrBech32Address(in.Config.Authority).String()
+	}
+
+	k := keeper.NewKeeper(in.StoreService, in.Cdc, authority)
 	k.SetBankKeeper(in.BankKeeper)
 	m := NewAppModule(in.Cdc, k)
 	return ModuleOutputs{PqcKeeper: k, Module: m}

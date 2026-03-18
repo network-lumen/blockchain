@@ -181,6 +181,11 @@ Minimum requirements on the Lumen side:
 - relayer transactions must pay a positive `ulmn` fee
 - `minimum-gas-prices` must still remain `0ulmn` on the node
 
+The supported on-chain management path for that allowlist is governance via the dedicated PQC messages:
+
+- `/lumen.pqc.v1.MsgAddIBCRelayer`
+- `/lumen.pqc.v1.MsgRemoveIBCRelayer`
+
 Practical consequence:
 
 - do not try to enable validator min gas prices for IBC
@@ -254,13 +259,23 @@ lumend tx ibc client delete-client-creator 07-tendermint-0 \
 
 1. Verify that the target Lumen network already passed upgrade `v1.5.0`.
 2. Fund the relayer address on Lumen with `ulmn`.
-3. Add that address to `x/pqc.params.ibc_relayer_allowlist` on Lumen.
+3. Add that address to `x/pqc.params.ibc_relayer_allowlist` on Lumen through a governance proposal carrying `/lumen.pqc.v1.MsgAddIBCRelayer`.
 4. Keep node `minimum-gas-prices` at `0ulmn`.
 5. Configure the relayer to pay positive `ulmn` fees on Lumen.
 6. Create clients, connections, and a transfer channel.
 7. Test an outbound `MsgTransfer` from Lumen.
 8. Test the reverse path back to Lumen.
 9. Test a timeout/refund path before treating the route as production-ready.
+
+Example governance message payload:
+
+```json
+{
+  "@type": "/lumen.pqc.v1.MsgAddIBCRelayer",
+  "authority": "<gov-module-address>",
+  "relayer": "lmn1..."
+}
+```
 
 ## Current Limits
 

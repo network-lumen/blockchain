@@ -7,6 +7,8 @@ const (
 	StoreKey     = ModuleName
 	RouterKey    = ModuleName
 	QuerierRoute = ModuleName
+
+	GovModuleName = "gov"
 )
 
 const (

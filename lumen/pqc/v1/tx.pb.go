@@ -119,6 +119,182 @@ func (m *MsgUpdateParamsResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MsgUpdateParamsResponse proto.InternalMessageInfo
 
+type MsgAddIBCRelayer struct {
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	Relayer   string `protobuf:"bytes,2,opt,name=relayer,proto3" json:"relayer,omitempty"`
+}
+
+func (m *MsgAddIBCRelayer) Reset()         { *m = MsgAddIBCRelayer{} }
+func (m *MsgAddIBCRelayer) String() string { return proto.CompactTextString(m) }
+func (*MsgAddIBCRelayer) ProtoMessage()    {}
+func (*MsgAddIBCRelayer) Descriptor() ([]byte, []int) {
+	return fileDescriptor_17f0de7b17ae2989, []int{2}
+}
+func (m *MsgAddIBCRelayer) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgAddIBCRelayer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgAddIBCRelayer.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgAddIBCRelayer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAddIBCRelayer.Merge(m, src)
+}
+func (m *MsgAddIBCRelayer) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgAddIBCRelayer) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAddIBCRelayer.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgAddIBCRelayer proto.InternalMessageInfo
+
+func (m *MsgAddIBCRelayer) GetAuthority() string {
+	if m != nil {
+		return m.Authority
+	}
+	return ""
+}
+
+func (m *MsgAddIBCRelayer) GetRelayer() string {
+	if m != nil {
+		return m.Relayer
+	}
+	return ""
+}
+
+type MsgAddIBCRelayerResponse struct {
+}
+
+func (m *MsgAddIBCRelayerResponse) Reset()         { *m = MsgAddIBCRelayerResponse{} }
+func (m *MsgAddIBCRelayerResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgAddIBCRelayerResponse) ProtoMessage()    {}
+func (*MsgAddIBCRelayerResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_17f0de7b17ae2989, []int{3}
+}
+func (m *MsgAddIBCRelayerResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgAddIBCRelayerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgAddIBCRelayerResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgAddIBCRelayerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAddIBCRelayerResponse.Merge(m, src)
+}
+func (m *MsgAddIBCRelayerResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgAddIBCRelayerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAddIBCRelayerResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgAddIBCRelayerResponse proto.InternalMessageInfo
+
+type MsgRemoveIBCRelayer struct {
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	Relayer   string `protobuf:"bytes,2,opt,name=relayer,proto3" json:"relayer,omitempty"`
+}
+
+func (m *MsgRemoveIBCRelayer) Reset()         { *m = MsgRemoveIBCRelayer{} }
+func (m *MsgRemoveIBCRelayer) String() string { return proto.CompactTextString(m) }
+func (*MsgRemoveIBCRelayer) ProtoMessage()    {}
+func (*MsgRemoveIBCRelayer) Descriptor() ([]byte, []int) {
+	return fileDescriptor_17f0de7b17ae2989, []int{4}
+}
+func (m *MsgRemoveIBCRelayer) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRemoveIBCRelayer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRemoveIBCRelayer.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRemoveIBCRelayer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRemoveIBCRelayer.Merge(m, src)
+}
+func (m *MsgRemoveIBCRelayer) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRemoveIBCRelayer) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRemoveIBCRelayer.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRemoveIBCRelayer proto.InternalMessageInfo
+
+func (m *MsgRemoveIBCRelayer) GetAuthority() string {
+	if m != nil {
+		return m.Authority
+	}
+	return ""
+}
+
+func (m *MsgRemoveIBCRelayer) GetRelayer() string {
+	if m != nil {
+		return m.Relayer
+	}
+	return ""
+}
+
+type MsgRemoveIBCRelayerResponse struct {
+}
+
+func (m *MsgRemoveIBCRelayerResponse) Reset()         { *m = MsgRemoveIBCRelayerResponse{} }
+func (m *MsgRemoveIBCRelayerResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgRemoveIBCRelayerResponse) ProtoMessage()    {}
+func (*MsgRemoveIBCRelayerResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_17f0de7b17ae2989, []int{5}
+}
+func (m *MsgRemoveIBCRelayerResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRemoveIBCRelayerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRemoveIBCRelayerResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRemoveIBCRelayerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRemoveIBCRelayerResponse.Merge(m, src)
+}
+func (m *MsgRemoveIBCRelayerResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRemoveIBCRelayerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRemoveIBCRelayerResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRemoveIBCRelayerResponse proto.InternalMessageInfo
+
 type MsgLinkAccountPQC struct {
 	Creator  string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
 	Scheme   string `protobuf:"bytes,2,opt,name=scheme,proto3" json:"scheme,omitempty" yaml:"scheme"`
@@ -130,7 +306,7 @@ func (m *MsgLinkAccountPQC) Reset()         { *m = MsgLinkAccountPQC{} }
 func (m *MsgLinkAccountPQC) String() string { return proto.CompactTextString(m) }
 func (*MsgLinkAccountPQC) ProtoMessage()    {}
 func (*MsgLinkAccountPQC) Descriptor() ([]byte, []int) {
-	return fileDescriptor_17f0de7b17ae2989, []int{2}
+	return fileDescriptor_17f0de7b17ae2989, []int{6}
 }
 func (m *MsgLinkAccountPQC) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -194,7 +370,7 @@ func (m *MsgLinkAccountPQCResponse) Reset()         { *m = MsgLinkAccountPQCResp
 func (m *MsgLinkAccountPQCResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgLinkAccountPQCResponse) ProtoMessage()    {}
 func (*MsgLinkAccountPQCResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_17f0de7b17ae2989, []int{3}
+	return fileDescriptor_17f0de7b17ae2989, []int{7}
 }
 func (m *MsgLinkAccountPQCResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -226,6 +402,10 @@ var xxx_messageInfo_MsgLinkAccountPQCResponse proto.InternalMessageInfo
 func init() {
 	proto.RegisterType((*MsgUpdateParams)(nil), "lumen.pqc.v1.MsgUpdateParams")
 	proto.RegisterType((*MsgUpdateParamsResponse)(nil), "lumen.pqc.v1.MsgUpdateParamsResponse")
+	proto.RegisterType((*MsgAddIBCRelayer)(nil), "lumen.pqc.v1.MsgAddIBCRelayer")
+	proto.RegisterType((*MsgAddIBCRelayerResponse)(nil), "lumen.pqc.v1.MsgAddIBCRelayerResponse")
+	proto.RegisterType((*MsgRemoveIBCRelayer)(nil), "lumen.pqc.v1.MsgRemoveIBCRelayer")
+	proto.RegisterType((*MsgRemoveIBCRelayerResponse)(nil), "lumen.pqc.v1.MsgRemoveIBCRelayerResponse")
 	proto.RegisterType((*MsgLinkAccountPQC)(nil), "lumen.pqc.v1.MsgLinkAccountPQC")
 	proto.RegisterType((*MsgLinkAccountPQCResponse)(nil), "lumen.pqc.v1.MsgLinkAccountPQCResponse")
 }
@@ -233,39 +413,45 @@ func init() {
 func init() { proto.RegisterFile("lumen/pqc/v1/tx.proto", fileDescriptor_17f0de7b17ae2989) }
 
 var fileDescriptor_17f0de7b17ae2989 = []byte{
-	// 497 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x52, 0x31, 0x6f, 0xd3, 0x40,
-	0x14, 0xce, 0xb5, 0x90, 0x92, 0x23, 0x14, 0x62, 0x05, 0xc5, 0x71, 0x55, 0x3b, 0xb2, 0x84, 0x08,
-	0x41, 0xd8, 0x34, 0x48, 0x20, 0x75, 0xab, 0x19, 0x21, 0xa8, 0x04, 0x58, 0xba, 0x44, 0x8e, 0x73,
-	0x72, 0xa3, 0xd6, 0xbe, 0xab, 0xef, 0xdc, 0xd6, 0x1b, 0x62, 0x44, 0x0c, 0xfc, 0x0c, 0xc6, 0x08,
-	0x31, 0x33, 0x77, 0xac, 0x98, 0x98, 0x22, 0x94, 0x0c, 0xd9, 0xf3, 0x0b, 0x90, 0x7d, 0x77, 0x6a,
-	0xed, 0x4a, 0xed, 0x62, 0xf9, 0xbd, 0xef, 0xfb, 0x9e, 0xdf, 0xf7, 0x3d, 0xc3, 0x87, 0x87, 0x71,
-	0x80, 0x42, 0x9b, 0x1c, 0x79, 0xf6, 0xf1, 0x96, 0xcd, 0x4e, 0x2d, 0x12, 0x61, 0x86, 0x95, 0x6a,
-	0xd6, 0xb6, 0xc8, 0x91, 0x67, 0x1d, 0x6f, 0x69, 0x35, 0x37, 0x18, 0x87, 0xd8, 0xce, 0x9e, 0x9c,
-	0xa0, 0x35, 0x3c, 0x4c, 0x03, 0x4c, 0xed, 0x80, 0xfa, 0xa9, 0x30, 0xa0, 0xbe, 0x00, 0x9a, 0x1c,
-	0x18, 0x64, 0x95, 0xcd, 0x0b, 0x01, 0xd5, 0x7d, 0xec, 0x63, 0xde, 0x4f, 0xdf, 0xa4, 0x20, 0xb7,
-	0x01, 0x71, 0x23, 0x37, 0x10, 0x02, 0xf3, 0x27, 0x80, 0xf7, 0x7b, 0xd4, 0xff, 0x44, 0x46, 0x2e,
-	0x43, 0xbb, 0x19, 0xa2, 0xbc, 0x84, 0x15, 0x37, 0x66, 0xfb, 0x38, 0x1a, 0xb3, 0x44, 0x05, 0x2d,
-	0xd0, 0xae, 0x38, 0xea, 0x9f, 0x5f, 0xcf, 0xea, 0xe2, 0x4b, 0x3b, 0xa3, 0x51, 0x84, 0x28, 0xfd,
-	0xc0, 0xa2, 0x71, 0xe8, 0xf7, 0x2f, 0xa8, 0xca, 0x2b, 0x58, 0xe6, 0xb3, 0xd5, 0x95, 0x16, 0x68,
-	0xdf, 0xed, 0xd6, 0xad, 0xcb, 0x16, 0x2d, 0x3e, 0xdd, 0xa9, 0x9c, 0x4d, 0x8d, 0xd2, 0x8f, 0xc5,
-	0xa4, 0x03, 0xfa, 0x82, 0xbe, 0x6d, 0x7d, 0x59, 0x4c, 0x3a, 0x17, 0x83, 0xbe, 0x2e, 0x26, 0x9d,
-	0x0d, 0xbe, 0xf2, 0x69, 0xb6, 0x74, 0x61, 0x41, 0xb3, 0x09, 0x1b, 0x85, 0x56, 0x1f, 0x51, 0x82,
-	0x43, 0x8a, 0xcc, 0x6f, 0x2b, 0xb0, 0xd6, 0xa3, 0xfe, 0xdb, 0x71, 0x78, 0xb0, 0xe3, 0x79, 0x38,
-	0x0e, 0xd9, 0xee, 0xfb, 0xd7, 0x4a, 0x17, 0xae, 0x79, 0x11, 0x72, 0x19, 0x8e, 0x6e, 0xf4, 0x23,
-	0x89, 0xca, 0x13, 0x58, 0xa6, 0xde, 0x3e, 0x0a, 0x50, 0xe6, 0xa6, 0xe2, 0xd4, 0x96, 0x53, 0xe3,
-	0x5e, 0xe2, 0x06, 0x87, 0xdb, 0x26, 0xef, 0x9b, 0x7d, 0x41, 0x50, 0x9e, 0xc3, 0x35, 0x12, 0x0f,
-	0x07, 0x07, 0x28, 0x51, 0x57, 0x5b, 0xa0, 0x5d, 0x75, 0x1a, 0xcb, 0xa9, 0xb1, 0xce, 0xb9, 0x02,
-	0x30, 0xa5, 0xe3, 0x78, 0xf8, 0x06, 0x25, 0x69, 0xc4, 0x04, 0x9f, 0x0c, 0x42, 0x1c, 0x7a, 0x48,
-	0xbd, 0x95, 0x69, 0x9a, 0xcb, 0xa9, 0xf1, 0x40, 0x68, 0x24, 0x24, 0x54, 0x77, 0x08, 0x3e, 0x79,
-	0x97, 0xd6, 0x3c, 0x29, 0xb9, 0x62, 0x9a, 0xd3, 0x66, 0x21, 0xa7, 0xbc, 0x71, 0x73, 0x03, 0x36,
-	0xaf, 0x34, 0x65, 0x56, 0xdd, 0xdf, 0x00, 0xae, 0xf6, 0xa8, 0xaf, 0x7c, 0x84, 0xd5, 0xdc, 0xfd,
-	0x37, 0xf3, 0x77, 0x2b, 0x44, 0xad, 0x3d, 0xba, 0x16, 0x96, 0xd3, 0x95, 0x3d, 0xb8, 0x5e, 0xb8,
-	0x82, 0x71, 0x45, 0x98, 0x27, 0x68, 0x8f, 0x6f, 0x20, 0xc8, 0xd9, 0xda, 0xed, 0xcf, 0x69, 0x2e,
-	0xce, 0xd3, 0xb3, 0x99, 0x0e, 0xce, 0x67, 0x3a, 0xf8, 0x37, 0xd3, 0xc1, 0xf7, 0xb9, 0x5e, 0x3a,
-	0x9f, 0xeb, 0xa5, 0xbf, 0x73, 0xbd, 0xb4, 0x57, 0xbb, 0x1c, 0x0b, 0x4b, 0x08, 0xa2, 0xc3, 0x72,
-	0xf6, 0xc3, 0xbf, 0xf8, 0x1f, 0x00, 0x00, 0xff, 0xff, 0xbb, 0x82, 0xb3, 0x6a, 0x8f, 0x03, 0x00,
-	0x00,
+	// 608 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x54, 0xc1, 0x6f, 0xd2, 0x50,
+	0x1c, 0xa6, 0x9b, 0x32, 0x79, 0xb2, 0x09, 0x15, 0x43, 0x29, 0xd2, 0x62, 0x13, 0x95, 0x61, 0x6c,
+	0x1d, 0x26, 0x9a, 0x70, 0x83, 0x9d, 0x8c, 0x62, 0x66, 0xd5, 0x98, 0xec, 0x82, 0xa5, 0xbc, 0x74,
+	0x64, 0xb4, 0xaf, 0xeb, 0x2b, 0x6c, 0xbd, 0x19, 0x8f, 0xc6, 0x83, 0x7f, 0x86, 0x37, 0x89, 0xd1,
+	0xff, 0x61, 0xc7, 0xc5, 0x93, 0x27, 0x62, 0xe0, 0xc0, 0x9d, 0x9b, 0x37, 0xd3, 0xbe, 0x96, 0xad,
+	0xad, 0x81, 0xc4, 0x8b, 0x17, 0xc2, 0xfb, 0x7d, 0xdf, 0xf7, 0xeb, 0xf7, 0xbd, 0xfe, 0x7e, 0x05,
+	0x37, 0xfa, 0x03, 0x1d, 0x1a, 0x92, 0x79, 0xa4, 0x4a, 0xc3, 0x1d, 0xc9, 0x3e, 0x11, 0x4d, 0x0b,
+	0xd9, 0x88, 0x4e, 0x7b, 0x65, 0xd1, 0x3c, 0x52, 0xc5, 0xe1, 0x0e, 0x9b, 0x55, 0xf4, 0x9e, 0x81,
+	0x24, 0xef, 0x97, 0x10, 0xd8, 0xbc, 0x8a, 0xb0, 0x8e, 0xb0, 0xa4, 0x63, 0xcd, 0x15, 0xea, 0x58,
+	0xf3, 0x81, 0x02, 0x01, 0xda, 0xde, 0x49, 0x22, 0x07, 0x1f, 0xca, 0x69, 0x48, 0x43, 0xa4, 0xee,
+	0xfe, 0x0b, 0x04, 0x21, 0x07, 0xa6, 0x62, 0x29, 0xba, 0x2f, 0x10, 0xbe, 0x52, 0xe0, 0x5a, 0x0b,
+	0x6b, 0xaf, 0xcd, 0xae, 0x62, 0xc3, 0x3d, 0x0f, 0xa1, 0x1f, 0x81, 0x94, 0x32, 0xb0, 0x0f, 0x90,
+	0xd5, 0xb3, 0x1d, 0x86, 0x2a, 0x53, 0x95, 0x54, 0x93, 0xf9, 0xf1, 0xed, 0x7e, 0xce, 0x7f, 0x52,
+	0xa3, 0xdb, 0xb5, 0x20, 0xc6, 0x2f, 0x6d, 0xab, 0x67, 0x68, 0xf2, 0x39, 0x95, 0x7e, 0x0c, 0x92,
+	0xa4, 0x37, 0xb3, 0x56, 0xa6, 0x2a, 0x57, 0x6b, 0x39, 0xf1, 0x62, 0x44, 0x91, 0x74, 0x6f, 0xa6,
+	0x4e, 0xc7, 0x7c, 0xe2, 0xf3, 0x6c, 0x54, 0xa5, 0x64, 0x9f, 0x5e, 0x17, 0xdf, 0xcf, 0x46, 0xd5,
+	0xf3, 0x46, 0x1f, 0x66, 0xa3, 0x6a, 0x91, 0x58, 0x3e, 0xf1, 0x4c, 0x47, 0x0c, 0x0a, 0x05, 0x90,
+	0x8f, 0x94, 0x64, 0x88, 0x4d, 0x64, 0x60, 0x28, 0x7c, 0xa1, 0x40, 0xa6, 0x85, 0xb5, 0x46, 0xb7,
+	0xfb, 0xa4, 0xb9, 0x2b, 0xc3, 0xbe, 0xe2, 0x40, 0xeb, 0x9f, 0x03, 0xd5, 0xc0, 0x86, 0x45, 0x5a,
+	0x78, 0x89, 0x96, 0xa9, 0x02, 0x62, 0x5d, 0x8a, 0x67, 0xb9, 0x19, 0xc9, 0x12, 0x32, 0x27, 0xb0,
+	0x80, 0x89, 0xd6, 0x16, 0x69, 0xbe, 0x53, 0xe0, 0x7a, 0x0b, 0x6b, 0x32, 0xd4, 0xd1, 0x10, 0xfe,
+	0xa7, 0x40, 0xb5, 0x78, 0x20, 0x3e, 0x12, 0x28, 0xea, 0x4f, 0x28, 0x81, 0xe2, 0x5f, 0xca, 0x8b,
+	0x58, 0x1f, 0xd7, 0x40, 0xb6, 0x85, 0xb5, 0x67, 0x3d, 0xe3, 0xb0, 0xa1, 0xaa, 0x68, 0x60, 0xd8,
+	0x7b, 0x2f, 0x76, 0x5d, 0x73, 0xaa, 0x05, 0x15, 0x1b, 0x59, 0x2b, 0x23, 0x05, 0x44, 0x7a, 0x1b,
+	0x24, 0xb1, 0x7a, 0x00, 0x75, 0xe8, 0xe7, 0xc9, 0xce, 0xc7, 0xfc, 0xa6, 0xa3, 0xe8, 0xfd, 0xba,
+	0x40, 0xea, 0x82, 0xec, 0x13, 0xe8, 0x07, 0x60, 0xc3, 0x1c, 0x74, 0xda, 0x87, 0xd0, 0x61, 0xd6,
+	0xcb, 0x54, 0x25, 0xdd, 0xcc, 0xcf, 0xc7, 0xfc, 0x16, 0xe1, 0xfa, 0x80, 0x10, 0x8c, 0xe5, 0xa0,
+	0xf3, 0x14, 0x3a, 0xee, 0x2d, 0x9b, 0xe8, 0xb8, 0x6d, 0x20, 0x43, 0x85, 0xcc, 0x25, 0x4f, 0x53,
+	0x98, 0x8f, 0xf9, 0x8c, 0xaf, 0x09, 0x20, 0x5f, 0x75, 0xc5, 0x44, 0xc7, 0xcf, 0xdd, 0x33, 0x19,
+	0xe7, 0xc0, 0xa2, 0x7b, 0x5f, 0xa5, 0xc8, 0x7d, 0x85, 0x83, 0x0b, 0x45, 0x50, 0x88, 0x15, 0x83,
+	0xbb, 0xaa, 0xfd, 0x5e, 0x03, 0xeb, 0x2d, 0xac, 0xd1, 0xaf, 0x40, 0x3a, 0xb4, 0xa4, 0xa5, 0xf0,
+	0x72, 0x45, 0xf6, 0x81, 0xbd, 0xbd, 0x14, 0x0e, 0xba, 0xd3, 0x6f, 0xc0, 0x66, 0x78, 0x55, 0xb8,
+	0x98, 0x2e, 0x84, 0xb3, 0x77, 0x96, 0xe3, 0x8b, 0xc6, 0x6f, 0x41, 0x26, 0x36, 0xb5, 0xb7, 0x62,
+	0xda, 0x28, 0x85, 0xdd, 0x5e, 0x49, 0x59, 0x3c, 0x61, 0x1f, 0x6c, 0x45, 0x06, 0x88, 0x8f, 0x89,
+	0xc3, 0x04, 0xf6, 0xee, 0x0a, 0x42, 0xd0, 0x9b, 0xbd, 0xfc, 0xce, 0x7d, 0xa5, 0xcd, 0x7b, 0xa7,
+	0x13, 0x8e, 0x3a, 0x9b, 0x70, 0xd4, 0xaf, 0x09, 0x47, 0x7d, 0x9a, 0x72, 0x89, 0xb3, 0x29, 0x97,
+	0xf8, 0x39, 0xe5, 0x12, 0xfb, 0xd9, 0x8b, 0x6f, 0xd4, 0x76, 0x4c, 0x88, 0x3b, 0x49, 0xef, 0x83,
+	0xfa, 0xf0, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x90, 0x58, 0x03, 0xc0, 0xef, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -281,6 +467,8 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	AddIBCRelayer(ctx context.Context, in *MsgAddIBCRelayer, opts ...grpc.CallOption) (*MsgAddIBCRelayerResponse, error)
+	RemoveIBCRelayer(ctx context.Context, in *MsgRemoveIBCRelayer, opts ...grpc.CallOption) (*MsgRemoveIBCRelayerResponse, error)
 	LinkAccountPQC(ctx context.Context, in *MsgLinkAccountPQC, opts ...grpc.CallOption) (*MsgLinkAccountPQCResponse, error)
 }
 
@@ -301,6 +489,24 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 	return out, nil
 }
 
+func (c *msgClient) AddIBCRelayer(ctx context.Context, in *MsgAddIBCRelayer, opts ...grpc.CallOption) (*MsgAddIBCRelayerResponse, error) {
+	out := new(MsgAddIBCRelayerResponse)
+	err := c.cc.Invoke(ctx, "/lumen.pqc.v1.Msg/AddIBCRelayer", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) RemoveIBCRelayer(ctx context.Context, in *MsgRemoveIBCRelayer, opts ...grpc.CallOption) (*MsgRemoveIBCRelayerResponse, error) {
+	out := new(MsgRemoveIBCRelayerResponse)
+	err := c.cc.Invoke(ctx, "/lumen.pqc.v1.Msg/RemoveIBCRelayer", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) LinkAccountPQC(ctx context.Context, in *MsgLinkAccountPQC, opts ...grpc.CallOption) (*MsgLinkAccountPQCResponse, error) {
 	out := new(MsgLinkAccountPQCResponse)
 	err := c.cc.Invoke(ctx, "/lumen.pqc.v1.Msg/LinkAccountPQC", in, out, opts...)
@@ -313,6 +519,8 @@ func (c *msgClient) LinkAccountPQC(ctx context.Context, in *MsgLinkAccountPQC, o
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	AddIBCRelayer(context.Context, *MsgAddIBCRelayer) (*MsgAddIBCRelayerResponse, error)
+	RemoveIBCRelayer(context.Context, *MsgRemoveIBCRelayer) (*MsgRemoveIBCRelayerResponse, error)
 	LinkAccountPQC(context.Context, *MsgLinkAccountPQC) (*MsgLinkAccountPQCResponse, error)
 }
 
@@ -322,6 +530,12 @@ type UnimplementedMsgServer struct {
 
 func (*UnimplementedMsgServer) UpdateParams(ctx context.Context, req *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (*UnimplementedMsgServer) AddIBCRelayer(ctx context.Context, req *MsgAddIBCRelayer) (*MsgAddIBCRelayerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddIBCRelayer not implemented")
+}
+func (*UnimplementedMsgServer) RemoveIBCRelayer(ctx context.Context, req *MsgRemoveIBCRelayer) (*MsgRemoveIBCRelayerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveIBCRelayer not implemented")
 }
 func (*UnimplementedMsgServer) LinkAccountPQC(ctx context.Context, req *MsgLinkAccountPQC) (*MsgLinkAccountPQCResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LinkAccountPQC not implemented")
@@ -345,6 +559,42 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MsgServer).UpdateParams(ctx, req.(*MsgUpdateParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_AddIBCRelayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAddIBCRelayer)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).AddIBCRelayer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lumen.pqc.v1.Msg/AddIBCRelayer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).AddIBCRelayer(ctx, req.(*MsgAddIBCRelayer))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_RemoveIBCRelayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgRemoveIBCRelayer)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).RemoveIBCRelayer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lumen.pqc.v1.Msg/RemoveIBCRelayer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).RemoveIBCRelayer(ctx, req.(*MsgRemoveIBCRelayer))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -375,6 +625,14 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "AddIBCRelayer",
+			Handler:    _Msg_AddIBCRelayer_Handler,
+		},
+		{
+			MethodName: "RemoveIBCRelayer",
+			Handler:    _Msg_RemoveIBCRelayer_Handler,
 		},
 		{
 			MethodName: "LinkAccountPQC",
@@ -441,6 +699,126 @@ func (m *MsgUpdateParamsResponse) MarshalTo(dAtA []byte) (int, error) {
 }
 
 func (m *MsgUpdateParamsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgAddIBCRelayer) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgAddIBCRelayer) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgAddIBCRelayer) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Relayer) > 0 {
+		i -= len(m.Relayer)
+		copy(dAtA[i:], m.Relayer)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Relayer)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Authority) > 0 {
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgAddIBCRelayerResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgAddIBCRelayerResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgAddIBCRelayerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRemoveIBCRelayer) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRemoveIBCRelayer) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRemoveIBCRelayer) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Relayer) > 0 {
+		i -= len(m.Relayer)
+		copy(dAtA[i:], m.Relayer)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Relayer)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Authority) > 0 {
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRemoveIBCRelayerResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRemoveIBCRelayerResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRemoveIBCRelayerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -549,6 +927,58 @@ func (m *MsgUpdateParams) Size() (n int) {
 }
 
 func (m *MsgUpdateParamsResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgAddIBCRelayer) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Authority)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Relayer)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgAddIBCRelayerResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgRemoveIBCRelayer) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Authority)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Relayer)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgRemoveIBCRelayerResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -739,6 +1169,334 @@ func (m *MsgUpdateParamsResponse) Unmarshal(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: MsgUpdateParamsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgAddIBCRelayer) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgAddIBCRelayer: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgAddIBCRelayer: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Authority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Relayer", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Relayer = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgAddIBCRelayerResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgAddIBCRelayerResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgAddIBCRelayerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRemoveIBCRelayer) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRemoveIBCRelayer: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRemoveIBCRelayer: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Authority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Relayer", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Relayer = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRemoveIBCRelayerResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRemoveIBCRelayerResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRemoveIBCRelayerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

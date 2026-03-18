@@ -14,4 +14,6 @@ var (
 	ErrInsufficientBalanceLink = errorsmod.Register(ModuleName, 9, "insufficient balance for pqc link")
 	ErrInvalidPow              = errorsmod.Register(ModuleName, 10, "invalid pqc proof-of-work")
 	ErrInvalidPubKeyFormat     = errorsmod.Register(ModuleName, 11, "invalid pqc public key format")
+	ErrIBCRelayerExists        = errorsmod.Register(ModuleName, 12, "ibc relayer already allowlisted")
+	ErrIBCRelayerNotFound      = errorsmod.Register(ModuleName, 13, "ibc relayer not found in allowlist")
 )

@@ -30,13 +30,39 @@ func (m msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParam
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
+	return nil, errorsmod.Wrap(sdkerrors.ErrUnauthorized, "x/pqc params are immutable; use MsgAddIBCRelayer or MsgRemoveIBCRelayer for the IBC relayer allowlist")
+}
+
+func (m msgServer) AddIBCRelayer(goCtx context.Context, msg *types.MsgAddIBCRelayer) (*types.MsgAddIBCRelayerResponse, error) {
+	if msg == nil {
+		return nil, fmt.Errorf("message cannot be nil")
+	}
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
 	if msg.Authority != m.keeper.GetAuthority() {
 		return nil, errorsmod.Wrapf(sdkerrors.ErrUnauthorized, "invalid authority; expected %s, got %s", m.keeper.GetAuthority(), msg.Authority)
 	}
-	if err := m.keeper.SetParams(goCtx, msg.Params); err != nil {
+	if err := m.keeper.AddIBCRelayer(goCtx, msg.Relayer); err != nil {
 		return nil, err
 	}
-	return &types.MsgUpdateParamsResponse{}, nil
+	return &types.MsgAddIBCRelayerResponse{}, nil
+}
+
+func (m msgServer) RemoveIBCRelayer(goCtx context.Context, msg *types.MsgRemoveIBCRelayer) (*types.MsgRemoveIBCRelayerResponse, error) {
+	if msg == nil {
+		return nil, fmt.Errorf("message cannot be nil")
+	}
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if msg.Authority != m.keeper.GetAuthority() {
+		return nil, errorsmod.Wrapf(sdkerrors.ErrUnauthorized, "invalid authority; expected %s, got %s", m.keeper.GetAuthority(), msg.Authority)
+	}
+	if err := m.keeper.RemoveIBCRelayer(goCtx, msg.Relayer); err != nil {
+		return nil, err
+	}
+	return &types.MsgRemoveIBCRelayerResponse{}, nil
 }
 
 func (m msgServer) LinkAccountPQC(goCtx context.Context, msg *types.MsgLinkAccountPQC) (*types.MsgLinkAccountPQCResponse, error) {

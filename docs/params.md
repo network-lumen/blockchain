@@ -76,8 +76,9 @@ This page lists the configurable knobs exposed by the chain. Governance can only
 - `min_scheme` – minimum accepted Dilithium variant
 - `min_balance_for_link` – spendable ULUMEN threshold required before linking
 - `pow_difficulty_bits` – difficulty target for `sha256(pubkey || nonce)`
+- `ibc_relayer_allowlist` – relayer addresses allowed to bypass PQC for relayer/core IBC messages
 
-> Advanced knobs: `pow_difficulty_bits` and `min_balance_for_link` control security-critical flows. Leave them at defaults unless the PQC module owners propose a coordinated change. Account rotation is permanently disabled; proposals cannot re-enable it. The `policy`/`min_scheme` pair should remain `REQUIRED` / `dilithium3` for the foreseeable future.
+> Advanced knobs: `pow_difficulty_bits` and `min_balance_for_link` control security-critical flows. Leave them at defaults unless the PQC module owners propose a coordinated change. Account rotation is permanently disabled; proposals cannot re-enable it. The `policy`/`min_scheme` pair should remain `REQUIRED` / `dilithium3` for the foreseeable future. Governance only touches the dedicated IBC relayer allowlist messages; the rest of `x/pqc` stays immutable.
 
 ### `x/gov`
 

@@ -191,6 +191,20 @@ build_messages_from_spec() {
         msg=$(jq -cn --arg auth "$authority" --argjson params "$dns_state" '{"@type":"/lumen.dns.v1.MsgUpdateParams", authority:$auth, params:$params}')
         acc=$(jq -n --argjson arr "$acc" --argjson msg "$msg" '$arr + [$msg]')
         ;;
+      pqc_add_ibc_relayer)
+        local relayer
+        relayer=$(echo "$entry" | jq -r '.relayer')
+        relayer=$(resolve_placeholder "$relayer")
+        msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --arg relayer "$relayer" '{"@type":"/lumen.pqc.v1.MsgAddIBCRelayer", authority:$auth, relayer:$relayer}')
+        acc=$(jq -n --argjson arr "$acc" --argjson msg "$msg" '$arr + [$msg]')
+        ;;
+      pqc_remove_ibc_relayer)
+        local relayer
+        relayer=$(echo "$entry" | jq -r '.relayer')
+        relayer=$(resolve_placeholder "$relayer")
+        msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --arg relayer "$relayer" '{"@type":"/lumen.pqc.v1.MsgRemoveIBCRelayer", authority:$auth, relayer:$relayer}')
+        acc=$(jq -n --argjson arr "$acc" --argjson msg "$msg" '$arr + [$msg]')
+        ;;
       *)
         echo "unsupported message type: $type" >&2
         exit 1
@@ -782,6 +796,49 @@ scenario_gov_param_mutation_blocked() {
   gov_assert_param_equals "quorum" "0.670000000000000000" 1
 }
 
+scenario_pqc_ibc_relayer_allowlist() {
+  local entry="$1"
+  local relayer before after add_messages remove_messages add_file remove_file add_pid remove_pid
+  relayer=$(echo "$entry" | jq -r '.relayer // "$VOTER2"')
+  relayer=$(resolve_placeholder "$relayer")
+
+  before=$(gov_query_pqc_params | jq -c '.ibc_relayer_allowlist // []')
+  if echo "$before" | jq -e --arg relayer "$relayer" 'index($relayer) != null' >/dev/null; then
+    echo "relayer $relayer unexpectedly already allowlisted before test" >&2
+    exit 1
+  fi
+
+  add_messages=$(jq -cn --arg auth "$GOV_AUTHORITY" --arg relayer "$relayer" '[{"@type":"/lumen.pqc.v1.MsgAddIBCRelayer", authority:$auth, relayer:$relayer}]')
+  add_file=$(mktemp -t gov-pqc-add-XXXXXX)
+  jq -n --arg title "Add IBC relayer" --arg summary "Allowlist relayer for IBC PQC bypass" --arg metadata "" --argjson messages "$add_messages" \
+    '{messages:$messages, title:$title, summary:$summary, metadata:$metadata}' >"$add_file"
+  gov_submit_proposal_file "$add_file" "10000000ulmn"
+  add_pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$add_pid" validator yes
+  gov_wait_status "$add_pid" "PROPOSAL_STATUS_PASSED"
+
+  after=$(gov_query_pqc_params | jq -c '.ibc_relayer_allowlist // []')
+  if ! echo "$after" | jq -e --arg relayer "$relayer" 'index($relayer) != null' >/dev/null; then
+    echo "relayer $relayer missing from allowlist after add proposal" >&2
+    exit 1
+  fi
+
+  remove_messages=$(jq -cn --arg auth "$GOV_AUTHORITY" --arg relayer "$relayer" '[{"@type":"/lumen.pqc.v1.MsgRemoveIBCRelayer", authority:$auth, relayer:$relayer}]')
+  remove_file=$(mktemp -t gov-pqc-remove-XXXXXX)
+  jq -n --arg title "Remove IBC relayer" --arg summary "Remove relayer from IBC PQC bypass allowlist" --arg metadata "" --argjson messages "$remove_messages" \
+    '{messages:$messages, title:$title, summary:$summary, metadata:$metadata}' >"$remove_file"
+  gov_submit_proposal_file "$remove_file" "10000000ulmn"
+  remove_pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$remove_pid" validator yes
+  gov_wait_status "$remove_pid" "PROPOSAL_STATUS_PASSED"
+
+  after=$(gov_query_pqc_params | jq -c '.ibc_relayer_allowlist // []')
+  if echo "$after" | jq -e --arg relayer "$relayer" 'index($relayer) != null' >/dev/null; then
+    echo "relayer $relayer still present after remove proposal" >&2
+    exit 1
+  fi
+}
+
 run_param_case() {
   local entry="$1"
   local name type
@@ -864,6 +921,7 @@ run_scenario_case() {
     dns_update_fee_effect) scenario_dns_fee_effect "$entry" ;;
     pqc_disabled) scenario_pqc_disabled "$entry" ;;
     weighted_split) scenario_weighted_split "$entry" ;;
+    pqc_ibc_relayer_allowlist) scenario_pqc_ibc_relayer_allowlist "$entry" ;;
     *)
       echo "unsupported scenario $scenario" >&2
       exit 1

@@ -31,6 +31,7 @@ type Keeper struct {
 func NewKeeper(
 	storeService corestore.KVStoreService,
 	cdc codec.Codec,
+	authority string,
 ) Keeper {
 	sb := collections.NewSchemaBuilder(storeService)
 	k := Keeper{
@@ -39,6 +40,7 @@ func NewKeeper(
 		scheme:       dilithium.Default(),
 		Params:       collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Accounts:     collections.NewMap(sb, types.AccountKeyPrefix, "account_pqc", collections.StringKey, codec.CollValue[types.AccountPQC](cdc)),
+		authority:    authority,
 	}
 
 	schema, err := sb.Build()
@@ -87,6 +89,35 @@ func (k Keeper) SetParams(ctx context.Context, params types.Params) error {
 	}
 	params.Policy = types.PqcPolicy_PQC_POLICY_REQUIRED
 	return k.Params.Set(ctx, params)
+}
+
+func (k Keeper) AddIBCRelayer(ctx context.Context, relayer string) error {
+	params := k.GetParams(ctx)
+	for _, existing := range params.IbcRelayerAllowlist {
+		if existing == relayer {
+			return types.ErrIBCRelayerExists
+		}
+	}
+	params.IbcRelayerAllowlist = append(params.IbcRelayerAllowlist, relayer)
+	return k.SetParams(ctx, params)
+}
+
+func (k Keeper) RemoveIBCRelayer(ctx context.Context, relayer string) error {
+	params := k.GetParams(ctx)
+	filtered := make([]string, 0, len(params.IbcRelayerAllowlist))
+	removed := false
+	for _, existing := range params.IbcRelayerAllowlist {
+		if existing == relayer {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, existing)
+	}
+	if !removed {
+		return types.ErrIBCRelayerNotFound
+	}
+	params.IbcRelayerAllowlist = filtered
+	return k.SetParams(ctx, params)
 }
 
 func (k Keeper) SetAccountPQC(ctx context.Context, addr sdk.AccAddress, info types.AccountPQC) error {

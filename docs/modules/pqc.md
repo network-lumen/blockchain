@@ -4,9 +4,11 @@
 
 The `x/pqc` module exposes a post-quantum (PQ) account registry so that user accounts can publish Dilithium public
 keys alongside their legacy Ed25519 keys. Every transaction signed by an externally owned account (EOA) **must** include
-a Dilithium signature; there is no whitelist or exemption mechanism. Module accounts never sign transactions, so they
-are unaffected. The registry feeds the dual-sign ante decorator and the policy is always enforced as REQUIRED (governance
-parameters remain for backwards compatibility but are clamped in-memory).
+a Dilithium signature. The only exception is a narrow IBC relayer-core bypass driven by `ibc_relayer_allowlist`:
+allowlisted relayer addresses may submit relayer/core IBC transactions without the extra PQC extension, but user-facing
+messages such as `MsgTransfer` still require PQC. Module accounts never sign transactions, so they are unaffected. The
+registry feeds the dual-sign ante decorator and the policy is always enforced as REQUIRED (governance parameters remain
+for backwards compatibility but are clamped in-memory).
 
 ## Account Registry
 
@@ -77,14 +79,19 @@ dans `app_state.pqc.accounts`. Avec `--write-genesis`, l’entrée est injectée
 | `min_scheme` | `dilithium3` | Minimum scheme identifier accepted for incoming signatures. |
 | `min_balance_for_link` | `1000ulmn` | Accounts must hold at least this spendable balance before linking. |
 | `pow_difficulty_bits` | `21` | Required number of leading zero bits for `sha256(pubkey || nonce)` during link. |
+| `ibc_relayer_allowlist` | `[]` | Relayer addresses allowed to bypass PQC for relayer/core IBC transactions only. |
 
 Parameter updates are validated against the list of supported schemes exposed by the active backend. Account rotation is permanently disabled; attempting to re-link with a different key returns `ErrAccountRotationDisabled`. The PoW guard uses
 big-endian encodings of the nonce bytes; clients increment the nonce until the digest carries enough leading zeros.
 
+Governance does not reopen the full `MsgUpdateParams` surface for `x/pqc`. The only governable PQC mutations are the
+dedicated `MsgAddIBCRelayer` and `MsgRemoveIBCRelayer` messages used to maintain the IBC relayer allowlist.
+
 ## Dual-Sign Ante Enforcement
 
-The `PQCDualSignDecorator` runs immediately after Ed25519 signature verification. There is no whitelist—if a transaction
-contains any EOA signatures, all of them must pass the PQC checks. For each signer in the transaction:
+The `PQCDualSignDecorator` runs immediately after Ed25519 signature verification. If the transaction is composed only of
+relayer/core IBC messages and every signer is in `ibc_relayer_allowlist`, the decorator bypasses the PQC extension
+requirement. Otherwise, every EOA signature must pass the PQC checks. For each signer in the transaction:
 
 1. The account’s registered PQC key is fetched from the `x/pqc` keeper.
 2. The decorator attempts to locate a matching PQC signature in the transaction’s `TxBody.extension_options`.  

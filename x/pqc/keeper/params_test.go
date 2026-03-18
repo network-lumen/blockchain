@@ -39,7 +39,8 @@ func newKeeperForParamsTest(t *testing.T) (sdk.Context, Keeper) {
 	types.RegisterInterfaces(ir)
 	cdc := codec.NewProtoCodec(ir)
 
-	k := NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc)
+	authority := sdk.AccAddress(make([]byte, 20)).String()
+	k := NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc, authority)
 	require.NoError(t, k.SetParams(sdkCtx, types.DefaultParams()))
 
 	return sdkCtx, k

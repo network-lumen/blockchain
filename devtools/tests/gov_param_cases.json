@@ -27,6 +27,11 @@
     "value": "0.750000000000000000"
   },
   {
+    "scenario": "pqc_ibc_relayer_allowlist",
+    "description": "Governance can add and remove IBC relayers without opening full PQC params",
+    "relayer": "$VOTER2"
+  },
+  {
     "scenario": "insufficient_initial_deposit",
     "description": "Submitting with a deposit below min_initial_deposit_ratio fails on-chain",
     "proposal": {

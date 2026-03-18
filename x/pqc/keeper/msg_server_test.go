@@ -48,9 +48,8 @@ func newFixture(t *testing.T) *fixture {
 	types.RegisterInterfaces(ir)
 	cdc := codec.NewProtoCodec(ir)
 
-	keeper := pqckeeper.NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc)
 	authority := sdk.AccAddress(bytes.Repeat([]byte{0x09}, 20)).String()
-	keeper.SetAuthority(authority)
+	keeper := pqckeeper.NewKeeper(sdkruntime.NewKVStoreService(storeKey), cdc, authority)
 	params := types.DefaultParams()
 	params.PowDifficultyBits = 0
 	require.NoError(t, keeper.SetParams(ctx, params))
@@ -190,10 +189,8 @@ func TestUpdateParams(t *testing.T) {
 		Authority: f.keeper.GetAuthority(),
 		Params:    params,
 	})
-	require.NoError(t, err)
-
-	stored := f.keeper.GetParams(f.ctx)
-	require.Equal(t, params.IbcRelayerAllowlist, stored.IbcRelayerAllowlist)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "immutable")
 }
 
 func TestUpdateParamsRejectsWrongAuthority(t *testing.T) {
@@ -202,6 +199,68 @@ func TestUpdateParamsRejectsWrongAuthority(t *testing.T) {
 	_, err := f.msgSrv.UpdateParams(f.ctx, &types.MsgUpdateParams{
 		Authority: sdk.AccAddress(bytes.Repeat([]byte{0x03}, 20)).String(),
 		Params:    types.DefaultParams(),
+	})
+	require.Error(t, err)
+}
+
+func TestAddIBCRelayer(t *testing.T) {
+	f := newFixture(t)
+	relayer := sdk.AccAddress(bytes.Repeat([]byte{0x02}, 20)).String()
+
+	_, err := f.msgSrv.AddIBCRelayer(f.ctx, &types.MsgAddIBCRelayer{
+		Authority: f.keeper.GetAuthority(),
+		Relayer:   relayer,
+	})
+	require.NoError(t, err)
+
+	stored := f.keeper.GetParams(f.ctx)
+	require.Equal(t, []string{relayer}, stored.IbcRelayerAllowlist)
+
+	_, err = f.msgSrv.AddIBCRelayer(f.ctx, &types.MsgAddIBCRelayer{
+		Authority: f.keeper.GetAuthority(),
+		Relayer:   relayer,
+	})
+	require.ErrorIs(t, err, types.ErrIBCRelayerExists)
+}
+
+func TestRemoveIBCRelayer(t *testing.T) {
+	f := newFixture(t)
+	relayerA := sdk.AccAddress(bytes.Repeat([]byte{0x02}, 20)).String()
+	relayerB := sdk.AccAddress(bytes.Repeat([]byte{0x03}, 20)).String()
+	params := types.DefaultParams()
+	params.IbcRelayerAllowlist = []string{relayerA, relayerB}
+	require.NoError(t, f.keeper.SetParams(f.ctx, params))
+
+	_, err := f.msgSrv.RemoveIBCRelayer(f.ctx, &types.MsgRemoveIBCRelayer{
+		Authority: f.keeper.GetAuthority(),
+		Relayer:   relayerA,
+	})
+	require.NoError(t, err)
+
+	stored := f.keeper.GetParams(f.ctx)
+	require.Equal(t, []string{relayerB}, stored.IbcRelayerAllowlist)
+
+	_, err = f.msgSrv.RemoveIBCRelayer(f.ctx, &types.MsgRemoveIBCRelayer{
+		Authority: f.keeper.GetAuthority(),
+		Relayer:   relayerA,
+	})
+	require.ErrorIs(t, err, types.ErrIBCRelayerNotFound)
+}
+
+func TestIBCRelayerMessagesRejectWrongAuthority(t *testing.T) {
+	f := newFixture(t)
+	relayer := sdk.AccAddress(bytes.Repeat([]byte{0x04}, 20)).String()
+	wrongAuthority := sdk.AccAddress(bytes.Repeat([]byte{0x05}, 20)).String()
+
+	_, err := f.msgSrv.AddIBCRelayer(f.ctx, &types.MsgAddIBCRelayer{
+		Authority: wrongAuthority,
+		Relayer:   relayer,
+	})
+	require.Error(t, err)
+
+	_, err = f.msgSrv.RemoveIBCRelayer(f.ctx, &types.MsgRemoveIBCRelayer{
+		Authority: wrongAuthority,
+		Relayer:   relayer,
 	})
 	require.Error(t, err)
 }
