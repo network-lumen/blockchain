@@ -30,12 +30,13 @@ func (app *App) RegisterUpgradeHandlers() {
 		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
 	})
 
-	app.UpgradeKeeper.SetUpgradeHandler(ibcUpgradeName, func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
-		app.AuthKeeper.GetModuleAccount(ctx, ibctransfertypes.ModuleName)
-		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
-	})
+	app.registerIBCUpgradeHandler(ibcUpgradeName)
+	app.registerIBCUpgradeHandler("v1.5.2")
+}
 
-	app.UpgradeKeeper.SetUpgradeHandler("v1.5.2", func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+func (app *App) registerIBCUpgradeHandler(name string) {
+	app.UpgradeKeeper.SetUpgradeHandler(name, func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+		app.AuthKeeper.GetModuleAccount(ctx, ibctransfertypes.ModuleName)
 		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
 	})
 }

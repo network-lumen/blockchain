@@ -180,7 +180,7 @@ func New(
 
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
 	app.registerIBC()
-	app.configureStoreLoaders()
+	app.configureStoreLoaders(db)
 	app.RegisterUpgradeHandlers()
 	app.SetAnteHandler(app.buildAnteHandler())
 	app.SetPostHandler(app.buildPostHandler())

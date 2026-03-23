@@ -3,10 +3,14 @@ package app
 import (
 	"slices"
 
+	"cosmossdk.io/log"
+	"cosmossdk.io/store/metrics"
+	"cosmossdk.io/store/rootmulti"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/runtime"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -26,6 +30,11 @@ import (
 )
 
 const ibcUpgradeName = "v1.5.0"
+
+var ibcCompatibleUpgradeNames = map[string]struct{}{
+	ibcUpgradeName: {},
+	"v1.5.2":       {},
+}
 
 type legacyIBCSubspace struct{}
 
@@ -89,7 +98,7 @@ func (app *App) registerIBCModules() {
 	app.configureIBCModuleOrder()
 }
 
-func (app *App) configureStoreLoaders() {
+func (app *App) configureStoreLoaders(db dbm.DB) {
 	if app.UpgradeKeeper == nil {
 		return
 	}
@@ -98,7 +107,18 @@ func (app *App) configureStoreLoaders() {
 	if err != nil {
 		panic(err)
 	}
-	if upgradeInfo.Name != ibcUpgradeName || app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
+	if app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
+		return
+	}
+	if !isIBCCompatibleUpgradePlan(upgradeInfo.Name) {
+		return
+	}
+
+	needsStoreLoader, err := ibcStoresMissingAtLatestVersion(db)
+	if err != nil {
+		panic(err)
+	}
+	if !needsStoreLoader {
 		return
 	}
 
@@ -108,6 +128,37 @@ func (app *App) configureStoreLoaders() {
 			ibctransfertypes.StoreKey,
 		},
 	}))
+}
+
+func isIBCCompatibleUpgradePlan(name string) bool {
+	_, ok := ibcCompatibleUpgradeNames[name]
+	return ok
+}
+
+func ibcStoresMissingAtLatestVersion(db dbm.DB) (bool, error) {
+	latestVersion := rootmulti.GetLatestVersion(db)
+	if latestVersion == 0 {
+		return true, nil
+	}
+
+	store := rootmulti.NewStore(db, log.NewNopLogger(), metrics.NewNoOpMetrics())
+	commitInfo, err := store.GetCommitInfo(latestVersion)
+	if err != nil {
+		return false, err
+	}
+
+	hasIBCStore := false
+	hasTransferStore := false
+	for _, storeInfo := range commitInfo.StoreInfos {
+		switch storeInfo.Name {
+		case ibcexported.StoreKey:
+			hasIBCStore = true
+		case ibctransfertypes.StoreKey:
+			hasTransferStore = true
+		}
+	}
+
+	return !hasIBCStore || !hasTransferStore, nil
 }
 
 func (app *App) configureIBCModuleOrder() {
