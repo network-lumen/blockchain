@@ -102,16 +102,16 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Send a transfer tx",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "new_owner"}},
 				},
-					{
-						RpcMethod:      "Bid",
-						Use:            "bid [domain] [ext] [amount]",
-						Short:          "Send a bid tx",
-						PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "amount"}},
-					},
-					{
-						RpcMethod: "Settle",
-						Use:       "settle [domain] [ext]",
-						Short:     "Finalize a finished auction and transfer ownership to the highest bidder",
+				{
+					RpcMethod:      "Bid",
+					Use:            "bid [domain] [ext] [amount]",
+					Short:          "Send a bid tx",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "amount"}},
+				},
+				{
+					RpcMethod: "Settle",
+					Use:       "settle [domain] [ext]",
+					Short:     "Finalize a finished auction and transfer ownership to the highest bidder",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
 						{ProtoField: "domain"}, {ProtoField: "ext"},
 					},
