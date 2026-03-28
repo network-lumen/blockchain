@@ -3,7 +3,7 @@ set -euo pipefail
 
 DIR=$(cd "$(dirname "$0")/../.." && pwd)
 DIST="$DIR/dist"
-DEFAULT_VERSION="v1.5.0"
+DEFAULT_VERSION="v1.5.3"
 VERSION="${VERSION:-$DEFAULT_VERSION}"
 COMMIT="${COMMIT:-$(git -C "$DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 LDFLAGS="-s -w -X github.com/cosmos/cosmos-sdk/version.Name=lumen -X github.com/cosmos/cosmos-sdk/version.AppName=lumend -X github.com/cosmos/cosmos-sdk/version.Version=$VERSION -X github.com/cosmos/cosmos-sdk/version.Commit=$COMMIT"
