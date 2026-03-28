@@ -38,6 +38,8 @@ RL_GLOBAL_MAX="${LUMEN_RL_GLOBAL_MAX:-300}"
 GATEWAY_MONTH_SECONDS=5
 DNS_NAME="codexnet"
 DNS_EXT="lumen"
+DNS_BID_NAME="codexbid"
+DNS_SETTLE_NAME="codexend"
 DNS_MIN_BID_ULMN=0
 DNS_HIGH_BID_ULMN=0
 HOST_RPC_PORT="${SIM_HOST_RPC_PORT:-27657}"
@@ -340,6 +342,55 @@ prepare_genesis() {
 		bid_delta=1
 	fi
 	DNS_HIGH_BID_ULMN=$(( DNS_MIN_BID_ULMN + bid_delta ))
+
+	local dns_grace_days dns_auction_days now_ts auction_expire settle_expire
+	dns_grace_days=$(jq -r '.app_state.dns.params.grace_days | tonumber' "$SEED_HOME/config/genesis.json")
+	dns_auction_days=$(jq -r '.app_state.dns.params.auction_days | tonumber' "$SEED_HOME/config/genesis.json")
+	now_ts=$(date +%s)
+	auction_expire=$((now_ts - dns_grace_days * 86400 - 30))
+	settle_expire=$((now_ts - (dns_grace_days + dns_auction_days) * 86400 - 30))
+
+	tmp="$(mktemp)"
+	jq \
+		--arg bid_index "${DNS_BID_NAME}.${DNS_EXT}" \
+		--arg settle_index "${DNS_SETTLE_NAME}.${DNS_EXT}" \
+		--arg owner "$SENDER_ADDR" \
+		--arg bidder "$GATEWAY_ADDR" \
+		--arg highest_bid "$DNS_HIGH_BID_ULMN" \
+		--argjson auction_expire "$auction_expire" \
+		--argjson settle_expire "$settle_expire" \
+		--argjson settle_start "$((settle_expire + dns_grace_days * 86400))" \
+		--argjson settle_end "$((settle_expire + (dns_grace_days + dns_auction_days) * 86400))" \
+		'.app_state.dns.domain_map += [
+			{
+				"index": $bid_index,
+				"name": $bid_index,
+				"owner": $owner,
+				"records": [],
+				"expire_at": $auction_expire,
+				"creator": $owner,
+				"updated_at": $auction_expire
+			},
+			{
+				"index": $settle_index,
+				"name": $settle_index,
+				"owner": $owner,
+				"records": [],
+				"expire_at": $settle_expire,
+				"creator": $owner,
+				"updated_at": $settle_expire
+			}
+		]
+		| .app_state.dns.auction_map += [{
+			"index": $settle_index,
+			"name": $settle_index,
+			"start": $settle_start,
+			"end": $settle_end,
+			"highest_bid": $highest_bid,
+			"bidder": $bidder,
+			"creator": $owner
+		}]' "$SEED_HOME/config/genesis.json" >"$tmp"
+	mv "$tmp" "$SEED_HOME/config/genesis.json"
 
 	for i in $(seq 1 "$VALIDATORS"); do
 		local vhome="$NODES_DIR/val-$i"
@@ -707,28 +758,21 @@ run_tx_json "/tmp/bank-bad.json" "lumend tx bank send sender $RECIP_ADDR 1ulmn -
 	if module_has_subcommand "dns" "register"; then
 		ok "DNS register/bid/settle"
 		dns_index="${DNS_NAME}.${DNS_EXT}"
+		dns_bid_index="${DNS_BID_NAME}.${DNS_EXT}"
+		dns_settle_index="${DNS_SETTLE_NAME}.${DNS_EXT}"
 		run_tx_json "/tmp/dns-register.json" "lumend tx dns register $DNS_NAME $DNS_EXT --records '[]' --duration-days 30 --owner $SENDER_ADDR --from sender --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
 		tx_expect_code "/tmp/dns-register.json" "0" "dns register"
 		wait_for_tx "/tmp/dns-register.json" "dns register"
-		now_ts=$(date +%s)
-		past_ts=$((now_ts - 120))
-		run_tx_json "/tmp/dns-expire.json" "lumend tx dns update-domain $dns_index $dns_index $SENDER_ADDR '{}' $past_ts --from sender --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
-		tx_expect_code "/tmp/dns-expire.json" "0" "dns expire to auction"
-		wait_for_tx "/tmp/dns-expire.json" "dns expire to auction"
-		run_tx_json "/tmp/dns-bid1.json" "lumend tx dns bid $DNS_NAME $DNS_EXT $DNS_MIN_BID_ULMN --from recipient --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
+		run_tx_json "/tmp/dns-bid1.json" "lumend tx dns bid $DNS_BID_NAME $DNS_EXT $DNS_MIN_BID_ULMN --from recipient --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
 		tx_expect_code "/tmp/dns-bid1.json" "0" "dns bid recipient"
 		wait_for_tx "/tmp/dns-bid1.json" "dns bid recipient"
-		run_tx_json "/tmp/dns-bid2.json" "lumend tx dns bid $DNS_NAME $DNS_EXT $DNS_HIGH_BID_ULMN --from gateway --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
+		run_tx_json "/tmp/dns-bid2.json" "lumend tx dns bid $DNS_BID_NAME $DNS_EXT $DNS_HIGH_BID_ULMN --from gateway --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
 		tx_expect_code "/tmp/dns-bid2.json" "0" "dns bid gateway"
 		wait_for_tx "/tmp/dns-bid2.json" "dns bid gateway"
-		settle_ts=$((now_ts - 172800))
-		run_tx_json "/tmp/dns-expire-done.json" "lumend tx dns update-domain $dns_index $dns_index $SENDER_ADDR '{}' $settle_ts --from sender --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
-		tx_expect_code "/tmp/dns-expire-done.json" "0" "dns expire settle"
-		wait_for_tx "/tmp/dns-expire-done.json" "dns expire settle"
-		run_tx_json "/tmp/dns-settle.json" "lumend tx dns settle $DNS_NAME $DNS_EXT --from finalizer --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
+		run_tx_json "/tmp/dns-settle.json" "lumend tx dns settle $DNS_SETTLE_NAME $DNS_EXT --from finalizer --keyring-backend test --node http://$SEED_NAME:26657 --chain-id $LUMEN_CHAIN_ID --yes --broadcast-mode sync --fees 0ulmn -o json"
 		tx_expect_code "/tmp/dns-settle.json" "0" "dns settle"
 		wait_for_tx "/tmp/dns-settle.json" "dns settle"
-		owner=$(dns_owner "$dns_index")
+		owner=$(dns_owner "$dns_settle_index")
 		if [[ -n "$owner" ]]; then
 			ok "DNS owner query returned $owner"
 		else

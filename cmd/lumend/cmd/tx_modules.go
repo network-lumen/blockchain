@@ -38,7 +38,6 @@ func newDNSTxCmd() *cobra.Command {
 		newDNSSettleCmd(),
 		newDNSPowNonceCmd(),
 		newDNSUpdateCmd(),
-		newDNSUpdateDomainCmd(),
 	)
 	return cmd
 }
@@ -294,50 +293,6 @@ func newDNSPowNonceCmd() *cobra.Command {
 	cmd.Flags().Bool("raw", false, "Treat the identifier as raw input instead of normalizing as FQDN")
 	cmd.Flags().String("creator", "", "Explicit creator address (defaults to --from)")
 	cmd.Flags().Uint32("difficulty", 0, "Override PoW difficulty instead of querying dns params")
-	flags.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func newDNSUpdateDomainCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "update-domain [index] [name] [owner] [records-json] [expire-at]",
-		Short:  "Update a domain record (testing helper)",
-		Hidden: true,
-		Args:   cobra.ExactArgs(5),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			expireAt, err := strconv.ParseUint(args[4], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse expire-at: %w", err)
-			}
-
-			records, err := parseDNSRecordsJSON(args[3])
-			if err != nil {
-				return fmt.Errorf("parse records-json: %w", err)
-			}
-
-			powNonce, err := cmd.Flags().GetUint64("pow-nonce")
-			if err != nil {
-				return err
-			}
-
-			msg := &dnstypes.MsgUpdateDomain{
-				Creator:  clientCtx.GetFromAddress().String(),
-				Index:    args[0],
-				Name:     args[1],
-				Owner:    args[2],
-				Records:  records,
-				ExpireAt: expireAt,
-				PowNonce: powNonce,
-			}
-			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), msg)
-		},
-	}
-	cmd.Flags().Uint64("pow-nonce", 0, "nonce satisfying the update PoW requirement")
 	flags.AddTxFlagsToCmd(cmd)
 	return cmd
 }

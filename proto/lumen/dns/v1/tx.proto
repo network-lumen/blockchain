@@ -27,13 +27,6 @@ service Msg {
   rpc Bid(MsgBid) returns (MsgBidResponse);
 
   rpc Settle(MsgSettle) returns (MsgSettleResponse);
-
-  rpc CreateDomain(MsgCreateDomain) returns (MsgCreateDomainResponse);
-  rpc UpdateDomain(MsgUpdateDomain) returns (MsgUpdateDomainResponse);
-  rpc DeleteDomain(MsgDeleteDomain) returns (MsgDeleteDomainResponse);
-  rpc CreateAuction(MsgCreateAuction) returns (MsgCreateAuctionResponse);
-  rpc UpdateAuction(MsgUpdateAuction) returns (MsgUpdateAuctionResponse);
-  rpc DeleteAuction(MsgDeleteAuction) returns (MsgDeleteAuctionResponse);
 }
 
 message MsgUpdateParams {

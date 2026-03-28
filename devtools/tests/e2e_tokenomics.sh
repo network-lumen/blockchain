@@ -35,6 +35,9 @@ GRPC_WEB_ENABLE=${GRPC_WEB_ENABLE:-1}
 DISABLE_PPROF=${DISABLE_PPROF:-1}
 NODE=${NODE:-$RPC_LADDR}
 export NODE
+DNS_BID_NAME="auc"
+DNS_SETTLE_NAME="end"
+DNS_EXT="lmn"
 
 TX_ARGS=(--keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json --fees "$TX_FEES" --pqc-enable=true)
 LAST_TX_CODE=""
@@ -381,6 +384,57 @@ init_chain(){
     | .app_state.dns.params.update_pow_difficulty=0
     | .app_state.gateways.gateway_count="1"
   ' "$g" >"$tmp" && mv "$tmp" "$g"
+  local dns_owner_addr dns_bidder_addr gateway_addr dns_min_price dns_high_bid now_ts auction_expire settle_expire
+  dns_owner_addr=$("$BIN" keys show dns_owner -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
+  dns_bidder_addr=$("$BIN" keys show dns_bidder -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
+  gateway_addr=$("$BIN" keys show gateway -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
+  dns_min_price=$(calc_dns_price "$g" "eco" "$DNS_EXT" 365)
+  dns_high_bid=$((dns_min_price + dns_min_price / 2))
+  now_ts=$(date +%s)
+  auction_expire=$((now_ts - 30))
+  settle_expire=$((now_ts - 86400 - 30))
+  tmp=$(mktemp)
+  jq \
+    --arg bid_index "${DNS_BID_NAME}.${DNS_EXT}" \
+    --arg settle_index "${DNS_SETTLE_NAME}.${DNS_EXT}" \
+    --arg owner "$gateway_addr" \
+    --arg creator "$dns_owner_addr" \
+    --arg bidder "$dns_bidder_addr" \
+    --arg highest_bid "$dns_high_bid" \
+    --argjson auction_expire "$auction_expire" \
+    --argjson settle_expire "$settle_expire" \
+    --argjson settle_start "$settle_expire" \
+    --argjson settle_end "$((settle_expire + 86400))" \
+    '.app_state.dns.domain_map += [
+       {
+         "index": $bid_index,
+         "name": $bid_index,
+         "owner": $owner,
+         "records": [],
+         "expire_at": $auction_expire,
+         "creator": $creator,
+         "updated_at": $auction_expire
+       },
+       {
+         "index": $settle_index,
+         "name": $settle_index,
+         "owner": $owner,
+         "records": [],
+         "expire_at": $settle_expire,
+         "creator": $creator,
+         "updated_at": $settle_expire
+       }
+     ]
+     | .app_state.dns.auction_map += [{
+         "index": $settle_index,
+         "name": $settle_index,
+         "start": $settle_start,
+         "end": $settle_end,
+         "highest_bid": $highest_bid,
+         "bidder": $bidder,
+         "creator": $creator
+       }]' \
+    "$g" >"$tmp" && mv "$tmp" "$g"
   "$BIN" genesis validate --home "$HOME_DIR" >/dev/null
   pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
@@ -541,7 +595,8 @@ DNS_PARAMS=$(jq '.app_state.dns.params' "$GENESIS_JSON")
 DNS_TRANSFER_FEE=$(echo "$DNS_PARAMS" | jq -r '.transfer_fee_ulmn // 0')
 DNS_BID_FEE=$(echo "$DNS_PARAMS" | jq -r '.bid_fee_ulmn // 0')
 DNS_UPDATE_FEE=$(echo "$DNS_PARAMS" | jq -r '.update_fee_ulmn // 0')
-DNS_AUCTION_DAYS=$(echo "$DNS_PARAMS" | jq -r '.auction_days | tonumber')
+DNS_BID_INDEX="${DNS_BID_NAME}.${DNS_EXT}"
+DNS_SETTLE_INDEX="${DNS_SETTLE_NAME}.${DNS_EXT}"
 
 run_pool_delta "dns_register" "$DNS_MIN_PRICE" dns_owner "$BIN" tx dns register eco lmn --records '[]' --duration-days 365 --owner "${ADDR[dns_owner]}" --from dns_owner
 run_pool_delta "dns_renew" "$DNS_RENEW_PRICE" dns_owner "$BIN" tx dns renew eco lmn 180 --from dns_owner
@@ -552,35 +607,14 @@ EXPECTED_POOL_TOTAL=$(big_add "$EXPECTED_POOL_TOTAL" "$DNS_RENEW_PRICE")
 EXPECTED_POOL_TOTAL=$(big_add "$EXPECTED_POOL_TOTAL" "$DNS_UPDATE_FEE")
 EXPECTED_POOL_TOTAL=$(big_add "$EXPECTED_POOL_TOTAL" "$DNS_TRANSFER_FEE")
 
-INDEX="eco.lmn"
-NOW_TS=$(date +%s)
-PAST=$((NOW_TS - 30))
-update_domain_expire(){
-  local signer="$1"
-  local owner="$2"
-  local expire="$3"
-  pqc_args "$signer"
-  local res hash
-  res=$("$BIN" tx dns update-domain "$INDEX" "$INDEX" "$owner" "{}" "$expire" --from "$signer" "${PQC_ARGS[@]}" "${TX_ARGS[@]}")
-  check_tx_code_zero "$res" "update-domain"
-  hash=$(echo "$res" | jq -r '.txhash // empty')
-  [ -n "$hash" ] && wait_tx "$hash"
-}
-update_domain_expire dns_owner "${ADDR[gateway]}" "$PAST"
-
-run_pool_delta "dns_bid1" "$DNS_BID_FEE" dns_owner "$BIN" tx dns bid eco lmn "$DNS_MIN_PRICE" --from dns_owner
-run_pool_delta "dns_bid2" "$DNS_BID_FEE" dns_bidder "$BIN" tx dns bid eco lmn "$DNS_HIGH_BID" --from dns_bidder
+run_pool_delta "dns_bid1" "$DNS_BID_FEE" dns_owner "$BIN" tx dns bid "$DNS_BID_NAME" "$DNS_EXT" "$DNS_MIN_PRICE" --from dns_owner
+run_pool_delta "dns_bid2" "$DNS_BID_FEE" dns_bidder "$BIN" tx dns bid "$DNS_BID_NAME" "$DNS_EXT" "$DNS_HIGH_BID" --from dns_bidder
 bid_fee_total=$(big_mul "$DNS_BID_FEE" 2)
 EXPECTED_POOL_TOTAL=$(big_add "$EXPECTED_POOL_TOTAL" "$bid_fee_total")
 
-PAST_DONE=$((NOW_TS - (DNS_AUCTION_DAYS * 86400 + 10)))
-if [ "$PAST_DONE" -ge "$PAST" ]; then
-  PAST_DONE=$((PAST - DNS_AUCTION_DAYS * 86400 - 10))
-fi
-update_domain_expire dns_owner "${ADDR[gateway]}" "$PAST_DONE"
-run_pool_delta "dns_settle" "$DNS_HIGH_BID" dns_owner "$BIN" tx dns settle eco lmn --from dns_owner
+run_pool_delta "dns_settle" "$DNS_HIGH_BID" dns_owner "$BIN" tx dns settle "$DNS_SETTLE_NAME" "$DNS_EXT" --from dns_owner
 EXPECTED_POOL_TOTAL=$(big_add "$EXPECTED_POOL_TOTAL" "$DNS_HIGH_BID")
-DNS_FINAL_OWNER=$("$BIN" q dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$INDEX" '.domain[]? | select(.name==$n) | .owner')
+DNS_FINAL_OWNER=$("$BIN" q dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$DNS_SETTLE_INDEX" '.domain[]? | select(.name==$n) | .owner')
 add_result "dns_owner_post_settle" "${ADDR[dns_bidder]}" "$DNS_FINAL_OWNER" "dns_settle"
 
 GW_PARAMS=$(jq '.app_state.gateways.params' "$GENESIS_JSON")

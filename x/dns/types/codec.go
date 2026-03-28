@@ -8,18 +8,6 @@ import (
 
 func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
-		&MsgCreateAuction{},
-		&MsgUpdateAuction{},
-		&MsgDeleteAuction{},
-	)
-
-	registrar.RegisterImplementations((*sdk.Msg)(nil),
-		&MsgCreateDomain{},
-		&MsgUpdateDomain{},
-		&MsgDeleteDomain{},
-	)
-
-	registrar.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgBid{},
 	)
 

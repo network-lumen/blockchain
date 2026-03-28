@@ -102,7 +102,6 @@ func NewRootCmd() *cobra.Command {
 	if err := autoCliOpts.EnhanceRootCommand(rootCmd); err != nil {
 		panic(err)
 	}
-	hideLegacyDNSCommands(rootCmd)
 	patchBankSendCommand(rootCmd)
 	patchBankMultiSendCommand(rootCmd)
 	patchGovTxCommand(rootCmd)
@@ -155,15 +154,6 @@ func ensureIBCClientInterfacesRegistered(interfaceRegistry codectypes.InterfaceR
 	if err := interfaceRegistry.EnsureRegistered(&ibctm.ConsensusState{}); err != nil {
 		ibctm.AppModuleBasic{}.RegisterInterfaces(interfaceRegistry)
 	}
-}
-
-func hideLegacyDNSCommands(root *cobra.Command) {
-	path := []string{"tx", "dns", "update-domain"}
-	cmd, _, err := root.Find(path)
-	if err != nil || cmd == nil {
-		return
-	}
-	cmd.Hidden = true
 }
 
 func patchBankSendCommand(root *cobra.Command) {

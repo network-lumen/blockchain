@@ -37,6 +37,10 @@ GRACE_DAYS=${GRACE_DAYS:-0}
 AUCTION_DAYS=${AUCTION_DAYS:-0}
 CHAIN_ID="lumen"
 FARMER_NAME=farmer
+NAME="codex-e2e"
+EXT="lumen"
+RECLAIM_NAME="codex-free"
+RECLAIM_INDEX="${RECLAIM_NAME}.${EXT}"
 
 require() { command -v "$1" >/dev/null || { echo "Missing dependency: $1" >&2; exit 1; }; }
 require jq
@@ -96,12 +100,29 @@ init_chain() {
     --min-self-delegation 1 >/dev/null
   "$BIN" genesis collect-gentxs --home "$HOME_DIR" >/dev/null
 
+  local expired_free_at
+  local free_offset_days=$((GRACE_DAYS + AUCTION_DAYS + 2))
+  expired_free_at=$(( $(date +%s) - free_offset_days * 86400 ))
   tmp=$(mktemp)
   jq \
-    ".app_state.dns.params.grace_days=\"$GRACE_DAYS\" \
-     | .app_state.dns.params.auction_days=\"$AUCTION_DAYS\" \
-     | .app_state.dns.params.update_rate_limit_seconds=\"0\" \
-     | .app_state.dns.params.update_pow_difficulty=\"0\"" \
+    --arg grace "$GRACE_DAYS" \
+    --arg auction "$AUCTION_DAYS" \
+    --arg index "$RECLAIM_INDEX" \
+    --arg owner "$ADDR_FARMER" \
+    --argjson expired_free_at "$expired_free_at" \
+    '.app_state.dns.params.grace_days=$grace
+     | .app_state.dns.params.auction_days=$auction
+     | .app_state.dns.params.update_rate_limit_seconds="0"
+     | .app_state.dns.params.update_pow_difficulty="0"
+     | .app_state.dns.domain_map += [{
+         "index": $index,
+         "name": $index,
+         "owner": $owner,
+         "records": [],
+         "expire_at": $expired_free_at,
+         "creator": $owner,
+         "updated_at": $expired_free_at
+       }]' \
     "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
 
   "$BIN" genesis validate --home "$HOME_DIR"
@@ -178,16 +199,6 @@ fund_owner() {
   [ -n "$hash" ] && [ "$hash" != "null" ] && wait_tx_commit "$hash"
 }
 
-update_domain_expire() {
-  local index="$1"; local name="$2"; local owner="$3"; local expire_at="$4"
-  local res hash
-  res=$("$BIN" tx dns update-domain "$index" "$name" "$owner" "{}" "$expire_at" \
-    --from "$FARMER_NAME" --keyring-backend test --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
-  echo "$res" | jq
-  hash=$(echo "$res" | jq -r .txhash)
-  [ -n "$hash" ] && [ "$hash" != "null" ] && wait_tx_commit "$hash"
-}
-
 
 build
 init_chain
@@ -197,9 +208,6 @@ step "Create owner1 (unfunded)"
 keys_add_quiet owner1
 OWNER1=$("$BIN" keys show owner1 -a --keyring-backend test --home "$HOME_DIR")
 echo "OWNER1=$OWNER1"
-
-NAME="codex-e2e"
-EXT="lumen"
 
 step "Register via CLI (owner1)"
 REG=$(register_cli "$NAME" "$EXT" owner1)
@@ -242,24 +250,20 @@ wait_tx_commit "$HASH"
 step "Verify domain updated"
 "$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
 
-step "Simulate expiration by setting expire_at in the past"
-NOW=$(date +%s)
-PAST=$((NOW-10))
-INDEX="$NAME.$EXT"
-update_domain_expire "$INDEX" "$INDEX" "$OWNER1" "$PAST"
+step "Verify pre-seeded expired domain is present"
 "$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
 
-step "Create owner2 and re-register same name after expiration (CLI)"
+step "Create owner2 and register pre-expired name (CLI)"
 keys_add_quiet owner2
-REG2=$(register_cli "$NAME" "$EXT" owner2)
+REG2=$(register_cli "$RECLAIM_NAME" "$EXT" owner2)
 echo "$REG2" | jq
 HASH=$(echo "$REG2" | jq -r .txhash)
 wait_tx_commit "$HASH"
 
-step "Verify ownership transferred to owner2 "
-"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq
+step "Verify ownership of pre-expired name transferred to owner2"
+OWNER2=$("$BIN" keys show owner2 -a --keyring-backend test --home "$HOME_DIR")
+"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$RECLAIM_INDEX" '.domain[]? | select(.name==$n) | .owner' | grep -q "$OWNER2"
 
 echo "\nAll steps completed."
-
 
 

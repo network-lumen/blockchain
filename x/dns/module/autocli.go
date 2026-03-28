@@ -102,50 +102,16 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Send a transfer tx",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "new_owner"}},
 				},
-				{
-					RpcMethod:      "Bid",
-					Use:            "bid [domain] [ext] [amount]",
-					Short:          "Send a bid tx",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "amount"}},
-				},
-				{
-					RpcMethod:      "CreateDomain",
-					Use:            "create-domain [index] [name] [owner] [records] [expire-at]",
-					Short:          "Create a new domain",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}, {ProtoField: "name"}, {ProtoField: "owner"}, {ProtoField: "records"}, {ProtoField: "expire_at"}},
-				},
-				{
-					RpcMethod: "UpdateDomain",
-					Skip:      true, // testing helper; user-facing path is tx dns update
-				},
-				{
-					RpcMethod:      "DeleteDomain",
-					Use:            "delete-domain [index]",
-					Short:          "Delete domain",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}},
-				},
-				{
-					RpcMethod:      "CreateAuction",
-					Use:            "create-auction [index] [name] [start] [end] [highest-bid] [bidder]",
-					Short:          "Create a new auction",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}, {ProtoField: "name"}, {ProtoField: "start"}, {ProtoField: "end"}, {ProtoField: "highest_bid"}, {ProtoField: "bidder"}},
-				},
-				{
-					RpcMethod:      "UpdateAuction",
-					Use:            "update-auction [index] [name] [start] [end] [highest-bid] [bidder]",
-					Short:          "Update auction",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}, {ProtoField: "name"}, {ProtoField: "start"}, {ProtoField: "end"}, {ProtoField: "highest_bid"}, {ProtoField: "bidder"}},
-				},
-				{
-					RpcMethod:      "DeleteAuction",
-					Use:            "delete-auction [index]",
-					Short:          "Delete auction",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "index"}},
-				},
-				{
-					RpcMethod: "Settle",
-					Use:       "settle [domain] [ext]",
-					Short:     "Finalize a finished auction and transfer ownership to the highest bidder",
+					{
+						RpcMethod:      "Bid",
+						Use:            "bid [domain] [ext] [amount]",
+						Short:          "Send a bid tx",
+						PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "domain"}, {ProtoField: "ext"}, {ProtoField: "amount"}},
+					},
+					{
+						RpcMethod: "Settle",
+						Use:       "settle [domain] [ext]",
+						Short:     "Finalize a finished auction and transfer ownership to the highest bidder",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
 						{ProtoField: "domain"}, {ProtoField: "ext"},
 					},

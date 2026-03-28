@@ -50,6 +50,8 @@ DNS_HIGH_BID_ULMN=""
 DNS_AFTER_BID_ULMN=""
 NAME="codex-auc"
 EXT="lumen"
+REGISTER_NAME="codex-reg"
+SETTLE_NAME="codex-end"
 LOWER_BID=""
 
 keys_add_quiet(){
@@ -173,6 +175,52 @@ init_chain(){
     | .app_state.dns.params.update_rate_limit_seconds="0"
     | .app_state.dns.params.update_pow_difficulty="0"
   ' "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
+  set_dns_bid_amounts
+  local now_ts auction_expire settle_expire
+  now_ts=$(date +%s)
+  auction_expire=$((now_ts - 30))
+  settle_expire=$((now_ts - 2 * 86400 - 30))
+  tmp=$(mktemp)
+  jq \
+    --arg auction_index "${NAME}.${EXT}" \
+    --arg settle_index "${SETTLE_NAME}.${EXT}" \
+    --arg owner1 "$("$BIN" keys show owner1 -a --keyring-backend "$KEYRING" --home "$HOME_DIR")" \
+    --arg owner3 "$("$BIN" keys show owner3 -a --keyring-backend "$KEYRING" --home "$HOME_DIR")" \
+    --arg highest_bid "$DNS_HIGH_BID_ULMN" \
+    --argjson auction_expire "$auction_expire" \
+    --argjson settle_expire "$settle_expire" \
+    --argjson settle_start "$settle_expire" \
+    --argjson settle_end "$((settle_expire + 2 * 86400))" \
+    '.app_state.dns.domain_map += [
+       {
+         "index": $auction_index,
+         "name": $auction_index,
+         "owner": $owner1,
+         "records": [],
+         "expire_at": $auction_expire,
+         "creator": $owner1,
+         "updated_at": $auction_expire
+       },
+       {
+         "index": $settle_index,
+         "name": $settle_index,
+         "owner": $owner1,
+         "records": [],
+         "expire_at": $settle_expire,
+         "creator": $owner1,
+         "updated_at": $settle_expire
+       }
+     ]
+     | .app_state.dns.auction_map += [{
+         "index": $settle_index,
+         "name": $settle_index,
+         "start": $settle_start,
+         "end": $settle_end,
+         "highest_bid": $highest_bid,
+         "bidder": $owner3,
+         "creator": $owner1
+       }]' \
+    "$HOME_DIR/config/genesis.json" > "$tmp" && mv "$tmp" "$HOME_DIR/config/genesis.json"
   "$BIN" genesis validate --home "$HOME_DIR"
   pqc_set_client_config "$HOME_DIR" "$RPC_LADDR" "$CHAIN_ID"
 }
@@ -245,25 +293,10 @@ pool_amount(){
   curl -s "$API/cosmos/distribution/v1beta1/community_pool" | jq -r '((.pool // [])[] | select(.denom=="ulmn") | .amount) // "0"'
 }
 
-update_domain_expire(){
-  local index="$1" name="$2" owner="$3" exp="$4"
-  local res
-  res=$("$BIN" tx dns update-domain "$index" "$name" "$owner" "{}" "$exp" \
-    --from "$owner" --keyring-backend "$KEYRING" --home "$HOME_DIR" \
-    --chain-id "$CHAIN_ID" --fees "$TX_FEES" -y -o json)
-  echo "$res" | jq
-  local h
-  h=$(echo "$res" | jq -r .txhash)
-  if [ -n "$h" ] && [ "$h" != "null" ]; then
-    wait_tx_commit "$h"
-  fi
-}
-
 q_balance_ulmn(){ local a="$1"; curl -s "$API/cosmos/bank/v1beta1/balances/$a" | jq -r '((.balances // [])[] | select(.denom=="ulmn") | .amount) // "0"'; }
 
 build
 init_chain
-set_dns_bid_amounts
 start_node
 pqc_wait_ready "$RPC" "$API"
 pqc_policy_must_be_required "$RPC"
@@ -293,8 +326,8 @@ done
 
 TX_GASLESS_ARGS=(--keyring-backend "$KEYRING" --home "$HOME_DIR" --chain-id "$CHAIN_ID" -y -o json)
 
-step "Register $NAME.$EXT for owner1"
-RES=$("$BIN" tx dns register "$NAME" "$EXT" \
+step "Register $REGISTER_NAME.$EXT for owner1"
+RES=$("$BIN" tx dns register "$REGISTER_NAME" "$EXT" \
   --records '[]' --duration-days 0 --owner "$OWNER1" \
   --from owner1 "${TX_GASLESS_ARGS[@]}")
 echo "$RES" | jq
@@ -319,14 +352,10 @@ if [ "${SKIP_PQC_NEGATIVE:-0}" != "1" ]; then
     echo "warning: PQC-disabled TX failed but no explicit PQC error found" >&2
 fi
 
-step "Force expiration and enter auction window"
-NOW=$(date +%s)
-PAST=$((NOW-30))
-INDEX="$NAME.$EXT"
-update_domain_expire "$INDEX" "$INDEX" "$OWNER1" "$PAST"
+AUCTION_INDEX="${NAME}.${EXT}"
+SETTLE_INDEX="${SETTLE_NAME}.${EXT}"
 
-
-step "Bid1 owner2 = ${DNS_MIN_BID_ULMN}"
+step "Bid1 owner2 on $AUCTION_INDEX = ${DNS_MIN_BID_ULMN}"
 RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$DNS_MIN_BID_ULMN" \
   --from owner2 "${TX_GASLESS_ARGS[@]}")
 echo "$RES" | jq
@@ -339,7 +368,7 @@ else
 fi
 echo "code=$CODE"
 
-step "Bid2 owner3 = ${DNS_HIGH_BID_ULMN} (higher)"
+step "Bid2 owner3 on $AUCTION_INDEX = ${DNS_HIGH_BID_ULMN} (higher)"
 RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$DNS_HIGH_BID_ULMN" \
   --from owner3 "${TX_GASLESS_ARGS[@]}")
 echo "$RES" | jq
@@ -351,10 +380,22 @@ else
   CODE=$(echo "$RES" | jq -r .code)
 fi
 echo "code=$CODE"
-step "Settle auction"
-PAST_DONE=$((NOW-172810))
-update_domain_expire "$INDEX" "$INDEX" "$OWNER1" "$PAST_DONE"
-RES=$("$BIN" tx dns settle "$NAME" "$EXT" \
+
+step "Negative: lower bid rejected while auction is open"
+RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$LOWER_BID" \
+  --from owner2 "${TX_GASLESS_ARGS[@]}") || true
+echo "$RES" | jq
+HASH=$(echo "$RES" | jq -r .txhash)
+if [ -n "$HASH" ] && [ "$HASH" != "null" ]; then
+  wait_tx_commit "$HASH"
+  CODE=${LAST_TX_CODE:-0}
+else
+  CODE=$(echo "$RES" | jq -r .code)
+fi
+test "$CODE" != "0"
+
+step "Settle pre-seeded finished auction on $SETTLE_INDEX"
+RES=$("$BIN" tx dns settle "$SETTLE_NAME" "$EXT" \
   --from "$FARMER_NAME" "${TX_GASLESS_ARGS[@]}")
 echo "$RES" | jq
 HASH=$(echo "$RES" | jq -r .txhash)
@@ -371,23 +412,10 @@ if [ "$CODE" != "0" ] && [ -n "$HASH" ] && [ "$HASH" != "null" ]; then
 fi
 
 step "Verify ownership transferred to owner3"
-"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$INDEX" '.domain[] | select(.name==$n) | .owner' | grep -q "$OWNER3"
-
-step "Negative: lower bid rejected"
-RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$LOWER_BID" \
-  --from owner2 "${TX_GASLESS_ARGS[@]}") || true
-echo "$RES" | jq
-HASH=$(echo "$RES" | jq -r .txhash)
-if [ -n "$HASH" ] && [ "$HASH" != "null" ]; then
-  wait_tx_commit "$HASH"
-  CODE=${LAST_TX_CODE:-0}
-else
-  CODE=$(echo "$RES" | jq -r .code)
-fi
-test "$CODE" != "0"
+"$BIN" query dns list-domain -o json --home "$HOME_DIR" | jq -r --arg n "$SETTLE_INDEX" '.domain[] | select(.name==$n) | .owner' | grep -q "$OWNER3"
 
 step "Negative: bid after auction end rejected"
-RES=$("$BIN" tx dns bid "$NAME" "$EXT" "$DNS_AFTER_BID_ULMN" \
+RES=$("$BIN" tx dns bid "$SETTLE_NAME" "$EXT" "$DNS_AFTER_BID_ULMN" \
   --from owner2 "${TX_GASLESS_ARGS[@]}") || true
 echo "$RES" | jq
 HASH=$(echo "$RES" | jq -r .txhash)
