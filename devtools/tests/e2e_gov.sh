@@ -785,14 +785,17 @@ scenario_weighted_split() {
 
 scenario_gov_param_mutation_blocked() {
   local entry="$1"
-  local value
+  local value mutated msg proposal_file pid
   value=$(echo "$entry" | jq -r '.value // "0.750000000000000000"')
-  local mutated
   mutated=$(gov_override_param "$GOV_BASE_PARAMS" "quorum" "ratio" "$value")
-  if gov_apply_params "$mutated" "illegal gov quorum change" "gov-immutable"; then
-    echo "expected gov_apply_params to reject quorum mutation" >&2
-    exit 1
-  fi
+  msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson params "$mutated" '{"@type":"/cosmos.gov.v1.MsgUpdateParams", authority:$auth, params:$params}')
+  proposal_file=$(mktemp -t gov-proposal-XXXXXX)
+  jq -n --arg title "illegal gov quorum change" --arg summary "gov params should stay frozen" --arg metadata "" --argjson msg "$msg" \
+    '{messages: [$msg], title: $title, summary: $summary, metadata: $metadata}' >"$proposal_file"
+  gov_submit_proposal_file "$proposal_file" "$(gov_current_min_deposit)"
+  pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$pid" validator YES
+  gov_wait_status "$pid" "PROPOSAL_STATUS_FAILED"
   gov_assert_param_equals "quorum" "0.670000000000000000" 1
 }
 

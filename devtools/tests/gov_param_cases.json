@@ -23,8 +23,23 @@
   },
   {
     "scenario": "gov_param_mutation_blocked",
-    "description": "Attempting to mutate x/gov params is rejected",
+    "description": "Attempting to mutate x/gov params directly is rejected",
     "value": "0.750000000000000000"
+  },
+  {
+    "name": "min_deposit",
+    "value_type": "coins",
+    "valid": [
+      ["15000000ulmn"],
+      ["49999999ulmn"]
+    ],
+    "invalid": [
+      [],
+      ["0ulmn"],
+      ["50000000ulmn"],
+      ["1000000000001ulmn"],
+      ["1uatom"]
+    ]
   },
   {
     "scenario": "pqc_ibc_relayer_allowlist",

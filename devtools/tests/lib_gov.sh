@@ -81,6 +81,19 @@ gov_resolve_authority() {
     | jq -r '.account.base_account.address // .account.value.address // .account.address // .account.base_vesting_account.base_account.address // empty'
 }
 
+gov_current_min_deposit() {
+  local current
+  current=$(gov_query_params | jq -r '
+    (.min_deposit // [])
+    | if length == 0 then "" else map("\(.amount)\(.denom)") | join(",") end
+  ')
+  if [ -z "$current" ] || [ "$current" = "null" ]; then
+    echo "10000000ulmn"
+    return 0
+  fi
+  echo "$current"
+}
+
 gov_query_dns_params() {
   "$BIN" query dns params --node "$NODE" -o json | jq '.params'
 }
@@ -336,26 +349,24 @@ gov_override_param() {
   esac
 }
 
-gov_apply_params() {
-  local params_json="$1"; local title="$2"; local summary="$3"
+gov_only_min_deposit_changed() {
+  local current_json="$1"; local desired_json="$2"
+  local current_rest desired_rest
+  current_rest=$(echo "$current_json" | jq -S 'del(.min_deposit)')
+  desired_rest=$(echo "$desired_json" | jq -S 'del(.min_deposit)')
+  [ "$current_rest" = "$desired_rest" ]
+}
+
+gov_apply_min_deposit() {
+  local min_deposit_json="$1"; local title="$2"; local summary="$3"
   local metadata="${4:-""}"
-  if [ "${GOV_ALLOW_PARAM_UPDATES:-0}" != "1" ]; then
-    local desired current
-    desired=$(echo "$params_json" | jq -S '.')
-    current=$(gov_query_params | jq -S '.')
-    if [ "$desired" != "$current" ]; then
-      echo "gov params immutable; cannot apply update for $title" >&2
-      return 1
-    fi
-    return 0
-  fi
-  local msg
-  msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson params "$params_json" '{"@type":"/cosmos.gov.v1.MsgUpdateParams", authority:$auth, params:$params}')
-  local proposal_file
+  local msg proposal_file deposit
+  msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson min_deposit "$min_deposit_json" '{"@type":"/lumen.tokenomics.v1.MsgUpdateGovMinDeposit", authority:$auth, minDeposit:$min_deposit}')
   proposal_file=$(mktemp -t gov-proposal-XXXXXX)
+  deposit=$(gov_current_min_deposit)
   jq -n --arg title "$title" --arg summary "$summary" --arg metadata "$metadata" --argjson msg "$msg" \
     '{messages: [$msg], title: $title, summary: $summary, metadata: $metadata}' >"$proposal_file"
-  if ! gov_submit_proposal_file "$proposal_file" "10000000ulmn"; then
+  if ! gov_submit_proposal_file "$proposal_file" "$deposit"; then
     return 1
   fi
   local pid="$GOV_LAST_PROPOSAL_ID"
@@ -363,6 +374,36 @@ gov_apply_params() {
   gov_wait_status "$pid" "PROPOSAL_STATUS_PASSED"
   GOV_LAST_PROPOSAL_ID="$pid"
   return 0
+}
+
+gov_try_min_deposit_update() {
+  local min_deposit_json="$1"; local title="$2"; local summary="$3"
+  local msg proposal_file deposit
+  msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson min_deposit "$min_deposit_json" '{"@type":"/lumen.tokenomics.v1.MsgUpdateGovMinDeposit", authority:$auth, minDeposit:$min_deposit}')
+  proposal_file=$(mktemp -t gov-proposal-XXXXXX)
+  deposit=$(gov_current_min_deposit)
+  jq -n --arg title "$title" --arg summary "$summary" --arg metadata "" --argjson msg "$msg" \
+    '{messages: [$msg], title: $title, summary: $summary, metadata: $metadata}' >"$proposal_file"
+  gov_submit_proposal_file "$proposal_file" "$deposit"
+  return $?
+}
+
+gov_apply_params() {
+  local params_json="$1"; local title="$2"; local summary="$3"
+  local metadata="${4:-""}"
+  local desired current min_deposit
+  desired=$(echo "$params_json" | jq -S '.')
+  current=$(gov_query_params | jq -S '.')
+  if [ "$desired" = "$current" ]; then
+    return 0
+  fi
+  if gov_only_min_deposit_changed "$current" "$desired"; then
+    min_deposit=$(echo "$params_json" | jq -c '.min_deposit // []')
+    gov_apply_min_deposit "$min_deposit" "$title" "$summary" "$metadata"
+    return $?
+  fi
+  echo "gov params immutable except min_deposit; cannot apply update for $title" >&2
+  return 1
 }
 
 gov_submit_single_msg_proposal() {
@@ -384,18 +425,20 @@ gov_submit_single_msg_proposal() {
 
 gov_try_params_update() {
   local params_json="$1"; local title="$2"; local summary="$3"
-  if [ "${GOV_ALLOW_PARAM_UPDATES:-0}" != "1" ]; then
-    echo "gov params immutable; skipping try-update $title" >&2
+  local desired current min_deposit
+  desired=$(echo "$params_json" | jq -S '.')
+  current=$(gov_query_params | jq -S '.')
+  if [ "$desired" = "$current" ]; then
+    echo "gov params already match for $title" >&2
     return 1
   fi
-  local msg
-  msg=$(jq -cn --arg auth "$GOV_AUTHORITY" --argjson params "$params_json" '{"@type":"/cosmos.gov.v1.MsgUpdateParams", authority:$auth, params:$params}')
-  local proposal_file
-  proposal_file=$(mktemp -t gov-proposal-XXXXXX)
-  jq -n --arg title "$title" --arg summary "$summary" --arg metadata "" --argjson msg "$msg" \
-    '{messages: [$msg], title: $title, summary: $summary, metadata: $metadata}' >"$proposal_file"
-  gov_submit_proposal_file "$proposal_file" "10000000ulmn"
-  return $?
+  if gov_only_min_deposit_changed "$current" "$desired"; then
+    min_deposit=$(echo "$params_json" | jq -c '.min_deposit // []')
+    gov_try_min_deposit_update "$min_deposit" "$title" "$summary"
+    return $?
+  fi
+  echo "gov params immutable except min_deposit; skipping try-update $title" >&2
+  return 1
 }
 
 gov_restore_params() {

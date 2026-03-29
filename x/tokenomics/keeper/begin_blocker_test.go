@@ -14,6 +14,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
@@ -118,6 +119,23 @@ func (s *slashingMock) SetParams(_ context.Context, params slashingtypes.Params)
 	return nil
 }
 
+type govMock struct {
+	params govv1.Params
+}
+
+func newGovMock() *govMock {
+	return &govMock{params: govv1.DefaultParams()}
+}
+
+func (g *govMock) GetParams(_ context.Context) (govv1.Params, error) {
+	return g.params, nil
+}
+
+func (g *govMock) SetParams(_ context.Context, params govv1.Params) error {
+	g.params = params
+	return nil
+}
+
 type fixture struct {
 	sdkCtx sdk.Context
 	keeper keeper.Keeper
@@ -125,6 +143,7 @@ type fixture struct {
 	dist   *distributionMock
 	stake  *stakingMock
 	slash  *slashingMock
+	gov    *govMock
 }
 
 func initFixture(t *testing.T) *fixture {
@@ -163,6 +182,8 @@ func initFixture(t *testing.T) *fixture {
 
 	slash := newSlashingMock()
 	k.SetSlashingKeeper(slash)
+	gov := newGovMock()
+	k.SetGovKeeper(gov)
 
 	if err := k.SetParams(sdkCtx, types.DefaultParams()); err != nil {
 		t.Fatalf("failed to set params: %v", err)
@@ -178,6 +199,7 @@ func initFixture(t *testing.T) *fixture {
 		dist:   dist,
 		stake:  stake,
 		slash:  slash,
+		gov:    gov,
 	}
 }
 

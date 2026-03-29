@@ -5,6 +5,7 @@ import (
 
 	"cosmossdk.io/core/address"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -27,4 +28,9 @@ type StakingKeeper interface {
 type SlashingKeeper interface {
 	GetParams(ctx context.Context) (slashingtypes.Params, error)
 	SetParams(ctx context.Context, params slashingtypes.Params) error
+}
+
+type GovKeeper interface {
+	GetParams(ctx context.Context) (govv1.Params, error)
+	SetParams(ctx context.Context, params govv1.Params) error
 }

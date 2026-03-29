@@ -8,6 +8,7 @@ import (
 func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgUpdateParams{},
+		&MsgUpdateGovMinDeposit{},
 		&MsgUpdateSlashingDowntimeParams{},
 		&MsgUpdateSlashingLivenessParams{},
 	)

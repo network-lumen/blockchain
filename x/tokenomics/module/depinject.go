@@ -13,6 +13,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
@@ -41,6 +43,7 @@ type ModuleInputs struct {
 	BankKeeper         bankkeeper.Keeper
 	StakingKeeper      *stakingkeeper.Keeper
 	DistributionKeeper distrkeeper.Keeper
+	GovKeeper          *govkeeper.Keeper
 	SlashingKeeper     slashingkeeper.Keeper
 }
 
@@ -64,6 +67,9 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 	}
 	k.SetDistributionKeeper(distributionAdapter{dk: in.DistributionKeeper})
 	k.SetSlashingKeeper(slashingAdapter{sk: in.SlashingKeeper})
+	if in.GovKeeper != nil {
+		k.SetGovKeeper(govAdapter{gk: in.GovKeeper})
+	}
 	m := NewAppModule(in.Cdc, k)
 	return ModuleOutputs{TokenomicsKeeper: k, Module: m}
 }
@@ -106,4 +112,14 @@ func (s slashingAdapter) GetParams(ctx context.Context) (slashingtypes.Params, e
 
 func (s slashingAdapter) SetParams(ctx context.Context, params slashingtypes.Params) error {
 	return s.sk.SetParams(ctx, params)
+}
+
+type govAdapter struct{ gk *govkeeper.Keeper }
+
+func (g govAdapter) GetParams(ctx context.Context) (govv1.Params, error) {
+	return g.gk.Params.Get(ctx)
+}
+
+func (g govAdapter) SetParams(ctx context.Context, params govv1.Params) error {
+	return g.gk.Params.Set(ctx, params)
 }

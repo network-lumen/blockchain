@@ -29,6 +29,7 @@ type Keeper struct {
 	distr    types.DistributionKeeper
 	staking  types.StakingKeeper
 	slashing types.SlashingKeeper
+	gov      types.GovKeeper
 }
 
 func NewKeeper(
@@ -96,6 +97,13 @@ func (k *Keeper) SetSlashingKeeper(s types.SlashingKeeper) {
 	k.slashing = s
 }
 
+func (k *Keeper) SetGovKeeper(g types.GovKeeper) {
+	if g == nil {
+		return
+	}
+	k.gov = g
+}
+
 func (k Keeper) GetTotalMintedUlmn(ctx context.Context) sdkmath.Int {
 	stored, err := k.TotalMinted.Get(ctx)
 	if err != nil {
@@ -129,6 +137,10 @@ func (k Keeper) HasStakingKeeper() bool {
 
 func (k Keeper) HasSlashingKeeper() bool {
 	return k.slashing != nil
+}
+
+func (k Keeper) HasGovKeeper() bool {
+	return k.gov != nil
 }
 
 func (k Keeper) SlashingKeeper() types.SlashingKeeper {
