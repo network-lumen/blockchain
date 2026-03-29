@@ -127,206 +127,6 @@ func (m *MsgPublishReleaseResponse) GetId() uint64 {
 	return 0
 }
 
-type MsgYankRelease struct {
-	Creator string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
-	Id      uint64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (m *MsgYankRelease) Reset()         { *m = MsgYankRelease{} }
-func (m *MsgYankRelease) String() string { return proto.CompactTextString(m) }
-func (*MsgYankRelease) ProtoMessage()    {}
-func (*MsgYankRelease) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{2}
-}
-func (m *MsgYankRelease) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgYankRelease) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgYankRelease.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgYankRelease) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgYankRelease.Merge(m, src)
-}
-func (m *MsgYankRelease) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgYankRelease) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgYankRelease.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgYankRelease proto.InternalMessageInfo
-
-func (m *MsgYankRelease) GetCreator() string {
-	if m != nil {
-		return m.Creator
-	}
-	return ""
-}
-
-func (m *MsgYankRelease) GetId() uint64 {
-	if m != nil {
-		return m.Id
-	}
-	return 0
-}
-
-type MsgYankReleaseResponse struct {
-}
-
-func (m *MsgYankReleaseResponse) Reset()         { *m = MsgYankReleaseResponse{} }
-func (m *MsgYankReleaseResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgYankReleaseResponse) ProtoMessage()    {}
-func (*MsgYankReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{3}
-}
-func (m *MsgYankReleaseResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgYankReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgYankReleaseResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgYankReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgYankReleaseResponse.Merge(m, src)
-}
-func (m *MsgYankReleaseResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgYankReleaseResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgYankReleaseResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgYankReleaseResponse proto.InternalMessageInfo
-
-type MsgMirrorRelease struct {
-	Creator       string   `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
-	Id            uint64   `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
-	ArtifactIndex uint32   `protobuf:"varint,3,opt,name=artifact_index,json=artifactIndex,proto3" json:"artifact_index,omitempty"`
-	NewUrls       []string `protobuf:"bytes,4,rep,name=new_urls,json=newUrls,proto3" json:"new_urls,omitempty"`
-}
-
-func (m *MsgMirrorRelease) Reset()         { *m = MsgMirrorRelease{} }
-func (m *MsgMirrorRelease) String() string { return proto.CompactTextString(m) }
-func (*MsgMirrorRelease) ProtoMessage()    {}
-func (*MsgMirrorRelease) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{4}
-}
-func (m *MsgMirrorRelease) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgMirrorRelease) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgMirrorRelease.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgMirrorRelease) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgMirrorRelease.Merge(m, src)
-}
-func (m *MsgMirrorRelease) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgMirrorRelease) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgMirrorRelease.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgMirrorRelease proto.InternalMessageInfo
-
-func (m *MsgMirrorRelease) GetCreator() string {
-	if m != nil {
-		return m.Creator
-	}
-	return ""
-}
-
-func (m *MsgMirrorRelease) GetId() uint64 {
-	if m != nil {
-		return m.Id
-	}
-	return 0
-}
-
-func (m *MsgMirrorRelease) GetArtifactIndex() uint32 {
-	if m != nil {
-		return m.ArtifactIndex
-	}
-	return 0
-}
-
-func (m *MsgMirrorRelease) GetNewUrls() []string {
-	if m != nil {
-		return m.NewUrls
-	}
-	return nil
-}
-
-type MsgMirrorReleaseResponse struct {
-	Added uint32 `protobuf:"varint,1,opt,name=added,proto3" json:"added,omitempty"`
-}
-
-func (m *MsgMirrorReleaseResponse) Reset()         { *m = MsgMirrorReleaseResponse{} }
-func (m *MsgMirrorReleaseResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgMirrorReleaseResponse) ProtoMessage()    {}
-func (*MsgMirrorReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{5}
-}
-func (m *MsgMirrorReleaseResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgMirrorReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgMirrorReleaseResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgMirrorReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgMirrorReleaseResponse.Merge(m, src)
-}
-func (m *MsgMirrorReleaseResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgMirrorReleaseResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgMirrorReleaseResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgMirrorReleaseResponse proto.InternalMessageInfo
-
-func (m *MsgMirrorReleaseResponse) GetAdded() uint32 {
-	if m != nil {
-		return m.Added
-	}
-	return 0
-}
-
 type MsgSetEmergency struct {
 	Creator      string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
 	Id           uint64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
@@ -338,7 +138,7 @@ func (m *MsgSetEmergency) Reset()         { *m = MsgSetEmergency{} }
 func (m *MsgSetEmergency) String() string { return proto.CompactTextString(m) }
 func (*MsgSetEmergency) ProtoMessage()    {}
 func (*MsgSetEmergency) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{6}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{2}
 }
 func (m *MsgSetEmergency) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -402,7 +202,7 @@ func (m *MsgSetEmergencyResponse) Reset()         { *m = MsgSetEmergencyResponse
 func (m *MsgSetEmergencyResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgSetEmergencyResponse) ProtoMessage()    {}
 func (*MsgSetEmergencyResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{7}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{3}
 }
 func (m *MsgSetEmergencyResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -440,7 +240,7 @@ func (m *MsgValidateRelease) Reset()         { *m = MsgValidateRelease{} }
 func (m *MsgValidateRelease) String() string { return proto.CompactTextString(m) }
 func (*MsgValidateRelease) ProtoMessage()    {}
 func (*MsgValidateRelease) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{8}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{4}
 }
 func (m *MsgValidateRelease) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -490,7 +290,7 @@ func (m *MsgValidateReleaseResponse) Reset()         { *m = MsgValidateReleaseRe
 func (m *MsgValidateReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgValidateReleaseResponse) ProtoMessage()    {}
 func (*MsgValidateReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{9}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{5}
 }
 func (m *MsgValidateReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -528,7 +328,7 @@ func (m *MsgRejectRelease) Reset()         { *m = MsgRejectRelease{} }
 func (m *MsgRejectRelease) String() string { return proto.CompactTextString(m) }
 func (*MsgRejectRelease) ProtoMessage()    {}
 func (*MsgRejectRelease) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{10}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{6}
 }
 func (m *MsgRejectRelease) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -578,7 +378,7 @@ func (m *MsgRejectReleaseResponse) Reset()         { *m = MsgRejectReleaseRespon
 func (m *MsgRejectReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgRejectReleaseResponse) ProtoMessage()    {}
 func (*MsgRejectReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{11}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{7}
 }
 func (m *MsgRejectReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -616,7 +416,7 @@ func (m *MsgUpdateParams) Reset()         { *m = MsgUpdateParams{} }
 func (m *MsgUpdateParams) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParams) ProtoMessage()    {}
 func (*MsgUpdateParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{12}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{8}
 }
 func (m *MsgUpdateParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -666,7 +466,7 @@ func (m *MsgUpdateParamsResponse) Reset()         { *m = MsgUpdateParamsResponse
 func (m *MsgUpdateParamsResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParamsResponse) ProtoMessage()    {}
 func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e4221d9a8ae5bdbc, []int{13}
+	return fileDescriptor_e4221d9a8ae5bdbc, []int{9}
 }
 func (m *MsgUpdateParamsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -698,10 +498,6 @@ var xxx_messageInfo_MsgUpdateParamsResponse proto.InternalMessageInfo
 func init() {
 	proto.RegisterType((*MsgPublishRelease)(nil), "lumen.release.v1.MsgPublishRelease")
 	proto.RegisterType((*MsgPublishReleaseResponse)(nil), "lumen.release.v1.MsgPublishReleaseResponse")
-	proto.RegisterType((*MsgYankRelease)(nil), "lumen.release.v1.MsgYankRelease")
-	proto.RegisterType((*MsgYankReleaseResponse)(nil), "lumen.release.v1.MsgYankReleaseResponse")
-	proto.RegisterType((*MsgMirrorRelease)(nil), "lumen.release.v1.MsgMirrorRelease")
-	proto.RegisterType((*MsgMirrorReleaseResponse)(nil), "lumen.release.v1.MsgMirrorReleaseResponse")
 	proto.RegisterType((*MsgSetEmergency)(nil), "lumen.release.v1.MsgSetEmergency")
 	proto.RegisterType((*MsgSetEmergencyResponse)(nil), "lumen.release.v1.MsgSetEmergencyResponse")
 	proto.RegisterType((*MsgValidateRelease)(nil), "lumen.release.v1.MsgValidateRelease")
@@ -715,53 +511,45 @@ func init() {
 func init() { proto.RegisterFile("lumen/release/v1/tx.proto", fileDescriptor_e4221d9a8ae5bdbc) }
 
 var fileDescriptor_e4221d9a8ae5bdbc = []byte{
-	// 734 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0x4b, 0x6f, 0xd3, 0x5a,
-	0x10, 0x8e, 0x93, 0xbe, 0x32, 0x6d, 0xd2, 0xd6, 0xea, 0xbd, 0x75, 0xac, 0xde, 0x34, 0x75, 0x2f,
-	0x52, 0x48, 0x21, 0xa6, 0x41, 0x62, 0x51, 0x24, 0x24, 0x2a, 0xb1, 0x60, 0x61, 0x51, 0xb9, 0x14,
-	0xa9, 0x08, 0x29, 0x72, 0xe2, 0x83, 0xeb, 0xd6, 0x8f, 0xe8, 0x9c, 0x93, 0x3e, 0x76, 0x88, 0x25,
-	0x2b, 0x36, 0xfc, 0x05, 0x84, 0xc4, 0x26, 0x0b, 0x56, 0xfc, 0x82, 0x2e, 0x2b, 0x56, 0xac, 0x10,
-	0x6a, 0x17, 0xfd, 0x1b, 0xc8, 0xcf, 0xf8, 0x55, 0xa5, 0x82, 0xb2, 0x89, 0x72, 0x66, 0xbe, 0x99,
-	0xf9, 0x66, 0xce, 0xf9, 0xc6, 0x50, 0x31, 0xfa, 0x26, 0xb2, 0x44, 0x8c, 0x0c, 0xa4, 0x10, 0x24,
-	0x1e, 0xae, 0x8b, 0xf4, 0xb8, 0xd9, 0xc3, 0x36, 0xb5, 0xd9, 0x39, 0xd7, 0xd5, 0xf4, 0x5d, 0xcd,
-	0xc3, 0x75, 0x7e, 0x5e, 0x31, 0x75, 0xcb, 0x16, 0xdd, 0x5f, 0x0f, 0xc4, 0x2f, 0x76, 0x6d, 0x62,
-	0xda, 0x44, 0x34, 0x89, 0xe6, 0x04, 0x9b, 0x44, 0xf3, 0x1d, 0x15, 0xcf, 0xd1, 0x76, 0x4f, 0xa2,
-	0x77, 0xf0, 0x5d, 0x0b, 0x9a, 0xad, 0xd9, 0x9e, 0xdd, 0xf9, 0xe7, 0x5b, 0x97, 0xd2, 0x4c, 0x4e,
-	0x7a, 0x28, 0x88, 0xf9, 0x2f, 0xe5, 0xed, 0x29, 0x58, 0x31, 0x7d, 0xb7, 0xf0, 0x81, 0x81, 0x79,
-	0x89, 0x68, 0x5b, 0xfd, 0x8e, 0xa1, 0x93, 0x3d, 0xd9, 0x43, 0xb1, 0x2d, 0x98, 0xec, 0x62, 0xa4,
-	0x50, 0x1b, 0x73, 0x4c, 0x8d, 0xa9, 0x17, 0x37, 0xb9, 0x6f, 0x5f, 0xee, 0x2e, 0xf8, 0x5c, 0x1e,
-	0xab, 0x2a, 0x46, 0x84, 0x6c, 0x53, 0xac, 0x5b, 0x9a, 0x1c, 0x00, 0xd9, 0x47, 0x30, 0xe9, 0x17,
-	0xe1, 0xf2, 0x35, 0xa6, 0x3e, 0xdd, 0xaa, 0x34, 0x93, 0x73, 0x68, 0xfa, 0xf9, 0x37, 0x8b, 0xa7,
-	0x3f, 0x96, 0x73, 0x9f, 0x2e, 0x07, 0x0d, 0x46, 0x0e, 0x82, 0x36, 0x66, 0xde, 0x5e, 0x0e, 0x1a,
-	0x41, 0x36, 0x61, 0x0d, 0x2a, 0x29, 0x5a, 0x32, 0x22, 0x3d, 0xdb, 0x22, 0x88, 0x2d, 0x43, 0x5e,
-	0x57, 0x5d, 0x66, 0x63, 0x72, 0x5e, 0x57, 0x85, 0x0e, 0x94, 0x25, 0xa2, 0xed, 0x2a, 0xd6, 0xc1,
-	0x9f, 0x34, 0xe0, 0x65, 0xcd, 0x07, 0x59, 0x13, 0x84, 0x38, 0xf8, 0x37, 0x5e, 0x23, 0x60, 0x23,
-	0x7c, 0x64, 0x60, 0x4e, 0x22, 0x9a, 0xa4, 0x63, 0x6c, 0xe3, 0x1b, 0x24, 0xc0, 0xde, 0x82, 0xb2,
-	0x82, 0xa9, 0xfe, 0x5a, 0xe9, 0xd2, 0xb6, 0x6e, 0xa9, 0xe8, 0x98, 0x2b, 0xd4, 0x98, 0x7a, 0x49,
-	0x2e, 0x05, 0xd6, 0xa7, 0x8e, 0x91, 0xad, 0xc0, 0x94, 0x85, 0x8e, 0xda, 0x7d, 0x6c, 0x10, 0x6e,
-	0xac, 0x56, 0xa8, 0x17, 0xe5, 0x49, 0x0b, 0x1d, 0xed, 0x60, 0x83, 0x24, 0x5a, 0xb8, 0x07, 0x5c,
-	0x92, 0x67, 0x38, 0xd2, 0x05, 0x18, 0x57, 0x54, 0x15, 0x79, 0x53, 0x2d, 0xc9, 0xde, 0x41, 0xf8,
-	0xcc, 0xc0, 0xac, 0x44, 0xb4, 0x6d, 0x44, 0x9f, 0x98, 0x08, 0x6b, 0xc8, 0xea, 0x9e, 0xdc, 0x48,
-	0x67, 0x2b, 0x30, 0x83, 0x82, 0x84, 0x6d, 0xfb, 0xc0, 0xed, 0x6b, 0x4a, 0x9e, 0x0e, 0x6d, 0xcf,
-	0x0e, 0xd8, 0x55, 0x28, 0x0d, 0x21, 0x94, 0x1a, 0xdc, 0x58, 0x8d, 0xa9, 0x17, 0xe4, 0x61, 0xdc,
-	0x73, 0x6a, 0x24, 0xfa, 0xab, 0xc0, 0x62, 0x82, 0x6c, 0x78, 0x47, 0x06, 0xb0, 0x12, 0xd1, 0x5e,
-	0x28, 0x86, 0xae, 0x2a, 0x14, 0x05, 0x97, 0xf4, 0x00, 0x8a, 0x4a, 0x9f, 0xee, 0xd9, 0x58, 0xa7,
-	0x27, 0x23, 0x9b, 0x19, 0x42, 0x53, 0x2f, 0xa5, 0xec, 0xd0, 0x18, 0xfa, 0x85, 0x25, 0xe0, 0xd3,
-	0xd5, 0x42, 0x2e, 0xfb, 0xee, 0x73, 0x91, 0xd1, 0x3e, 0xea, 0xd2, 0xbf, 0xcd, 0x84, 0x77, 0xaf,
-	0x3c, 0x56, 0x2b, 0xe4, 0xf1, 0xd5, 0xbb, 0xdc, 0x9d, 0x9e, 0x43, 0x72, 0xcb, 0x5d, 0x0a, 0xbf,
-	0xcd, 0xe3, 0x21, 0x4c, 0x78, 0x6b, 0xc5, 0xd7, 0x3e, 0x97, 0xd6, 0xbe, 0x57, 0x21, 0x2a, 0x7d,
-	0x3f, 0x64, 0xa3, 0x15, 0x27, 0xfd, 0xee, 0x72, 0xd0, 0x58, 0xf6, 0xb6, 0xd6, 0x71, 0xb8, 0xb7,
-	0x12, 0x44, 0xfd, 0xbb, 0x8e, 0x9a, 0x82, 0xbe, 0x5a, 0x83, 0x71, 0x28, 0x48, 0x44, 0x63, 0x3b,
-	0x50, 0x4e, 0xac, 0xb5, 0xd5, 0x34, 0xab, 0xd4, 0x92, 0xe1, 0xd7, 0xae, 0x01, 0x0a, 0x65, 0xb3,
-	0x0b, 0xd3, 0xd1, 0xb5, 0x53, 0xcb, 0x8c, 0x8d, 0x20, 0xf8, 0xfa, 0x28, 0x44, 0x98, 0xba, 0x0d,
-	0xa5, 0xf8, 0x4a, 0x11, 0x32, 0x43, 0x63, 0x18, 0xbe, 0x31, 0x1a, 0x13, 0x16, 0x78, 0x05, 0x33,
-	0x31, 0x61, 0xaf, 0x64, 0xc6, 0x46, 0x21, 0xfc, 0xed, 0x91, 0x90, 0x30, 0x3b, 0x82, 0xd9, 0xa4,
-	0xdc, 0xfe, 0xcf, 0x8c, 0x4e, 0xa0, 0xf8, 0x3b, 0xd7, 0x41, 0x45, 0xa7, 0x14, 0x57, 0x52, 0xf6,
-	0x94, 0x62, 0x98, 0x2b, 0xa6, 0x94, 0xa9, 0x12, 0x67, 0x4a, 0x31, 0x85, 0x64, 0x4f, 0x29, 0x0a,
-	0xb9, 0x62, 0x4a, 0x59, 0x6f, 0x95, 0x1f, 0x7f, 0xe3, 0x28, 0x61, 0x53, 0x3c, 0x3d, 0xaf, 0x32,
-	0x67, 0xe7, 0x55, 0xe6, 0xe7, 0x79, 0x95, 0x79, 0x7f, 0x51, 0xcd, 0x9d, 0x5d, 0x54, 0x73, 0xdf,
-	0x2f, 0xaa, 0xb9, 0x97, 0xff, 0x24, 0x85, 0xe0, 0x7e, 0xdb, 0x3b, 0x13, 0xee, 0xd7, 0xfb, 0xfe,
-	0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8b, 0x43, 0x68, 0x90, 0x86, 0x08, 0x00, 0x00,
+	// 605 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x54, 0x41, 0x6f, 0x12, 0x41,
+	0x14, 0x66, 0xa0, 0xb6, 0xf2, 0x4a, 0x69, 0xbb, 0xa9, 0xe9, 0xb2, 0xa9, 0x5b, 0xba, 0xf5, 0x80,
+	0x54, 0xd9, 0x14, 0x13, 0x0f, 0x98, 0x98, 0x48, 0xe2, 0x91, 0xd8, 0x6c, 0xd5, 0x83, 0x31, 0x21,
+	0x0b, 0x4c, 0xa6, 0xdb, 0xee, 0x32, 0x64, 0x67, 0x68, 0xca, 0xcd, 0x78, 0xf4, 0xe4, 0xc5, 0xff,
+	0x60, 0xe2, 0x85, 0x83, 0x27, 0x7f, 0x41, 0x8f, 0x8d, 0x27, 0x4f, 0xc6, 0xc0, 0x81, 0x3f, 0xe0,
+	0x0f, 0x30, 0xec, 0xce, 0x2e, 0xb0, 0x8b, 0xa1, 0x69, 0xd2, 0x0b, 0x61, 0xe7, 0x7d, 0xdf, 0x7b,
+	0xdf, 0x9b, 0xf7, 0xbd, 0x81, 0x9c, 0xdd, 0x75, 0x70, 0x5b, 0x77, 0xb1, 0x8d, 0x4d, 0x86, 0xf5,
+	0xf3, 0x43, 0x9d, 0x5f, 0x94, 0x3a, 0x2e, 0xe5, 0x54, 0xda, 0xf0, 0x42, 0x25, 0x11, 0x2a, 0x9d,
+	0x1f, 0x2a, 0x9b, 0xa6, 0x63, 0xb5, 0xa9, 0xee, 0xfd, 0xfa, 0x20, 0x65, 0xbb, 0x49, 0x99, 0x43,
+	0x99, 0xee, 0x30, 0x32, 0x26, 0x3b, 0x8c, 0x88, 0x40, 0xce, 0x0f, 0xd4, 0xbd, 0x2f, 0xdd, 0xff,
+	0x10, 0xa1, 0x2d, 0x42, 0x09, 0xf5, 0xcf, 0xc7, 0xff, 0xc4, 0xe9, 0x4e, 0x5c, 0x49, 0xaf, 0x83,
+	0x03, 0xce, 0xfd, 0x58, 0xb4, 0x63, 0xba, 0xa6, 0x23, 0xc2, 0xda, 0x17, 0x04, 0x9b, 0x35, 0x46,
+	0x8e, 0xba, 0x0d, 0xdb, 0x62, 0x27, 0x86, 0x8f, 0x92, 0xca, 0xb0, 0xd2, 0x74, 0xb1, 0xc9, 0xa9,
+	0x2b, 0xa3, 0x3c, 0x2a, 0xa4, 0xab, 0xf2, 0xcf, 0xef, 0x8f, 0xb7, 0x84, 0x96, 0x17, 0xad, 0x96,
+	0x8b, 0x19, 0x3b, 0xe6, 0xae, 0xd5, 0x26, 0x46, 0x00, 0x94, 0x9e, 0xc3, 0x8a, 0x28, 0x22, 0x27,
+	0xf3, 0xa8, 0xb0, 0x5a, 0xce, 0x95, 0xa2, 0xf7, 0x50, 0x12, 0xf9, 0xab, 0xe9, 0xcb, 0xdf, 0xbb,
+	0x89, 0xaf, 0xa3, 0x7e, 0x11, 0x19, 0x01, 0xa9, 0x92, 0xf9, 0x38, 0xea, 0x17, 0x83, 0x6c, 0xda,
+	0x01, 0xe4, 0x62, 0xb2, 0x0c, 0xcc, 0x3a, 0xb4, 0xcd, 0xb0, 0x94, 0x85, 0xa4, 0xd5, 0xf2, 0x94,
+	0x2d, 0x19, 0x49, 0xab, 0xa5, 0x7d, 0x43, 0xb0, 0x5e, 0x63, 0xe4, 0x18, 0xf3, 0x97, 0x0e, 0x76,
+	0x09, 0x6e, 0x37, 0x7b, 0x37, 0x6a, 0xc1, 0xcf, 0x9b, 0x0c, 0xf2, 0x4a, 0x7b, 0x90, 0xc1, 0x41,
+	0xc2, 0x3a, 0x3d, 0x93, 0x53, 0x79, 0x54, 0xb8, 0x6b, 0xac, 0x86, 0x67, 0xaf, 0xce, 0xa4, 0x7d,
+	0x58, 0x9b, 0x40, 0x38, 0xb7, 0xe5, 0xa5, 0x3c, 0x2a, 0xa4, 0x8c, 0x09, 0xef, 0x35, 0xb7, 0x23,
+	0xad, 0xe5, 0x60, 0x3b, 0x22, 0x36, 0x68, 0x4c, 0xb3, 0x41, 0xaa, 0x31, 0xf2, 0xd6, 0xb4, 0xad,
+	0x96, 0xc9, 0x71, 0x30, 0x8d, 0xa7, 0x90, 0x36, 0xbb, 0xfc, 0x84, 0xba, 0x16, 0xef, 0x2d, 0x6c,
+	0x66, 0x02, 0x8d, 0xb6, 0x53, 0xc9, 0x8e, 0x65, 0x4c, 0xe2, 0xda, 0x0e, 0x28, 0xf1, 0x6a, 0xa1,
+	0x96, 0x53, 0xd8, 0xa8, 0x31, 0x62, 0xe0, 0x53, 0xdc, 0xe4, 0xb7, 0xad, 0x44, 0x01, 0x39, 0x5a,
+	0x2b, 0xd4, 0xf1, 0xc3, 0x1f, 0xee, 0x9b, 0xce, 0x58, 0xe4, 0x91, 0xe7, 0xdd, 0x1b, 0xeb, 0x78,
+	0x06, 0xcb, 0xbe, 0xfb, 0x85, 0x45, 0xe5, 0xb8, 0x45, 0xfd, 0x0a, 0xd3, 0x0e, 0x15, 0x94, 0x4a,
+	0x79, 0x56, 0xf4, 0xa7, 0x51, 0xbf, 0xb8, 0xeb, 0x2f, 0xd7, 0x45, 0xb8, 0x5e, 0x11, 0xa1, 0x62,
+	0xd6, 0xd3, 0x47, 0x41, 0x5f, 0xe5, 0xbf, 0x29, 0x48, 0xd5, 0x18, 0x91, 0x1a, 0x90, 0x8d, 0x6c,
+	0xdf, 0x7e, 0x5c, 0x55, 0x6c, 0x17, 0x94, 0x83, 0x6b, 0x80, 0xc2, 0x85, 0x79, 0x0f, 0x99, 0x99,
+	0xe5, 0xd8, 0x9b, 0x4b, 0x9e, 0x86, 0x28, 0x0f, 0x17, 0x42, 0xc2, 0xec, 0x18, 0xd6, 0xa3, 0x96,
+	0x7d, 0x30, 0x97, 0x1d, 0x41, 0x29, 0x8f, 0xae, 0x83, 0x0a, 0xcb, 0xd4, 0x61, 0x6d, 0xd6, 0x8d,
+	0xda, 0x5c, 0xfa, 0x0c, 0x46, 0x29, 0x2e, 0xc6, 0x4c, 0xdf, 0xd2, 0x8c, 0xcb, 0xe6, 0xdf, 0xd2,
+	0x34, 0xe4, 0x3f, 0xb7, 0x34, 0x6f, 0xde, 0xca, 0x9d, 0x0f, 0x63, 0x37, 0x55, 0xf5, 0xcb, 0x81,
+	0x8a, 0xae, 0x06, 0x2a, 0xfa, 0x33, 0x50, 0xd1, 0xe7, 0xa1, 0x9a, 0xb8, 0x1a, 0xaa, 0x89, 0x5f,
+	0x43, 0x35, 0xf1, 0xee, 0x5e, 0xd4, 0x4c, 0xde, 0x33, 0xde, 0x58, 0xf6, 0x1e, 0xea, 0x27, 0xff,
+	0x02, 0x00, 0x00, 0xff, 0xff, 0xea, 0x5a, 0xab, 0x12, 0x71, 0x06, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -777,8 +565,6 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
 	PublishRelease(ctx context.Context, in *MsgPublishRelease, opts ...grpc.CallOption) (*MsgPublishReleaseResponse, error)
-	YankRelease(ctx context.Context, in *MsgYankRelease, opts ...grpc.CallOption) (*MsgYankReleaseResponse, error)
-	MirrorRelease(ctx context.Context, in *MsgMirrorRelease, opts ...grpc.CallOption) (*MsgMirrorReleaseResponse, error)
 	SetEmergency(ctx context.Context, in *MsgSetEmergency, opts ...grpc.CallOption) (*MsgSetEmergencyResponse, error)
 	ValidateRelease(ctx context.Context, in *MsgValidateRelease, opts ...grpc.CallOption) (*MsgValidateReleaseResponse, error)
 	RejectRelease(ctx context.Context, in *MsgRejectRelease, opts ...grpc.CallOption) (*MsgRejectReleaseResponse, error)
@@ -796,24 +582,6 @@ func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 func (c *msgClient) PublishRelease(ctx context.Context, in *MsgPublishRelease, opts ...grpc.CallOption) (*MsgPublishReleaseResponse, error) {
 	out := new(MsgPublishReleaseResponse)
 	err := c.cc.Invoke(ctx, "/lumen.release.v1.Msg/PublishRelease", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) YankRelease(ctx context.Context, in *MsgYankRelease, opts ...grpc.CallOption) (*MsgYankReleaseResponse, error) {
-	out := new(MsgYankReleaseResponse)
-	err := c.cc.Invoke(ctx, "/lumen.release.v1.Msg/YankRelease", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) MirrorRelease(ctx context.Context, in *MsgMirrorRelease, opts ...grpc.CallOption) (*MsgMirrorReleaseResponse, error) {
-	out := new(MsgMirrorReleaseResponse)
-	err := c.cc.Invoke(ctx, "/lumen.release.v1.Msg/MirrorRelease", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -859,8 +627,6 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
 	PublishRelease(context.Context, *MsgPublishRelease) (*MsgPublishReleaseResponse, error)
-	YankRelease(context.Context, *MsgYankRelease) (*MsgYankReleaseResponse, error)
-	MirrorRelease(context.Context, *MsgMirrorRelease) (*MsgMirrorReleaseResponse, error)
 	SetEmergency(context.Context, *MsgSetEmergency) (*MsgSetEmergencyResponse, error)
 	ValidateRelease(context.Context, *MsgValidateRelease) (*MsgValidateReleaseResponse, error)
 	RejectRelease(context.Context, *MsgRejectRelease) (*MsgRejectReleaseResponse, error)
@@ -873,12 +639,6 @@ type UnimplementedMsgServer struct {
 
 func (*UnimplementedMsgServer) PublishRelease(ctx context.Context, req *MsgPublishRelease) (*MsgPublishReleaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PublishRelease not implemented")
-}
-func (*UnimplementedMsgServer) YankRelease(ctx context.Context, req *MsgYankRelease) (*MsgYankReleaseResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method YankRelease not implemented")
-}
-func (*UnimplementedMsgServer) MirrorRelease(ctx context.Context, req *MsgMirrorRelease) (*MsgMirrorReleaseResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MirrorRelease not implemented")
 }
 func (*UnimplementedMsgServer) SetEmergency(ctx context.Context, req *MsgSetEmergency) (*MsgSetEmergencyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetEmergency not implemented")
@@ -911,42 +671,6 @@ func _Msg_PublishRelease_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MsgServer).PublishRelease(ctx, req.(*MsgPublishRelease))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_YankRelease_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgYankRelease)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).YankRelease(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/lumen.release.v1.Msg/YankRelease",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).YankRelease(ctx, req.(*MsgYankRelease))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_MirrorRelease_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgMirrorRelease)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).MirrorRelease(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/lumen.release.v1.Msg/MirrorRelease",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).MirrorRelease(ctx, req.(*MsgMirrorRelease))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1033,14 +757,6 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_PublishRelease_Handler,
 		},
 		{
-			MethodName: "YankRelease",
-			Handler:    _Msg_YankRelease_Handler,
-		},
-		{
-			MethodName: "MirrorRelease",
-			Handler:    _Msg_MirrorRelease_Handler,
-		},
-		{
 			MethodName: "SetEmergency",
 			Handler:    _Msg_SetEmergency_Handler,
 		},
@@ -1123,141 +839,6 @@ func (m *MsgPublishReleaseResponse) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	_ = l
 	if m.Id != 0 {
 		i = encodeVarintTx(dAtA, i, uint64(m.Id))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgYankRelease) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgYankRelease) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgYankRelease) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Id != 0 {
-		i = encodeVarintTx(dAtA, i, uint64(m.Id))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.Creator) > 0 {
-		i -= len(m.Creator)
-		copy(dAtA[i:], m.Creator)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Creator)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgYankReleaseResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgYankReleaseResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgYankReleaseResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgMirrorRelease) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgMirrorRelease) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgMirrorRelease) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.NewUrls) > 0 {
-		for iNdEx := len(m.NewUrls) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.NewUrls[iNdEx])
-			copy(dAtA[i:], m.NewUrls[iNdEx])
-			i = encodeVarintTx(dAtA, i, uint64(len(m.NewUrls[iNdEx])))
-			i--
-			dAtA[i] = 0x22
-		}
-	}
-	if m.ArtifactIndex != 0 {
-		i = encodeVarintTx(dAtA, i, uint64(m.ArtifactIndex))
-		i--
-		dAtA[i] = 0x18
-	}
-	if m.Id != 0 {
-		i = encodeVarintTx(dAtA, i, uint64(m.Id))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.Creator) > 0 {
-		i -= len(m.Creator)
-		copy(dAtA[i:], m.Creator)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Creator)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgMirrorReleaseResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgMirrorReleaseResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgMirrorReleaseResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Added != 0 {
-		i = encodeVarintTx(dAtA, i, uint64(m.Added))
 		i--
 		dAtA[i] = 0x8
 	}
@@ -1554,68 +1135,6 @@ func (m *MsgPublishReleaseResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgYankRelease) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Creator)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	if m.Id != 0 {
-		n += 1 + sovTx(uint64(m.Id))
-	}
-	return n
-}
-
-func (m *MsgYankReleaseResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *MsgMirrorRelease) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Creator)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	if m.Id != 0 {
-		n += 1 + sovTx(uint64(m.Id))
-	}
-	if m.ArtifactIndex != 0 {
-		n += 1 + sovTx(uint64(m.ArtifactIndex))
-	}
-	if len(m.NewUrls) > 0 {
-		for _, s := range m.NewUrls {
-			l = len(s)
-			n += 1 + l + sovTx(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *MsgMirrorReleaseResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Added != 0 {
-		n += 1 + sovTx(uint64(m.Added))
-	}
-	return n
-}
-
 func (m *MsgSetEmergency) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1886,378 +1405,6 @@ func (m *MsgPublishReleaseResponse) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Id |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgYankRelease) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgYankRelease: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgYankRelease: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Creator = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			m.Id = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Id |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgYankReleaseResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgYankReleaseResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgYankReleaseResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgMirrorRelease) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgMirrorRelease: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgMirrorRelease: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Creator = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			m.Id = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Id |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ArtifactIndex", wireType)
-			}
-			m.ArtifactIndex = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ArtifactIndex |= uint32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NewUrls", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NewUrls = append(m.NewUrls, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgMirrorReleaseResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgMirrorReleaseResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgMirrorReleaseResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Added", wireType)
-			}
-			m.Added = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Added |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

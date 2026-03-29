@@ -2,12 +2,10 @@ package keeper
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"cosmossdk.io/collections"
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -27,26 +25,6 @@ func containsString(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func dedupeStrings(in []string, limit uint32) ([]string, uint32) {
-	seen := map[string]struct{}{}
-	out := make([]string, 0, len(in))
-	for _, u := range in {
-		u = strings.TrimSpace(u)
-		if u == "" {
-			continue
-		}
-		if _, ok := seen[u]; ok {
-			continue
-		}
-		seen[u] = struct{}{}
-		out = append(out, u)
-		if limit > 0 && uint32(len(out)) >= limit {
-			break
-		}
-	}
-	return out, uint32(len(in)) - uint32(len(out))
 }
 
 func isAllowedURL(u string) bool {
@@ -149,129 +127,4 @@ func (m msgServer) PublishRelease(ctx context.Context, msg *types.MsgPublishRele
 	))
 
 	return &types.MsgPublishReleaseResponse{Id: nextID}, nil
-}
-
-func (m msgServer) YankRelease(ctx context.Context, msg *types.MsgYankRelease) (*types.MsgYankReleaseResponse, error) {
-	params := m.GetParams(ctx)
-	if !containsString(params.AllowedPublishers, msg.Creator) {
-		return nil, errorsmod.Wrap(types.ErrUnauthorizedPublisher, "creator not allowed")
-	}
-	if _, err := m.addressCodec.StringToBytes(msg.Creator); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-
-	r, err := m.Release.Get(ctx, msg.Id)
-	if err != nil {
-		if errors.Is(err, collections.ErrNotFound) {
-			return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "release %d not found", msg.Id)
-		}
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, err.Error())
-	}
-	if r.Yanked {
-		// Idempotent: ensure escrow is not left behind.
-		_ = m.forfeitEscrowToCommunityPool(ctx, r.Id)
-		return &types.MsgYankReleaseResponse{}, nil
-	}
-	if r.Status != types.Release_PENDING {
-		return nil, errorsmod.Wrap(types.ErrNotPending, "release must be pending to yank")
-	}
-
-	if err := m.dequeueExpiry(ctx, r.Id); err != nil {
-		return nil, err
-	}
-	if err := m.forfeitEscrowToCommunityPool(ctx, r.Id); err != nil {
-		return nil, err
-	}
-	r.Yanked = true
-	r.EmergencyOk = false
-	r.EmergencyUntil = 0
-	if err := m.Release.Set(ctx, r.Id, r); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "update release failed")
-	}
-
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
-		"release_yank",
-		sdk.NewAttribute("id", fmt.Sprintf("%d", r.Id)),
-	))
-
-	return &types.MsgYankReleaseResponse{}, nil
-}
-
-func (m msgServer) MirrorRelease(ctx context.Context, msg *types.MsgMirrorRelease) (*types.MsgMirrorReleaseResponse, error) {
-	params := m.GetParams(ctx)
-	if !containsString(params.AllowedPublishers, msg.Creator) {
-		return nil, errorsmod.Wrap(types.ErrUnauthorizedPublisher, "creator not allowed")
-	}
-	if _, err := m.addressCodec.StringToBytes(msg.Creator); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-
-	r, err := m.Release.Get(ctx, msg.Id)
-	if err != nil {
-		if errors.Is(err, collections.ErrNotFound) {
-			return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "release %d not found", msg.Id)
-		}
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, err.Error())
-	}
-	if r.Yanked {
-		return nil, errorsmod.Wrap(types.ErrNotAuthorized, "release is yanked")
-	}
-	if r.Status != types.Release_PENDING {
-		return nil, errorsmod.Wrap(types.ErrNotPending, "release must be pending to mirror")
-	}
-	if int(msg.ArtifactIndex) < 0 || int(msg.ArtifactIndex) >= len(r.Artifacts) {
-		return nil, errorsmod.Wrapf(types.ErrInvalidRequest, "artifact_index out of range")
-	}
-
-	urls := make([]string, 0, len(msg.NewUrls))
-	for _, u := range msg.NewUrls {
-		u = strings.TrimSpace(u)
-		if !isAllowedURL(u) {
-			return nil, errorsmod.Wrap(types.ErrInvalidRequest, "invalid url")
-		}
-		urls = append(urls, u)
-	}
-	urls, _ = dedupeStrings(urls, params.MaxUrlsPerArt)
-	art := r.Artifacts[msg.ArtifactIndex]
-	mergedMap := map[string]struct{}{}
-	for _, u := range art.Urls {
-		mergedMap[u] = struct{}{}
-	}
-	for _, u := range urls {
-		mergedMap[u] = struct{}{}
-	}
-	if uint32(len(mergedMap)) > params.MaxUrlsPerArt {
-		return nil, errorsmod.Wrapf(types.ErrInvalidRequest, "too many urls: %d > %d", len(mergedMap), params.MaxUrlsPerArt)
-	}
-	merged := append([]string{}, art.Urls...)
-	existing := map[string]struct{}{}
-	for _, u := range art.Urls {
-		existing[u] = struct{}{}
-	}
-	for _, u := range urls {
-		if _, ok := existing[u]; !ok {
-			merged = append(merged, u)
-		}
-	}
-	addedCount := uint32(0)
-	if len(merged) > len(art.Urls) {
-		addedCount = uint32(len(merged) - len(art.Urls))
-	}
-	art.Urls = merged
-	r.Artifacts[msg.ArtifactIndex] = art
-
-	if err := m.Release.Set(ctx, r.Id, r); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "update release failed")
-	}
-
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
-		"release_mirror",
-		sdk.NewAttribute("id", fmt.Sprintf("%d", r.Id)),
-		sdk.NewAttribute("artifact_index", fmt.Sprintf("%d", msg.ArtifactIndex)),
-		sdk.NewAttribute("added_urls_count", fmt.Sprintf("%d", addedCount)),
-	))
-
-	return &types.MsgMirrorReleaseResponse{Added: addedCount}, nil
 }

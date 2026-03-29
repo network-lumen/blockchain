@@ -147,25 +147,6 @@ func TestEscrowForfeitOnRejectAndYank(t *testing.T) {
 	_, err = f.msgSrv.RejectRelease(f.ctx, &types.MsgRejectRelease{Authority: f.authority, Id: 1})
 	require.NoError(t, err)
 	require.True(t, f.distr.communityPool.AmountOf("ulmn").GTE(cpBefore.AddRaw(int64(fee))))
-
-	// New pending publish, then yank.
-	_, err = f.msgSrv.PublishRelease(f.ctx, &types.MsgPublishRelease{
-		Creator: publisher,
-		Release: types.Release{
-			Version:   "1.0.1",
-			Channel:   "stable",
-			Artifacts: []*types.Artifact{{Platform: "linux", Kind: "daemon", Sha256Hex: strings.Repeat("b", 64), Urls: []string{"https://example.com/bin"}}},
-		},
-	})
-	require.NoError(t, err)
-	cpMid := f.distr.communityPool.AmountOf("ulmn")
-	_, err = f.msgSrv.YankRelease(f.ctx, &types.MsgYankRelease{Creator: publisher, Id: 2})
-	require.NoError(t, err)
-	require.True(t, f.distr.communityPool.AmountOf("ulmn").GTE(cpMid.AddRaw(int64(fee))))
-
-	r, err := f.keeper.Release.Get(f.ctx, 2)
-	require.NoError(t, err)
-	require.True(t, r.Yanked)
 }
 
 func TestExpiryEndBlockExpiresPending(t *testing.T) {
@@ -208,42 +189,6 @@ func TestExpiryEndBlockExpiresPending(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, types.Release_EXPIRED, r.Status)
 	require.True(t, f.distr.communityPool.AmountOf("ulmn").GTE(cpBefore.AddRaw(int64(fee))))
-}
-
-func TestMirrorPendingOnly(t *testing.T) {
-	f := newReleaseFixture(t)
-
-	publisherBz := sdk.AccAddress(bytes.Repeat([]byte{0x55}, 20))
-	publisher, err := f.addrCodec.BytesToString(publisherBz)
-	require.NoError(t, err)
-
-	params := types.NewParams(
-		[]string{publisher},
-		[]string{"stable", "beta"},
-		8, 8, 4, 512,
-		0,
-		0,
-		nil,
-		0,
-		false,
-	)
-	require.NoError(t, f.keeper.SetParams(f.ctx, params))
-
-	_, err = f.msgSrv.PublishRelease(f.ctx, &types.MsgPublishRelease{
-		Creator: publisher,
-		Release: types.Release{
-			Version:   "1.0.0",
-			Channel:   "stable",
-			Artifacts: []*types.Artifact{{Platform: "linux", Kind: "daemon", Sha256Hex: strings.Repeat("a", 64), Urls: []string{"https://example.com/bin"}}},
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = f.msgSrv.ValidateRelease(f.ctx, &types.MsgValidateRelease{Authority: f.authority, Id: 1})
-	require.NoError(t, err)
-
-	_, err = f.msgSrv.MirrorRelease(f.ctx, &types.MsgMirrorRelease{Creator: publisher, Id: 1, ArtifactIndex: 0, NewUrls: []string{"https://m1"}})
-	require.Error(t, err)
 }
 
 func TestLatestNeverReturnsPending(t *testing.T) {

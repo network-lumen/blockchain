@@ -282,13 +282,6 @@ if curl -sSf "$API/lumen/release/latest/stable/linux-amd64/daemon" >/dev/null 2>
   exit 1
 fi
 
-step "Mirror: add URL to artifact[0] (PENDING-only)"
-BODY=$(jq -nc --arg c "$P1" --argjson id "$ID1" '{creator:$c, id:$id, artifact_index:0, new_urls:["https://mirror1","https://mirror1"]}')
-CODE=$(release_tx mirror --msg "$BODY" --from publisher1)
-test "$CODE" = "0"
-URLS=$(curl -s "$API/lumen/release/by_version/1.0.0" | jq -r '.release.artifacts[0].urls | length')
-if [ "$URLS" -ge 2 ]; then echo "ok mirror urls=$URLS"; else echo "fail mirror urls=$URLS"; exit 1; fi
-
 step "Governance validate v1 (escrow refund)"
 GOV_AUTHORITY=$(gov_resolve_authority)
 MSG=$(jq -nc --arg auth "$GOV_AUTHORITY" --argjson id "$ID1" '{"@type":"/lumen.release.v1.MsgValidateRelease", authority:$auth, id:$id}')
@@ -309,11 +302,6 @@ test "$BAL_P1_AFTER_VALIDATE" -ge $((BAL_P1_AFTER_PUBLISH + 1000))
 step "Latest resolves only after validation"
 LATEST_ID=$(curl -s "$API/lumen/release/latest/stable/linux-amd64/daemon" | jq -r .release.id)
 test "$LATEST_ID" = "$ID1"
-
-step "Negative: mirror after validation should fail"
-BODY=$(jq -nc --arg c "$P1" --argjson id "$ID1" '{creator:$c, id:$id, artifact_index:0, new_urls:["https://mirror2"]}')
-CODE=$(release_tx mirror --msg "$BODY" --from publisher1 || true)
-test "$CODE" != "0"
 
 step "Assert v1 present via by_version"
 RID=$(curl -s "$API/lumen/release/by_version/1.0.0" | jq -r .release.id)
@@ -347,12 +335,6 @@ if [ "$CP1" -lt $((CP0 + 1000)) ]; then
   echo "expected community pool ulmn to increase by >=1000 (before=$CP0 after=$CP1)" >&2
   exit 1
 fi
-
-step "Yank v1"
-BODY=$(jq -nc --arg c "$P1" --argjson id "$ID1" '{creator:$c, id:$id}')
-CODE=$(release_tx yank --msg "$BODY" --from publisher1 || true)
-test "$CODE" != "0"
-echo "ok: cannot yank validated release"
 
 step "Negative: non-publisher cannot publish"
 keys_add_quiet intruder

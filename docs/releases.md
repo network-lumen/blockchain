@@ -44,7 +44,6 @@ Publishing metadata is optional but recommended so clients can verify binaries:
    - `artifacts[]` (platform, kind, size, sha256, urls[], signatures[])
    - Optional release notes (bounded by `max_notes_len`)
 3. Broadcast the message (AutoCLI: `lumend tx release publish-release ...`).
-4. Add extra mirrors with `MsgMirrorRelease`; yank with `MsgYankRelease`.
 
 ### Supported artifact URLs
 

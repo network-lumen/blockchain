@@ -23,8 +23,6 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 			RpcCommandOptions: []*autocliv1.RpcCommandOptions{
 				{RpcMethod: "UpdateParams", Skip: true},
 				{RpcMethod: "PublishRelease", Use: "publish", Short: "Publish a new release"},
-				{RpcMethod: "YankRelease", Use: "yank [id]", Short: "Yank a release", PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
-				{RpcMethod: "MirrorRelease", Use: "mirror [id] [artifact-index] [new-urls]", Short: "Mirror release artifact", PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "artifact_index"}, {ProtoField: "new_urls"}}},
 			},
 		},
 	}

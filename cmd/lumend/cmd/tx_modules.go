@@ -381,8 +381,6 @@ func newReleaseTxCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		newReleasePublishCmd(),
-		newReleaseMirrorCmd(),
-		newReleaseYankCmd(),
 	)
 	return cmd
 }
@@ -403,66 +401,6 @@ func newReleasePublishCmd() *cobra.Command {
 			}
 
 			var msg releasetypes.MsgPublishRelease
-			if err := json.Unmarshal(payload, &msg); err != nil {
-				return fmt.Errorf("parse --msg payload: %w", err)
-			}
-			if msg.Creator == "" {
-				msg.Creator = clientCtx.GetFromAddress().String()
-			}
-			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), &msg)
-		},
-	}
-	addJSONPayloadFlags(cmd)
-	flags.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func newReleaseMirrorCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "mirror",
-		Short: "Mirror release artifacts (expects MsgMirrorRelease JSON)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			payload, err := readJSONPayload(cmd)
-			if err != nil {
-				return err
-			}
-
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			var msg releasetypes.MsgMirrorRelease
-			if err := json.Unmarshal(payload, &msg); err != nil {
-				return fmt.Errorf("parse --msg payload: %w", err)
-			}
-			if msg.Creator == "" {
-				msg.Creator = clientCtx.GetFromAddress().String()
-			}
-			return pqctxext.GenerateOrBroadcastTxCLI(cmd, clientCtx, cmd.Flags(), &msg)
-		},
-	}
-	addJSONPayloadFlags(cmd)
-	flags.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func newReleaseYankCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "yank",
-		Short: "Yank a release (expects MsgYankRelease JSON)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			payload, err := readJSONPayload(cmd)
-			if err != nil {
-				return err
-			}
-
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			var msg releasetypes.MsgYankRelease
 			if err := json.Unmarshal(payload, &msg); err != nil {
 				return fmt.Errorf("parse --msg payload: %w", err)
 			}

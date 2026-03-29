@@ -11,8 +11,6 @@ import (
 
 var (
 	_ sdk.Msg = (*MsgPublishRelease)(nil)
-	_ sdk.Msg = (*MsgYankRelease)(nil)
-	_ sdk.Msg = (*MsgMirrorRelease)(nil)
 	_ sdk.Msg = (*MsgSetEmergency)(nil)
 	_ sdk.Msg = (*MsgValidateRelease)(nil)
 	_ sdk.Msg = (*MsgRejectRelease)(nil)
@@ -29,31 +27,6 @@ func (msg *MsgPublishRelease) ValidateBasic() error {
 		return sdkerrors.ErrInvalidAddress.Wrapf("invalid creator address (%s)", err)
 	}
 	return validateReleasePayload(&msg.Release)
-}
-
-func (msg *MsgYankRelease) ValidateBasic() error {
-	if _, err := sdk.AccAddressFromBech32(msg.Creator); err != nil {
-		return sdkerrors.ErrInvalidAddress.Wrapf("invalid creator address (%s)", err)
-	}
-	if msg.Id == 0 {
-		return sdkerrors.ErrInvalidRequest.Wrap("id required")
-	}
-	return nil
-}
-
-func (msg *MsgMirrorRelease) ValidateBasic() error {
-	if _, err := sdk.AccAddressFromBech32(msg.Creator); err != nil {
-		return sdkerrors.ErrInvalidAddress.Wrapf("invalid creator address (%s)", err)
-	}
-	if msg.Id == 0 {
-		return sdkerrors.ErrInvalidRequest.Wrap("id required")
-	}
-	for i, u := range msg.NewUrls {
-		if err := validateReleaseURL(u); err != nil {
-			return sdkerrors.ErrInvalidRequest.Wrapf("new_urls[%d]: %s", i, err.Error())
-		}
-	}
-	return nil
 }
 
 func (msg *MsgSetEmergency) ValidateBasic() error {
