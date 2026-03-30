@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 	clienttypesv2 "github.com/cosmos/ibc-go/v10/modules/core/02-client/v2/types"
@@ -38,6 +39,20 @@ func TestIBCTransferMessagesAreRecognized(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, requiresFee)
 	require.False(t, allIBCRelayerCoreMsgs([]sdk.Msg{msg}))
+}
+
+func TestEditValidatorMessagesAreRecognized(t *testing.T) {
+	msg := sampleEditValidatorMsg()
+
+	require.True(t, isEditValidatorFeeBearingMsg(msg))
+
+	policy, err := classifyTxFeePolicy([]sdk.Msg{msg})
+	require.NoError(t, err)
+	require.Equal(t, txFeePolicyEditValidator, policy)
+
+	requiresFee, err := requiresIBCFee([]sdk.Msg{msg})
+	require.NoError(t, err)
+	require.False(t, requiresFee)
 }
 
 func TestShouldBypassPQCSigForIBCRelayerRequiresAllowlistedSigners(t *testing.T) {
@@ -126,8 +141,33 @@ func TestClassifyTxFeePolicyAllowsIBCTransferAndCoreTogether(t *testing.T) {
 	require.Equal(t, txFeePolicyIBC, policy)
 }
 
+func TestClassifyTxFeePolicyRejectsMixedGaslessAndEditValidator(t *testing.T) {
+	_, _, signer := testdata.KeyTestPubAddr()
+	_, _, recipient := testdata.KeyTestPubAddr()
+
+	_, err := classifyTxFeePolicy([]sdk.Msg{
+		sampleEditValidatorMsg(),
+		banktypes.NewMsgSend(signer, recipient, sdk.NewCoins(sdk.NewInt64Coin("ulmn", 1))),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot mix fee-bearing edit-validator messages with gasless messages")
+}
+
+func TestClassifyTxFeePolicyRejectsMixedIBCAndEditValidator(t *testing.T) {
+	_, err := classifyTxFeePolicy([]sdk.Msg{
+		sampleIBCTransferMsg(),
+		sampleEditValidatorMsg(),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot mix fee-bearing IBC messages with fee-bearing edit-validator messages")
+}
+
 func sampleIBCTransferMsg() sdk.Msg {
 	return &ibctransfertypes.MsgTransfer{}
+}
+
+func sampleEditValidatorMsg() sdk.Msg {
+	return &stakingtypes.MsgEditValidator{}
 }
 
 func sampleIBCRelayerCoreMsgs() []sdk.Msg {

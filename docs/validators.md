@@ -29,7 +29,8 @@ sudo systemctl enable --now lumend
 
 The default unit starts the node with:
 
-- `--minimum-gas-prices 0ulmn` (gasless operation)
+- `--minimum-gas-prices 0ulmn` (Lumen keeps validator min-gas-prices at zero; selected tx types still enforce
+  application-level fees)
 - REST (`:2327`), gRPC (`:9190`), and gRPC-Web enabled on localhost
 - Rate-limit env vars exported to the process (see below)
 

@@ -8,6 +8,7 @@ CHAIN_ID=${CHAIN_ID:-e2e-edit-validator}
 KEYRING=${KEYRING:-test}
 SCHEME=${SCHEME:-dilithium3}
 TX_FEES=${TX_FEES:-0ulmn}
+EDIT_VALIDATOR_TX_FEES=${EDIT_VALIDATOR_TX_FEES:-1000000ulmn}
 
 RPC_HOST=${RPC_HOST:-127.0.0.1}
 if [ -z "${RPC_PORT:-}" ]; then
@@ -105,7 +106,7 @@ sleep 1
 
 wait_ready 2
 
-export BIN KEYRING HOME_DIR SCHEME TX_FEES NODE RPC CHAIN_ID
+export BIN KEYRING HOME_DIR SCHEME TX_FEES EDIT_VALIDATOR_TX_FEES NODE RPC CHAIN_ID
 
 echo "==> Linking PQC signer on-chain (bootstrap)"
 setup_pqc_signer "$BOOTSTRAP"
@@ -119,7 +120,7 @@ RES=$("$BIN" tx staking edit-validator \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
 	--yes \
-	--fees "$TX_FEES" \
+	--fees "$EDIT_VALIDATOR_TX_FEES" \
 	--broadcast-mode sync \
 	-o json)
 echo "$RES" | jq

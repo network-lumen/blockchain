@@ -4,6 +4,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
@@ -18,25 +19,40 @@ type txFeePolicy int
 const (
 	txFeePolicyGasless txFeePolicy = iota
 	txFeePolicyIBC
+	txFeePolicyEditValidator
 )
 
 func classifyTxFeePolicy(msgs []sdk.Msg) (txFeePolicy, error) {
 	var hasGasless bool
 	var hasFeeBearingIBC bool
+	var hasFeeBearingEditValidator bool
 
 	for _, msg := range msgs {
 		if isIBCFeeBearingMsg(msg) {
 			hasFeeBearingIBC = true
 			continue
 		}
+		if isEditValidatorFeeBearingMsg(msg) {
+			hasFeeBearingEditValidator = true
+			continue
+		}
 		hasGasless = true
 	}
 
+	if hasFeeBearingIBC && hasFeeBearingEditValidator {
+		return txFeePolicyGasless, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "cannot mix fee-bearing IBC messages with fee-bearing edit-validator messages")
+	}
 	if hasGasless && hasFeeBearingIBC {
 		return txFeePolicyGasless, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "cannot mix fee-bearing IBC messages with gasless messages")
 	}
+	if hasGasless && hasFeeBearingEditValidator {
+		return txFeePolicyGasless, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "cannot mix fee-bearing edit-validator messages with gasless messages")
+	}
 	if hasFeeBearingIBC {
 		return txFeePolicyIBC, nil
+	}
+	if hasFeeBearingEditValidator {
+		return txFeePolicyEditValidator, nil
 	}
 	return txFeePolicyGasless, nil
 }
@@ -63,6 +79,11 @@ func allIBCRelayerCoreMsgs(msgs []sdk.Msg) bool {
 
 func isIBCFeeBearingMsg(msg sdk.Msg) bool {
 	return isIBCTransferMsg(msg) || isIBCRelayerCoreMsg(msg)
+}
+
+func isEditValidatorFeeBearingMsg(msg sdk.Msg) bool {
+	_, ok := msg.(*stakingtypes.MsgEditValidator)
+	return ok
 }
 
 func isIBCTransferMsg(msg sdk.Msg) bool {

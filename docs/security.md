@@ -5,7 +5,10 @@
   - `LUMEN_RL_PER_WINDOW` (default 20)
   - `LUMEN_RL_WINDOW_SEC` (default 10)
 
-  The binary refuses to start unless `--minimum-gas-prices` is unset or exactly `0ulmn`, guaranteeing that gasless transactions remain valid while ante decorators enforce quotas. Any non-zero fee is rejected at ante-time.
+  The binary refuses to start unless `--minimum-gas-prices` is unset or exactly `0ulmn`, guaranteeing that gasless
+  transactions remain valid while ante decorators enforce quotas. Ante-time fee checks are selective: gasless native
+  txs must keep fee `0`, IBC fee-bearing txs must carry a positive `ulmn` fee, and `staking.MsgEditValidator` must pay
+  exactly `1000000ulmn`.
 
 - **Operator guard:** Startup aborts when `--minimum-gas-prices` is non-zero; this prevents accidental deployment of fee-bearing configurations.
 
@@ -13,7 +16,8 @@
 
 - **Auctions & fees:** all DNS and gateways fees route through the fee collector and treasury module accounts; monitor balances to detect anomalies.
 
-- **Release spam:** only addresses listed in `Params.allowed_publishers` (or `dao_publishers`) may publish or mirror releases. Tune `publish_fee_ulmn`, `max_pending_ttl`, and `reject_refund_bps` to discourage abusive submissions.
+- **Release spam:** only addresses listed in `Params.allowed_publishers` may publish releases. Tune
+  `publish_fee_ulmn` and `max_pending_ttl` to discourage abusive submissions.
 
 - **REST exposure:** place a TLS-enabled reverse proxy with per-IP rate limiting in front of `:2327` if the API is exposed to the public internet.
 

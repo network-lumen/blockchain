@@ -88,13 +88,15 @@ This does **not** mean gas execution is disabled.
 
 Gas is still measured by the Cosmos SDK execution path. The important distinction is how transaction fees are handled:
 
-- native Lumen application transactions are still fee-free at the application level
+- most native Lumen application transactions are still fee-free at the application level
 - fee-bearing IBC transactions must include a positive `ulmn` fee
+- `staking.MsgEditValidator` must include exactly `1000000ulmn`
 
 In other words:
 
 - IBC tx: gas is metered, and a positive `ulmn` fee is mandatory
-- native non-IBC Lumen tx: gas is still metered internally, but the required application fee is zero
+- `staking.MsgEditValidator`: gas is metered internally, and the application fee is fixed at `1000000ulmn`
+- most other native non-IBC Lumen tx: gas is still metered internally, but the required application fee is zero
 
 This is why integrators should think in terms of "fee-free" vs "fee-bearing", not "gas on" vs "gas off".
 
@@ -104,16 +106,18 @@ The Lumen ante policy treats the following as fee-bearing:
 
 - `/ibc.applications.transfer.v1.MsgTransfer`
 - IBC relayer/core messages such as client creation/update, connection handshake, channel handshake, `RecvPacket`, `Acknowledgement`, and `Timeout`
+- `/cosmos.staking.v1beta1.MsgEditValidator`
 
 Those transactions must pay:
 
-- exactly one fee coin
-- a positive amount
-- denom `ulmn`
+- IBC txs: exactly one positive `ulmn` fee coin
+- `MsgEditValidator`: exactly `1000000ulmn`
 
-Native Lumen application transactions remain gasless from the user point of view and must keep a zero fee.
+Other native Lumen application transactions remain gasless from the user point of view and must keep a zero fee.
 
-Mixing fee-bearing IBC messages and gasless native Lumen application messages in the same transaction is rejected.
+Mixing fee-bearing IBC messages and gasless native Lumen application messages is rejected. Mixing fee-bearing IBC
+messages and `MsgEditValidator` in the same transaction is also rejected, as is mixing `MsgEditValidator` with gasless
+messages.
 
 ## PQC Rules
 

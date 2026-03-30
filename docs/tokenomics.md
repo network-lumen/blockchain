@@ -1,9 +1,14 @@
 # Tokenomics Overview
 
-Lumen is a gasless chain: validators only accept transactions whose fee is exactly zero, and ante decorators enforce
-per-sender quotas (`LUMEN_RL_*`) plus a dust guard (`min_send_ulmn`). Monetary supply growth and redistribution are
-handled by the `x/tokenomics` module, while individual application modules (DNS, Gateways, Release, etc.) levy their own
-fixed fees or escrow requirements.
+Lumen keeps validator `minimum-gas-prices` at `0ulmn`, but transaction fees are not uniformly zero at the application
+layer. Most native non-IBC transactions remain gasless, while selected paths enforce fixed fees:
+
+- IBC fee-bearing transactions must include a positive `ulmn` fee.
+- `staking.MsgEditValidator` must pay exactly `1000000ulmn` (`1 LMN`).
+
+Ante decorators still enforce per-sender quotas (`LUMEN_RL_*`) plus a dust guard (`min_send_ulmn`). Monetary supply
+growth and redistribution are handled by the `x/tokenomics` module, while individual application modules (DNS,
+Gateways, Release, etc.) levy their own fixed fees or escrow requirements.
 
 ## Monetary Base
 
@@ -23,17 +28,22 @@ fixed fees or escrow requirements.
 Governance can adjust these parameters via `MsgUpdateParams` to slow/accelerate inflation, tweak dust guards
 (`min_send_ulmn`), or alter the tax rate.
 
-## Gasless Policy & Rate Limits
+## Fee Policy & Rate Limits
 
-Even though transactions carry no fees, each node enforces:
+Even though most native transactions still carry no fee, each node enforces:
 
 - `--minimum-gas-prices 0ulmn`
 - `LUMEN_RL_PER_BLOCK` (default 5 tx per block per sender)
 - `LUMEN_RL_PER_WINDOW` / `LUMEN_RL_WINDOW_SEC` (20 tx over a 10-second sliding window)
 - `LUMEN_RL_GLOBAL_MAX` (global spam guard used in simulator/testing flows)
 
-Every transaction must set its fee to `0`; the `ZeroFeeDecorator` rejects any non-zero fee long before execution. Any
-`MsgSend`/`MsgMultiSend` output carrying less than `min_send_ulmn` is rejected before reaching application logic.  
+At ante time:
+
+- gasless native transactions must keep fee `0`
+- IBC fee-bearing transactions must carry a positive `ulmn` fee
+- `staking.MsgEditValidator` must carry exactly `1000000ulmn`
+
+Any `MsgSend`/`MsgMultiSend` output carrying less than `min_send_ulmn` is rejected before reaching application logic.  
 > Note: `min_send_ulmn` s’applique au montant brut envoyé. La taxe de 1 % est prélevée après coup, donc le destinataire
 > reçoit légèrement moins que le seuil minimum quand ce dernier est utilisé exactement.
 
@@ -49,8 +59,8 @@ Operators should monitor these accounts via `lumend q bank balances <account-add
 ## Long-Term Sustainability
 
 - With 4-second blocks and a 1 LMN starting reward, the supply tapers towards 63M LMN over successive halvings.
-- The protocol tax (default 1%) captures on-chain economic activity to fund validator rewards even when transaction fees
-  are zero.
+- The protocol tax (default 1%) captures on-chain economic activity to fund validator rewards even when most native
+  application transactions are fee-free.
 - Additional module-level fees (DNS registration, gateway action fees, release publish fees) can be tuned via their
   respective params without touching the base tokenomics.
 

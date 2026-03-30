@@ -10,12 +10,9 @@ chain so clients can verify downloads. Publishers are allowlisted via params and
 
 - `publish --msg <json>` – Create a new release (semver version, channel, notes, artifacts). Requires membership in
   `allowed_publishers` and optionally escrows `publish_fee_ulmn`.
-- `mirror --msg <json>` – Append additional URLs to an existing artifact (same publisher set).
-- `yank --msg <json>` – Mark a release as yanked (metadata retained, but clients should avoid fetching it).
 - `validate-release [id] --decision approve/reject --notes …` – Authority-only; marks a release as validated so it may
   be used in channels that require validation.
-- `reject-release [id] --reason …` – Authority-only; rejects a pending release (optionally refunding fees according to
-  `reject_refund_bps`).
+- `reject-release [id] --reason …` – Authority-only; rejects a pending release.
 - `set-emergency [on|off]` – Authority-only; toggles the emergency switch used to pause publishing flows.
 - `update-params --authority …` – Governance updates the parameter set below.
 
@@ -43,11 +40,10 @@ REST endpoints mirror the gRPC service:
 
 ## Parameters
 
-- `allowed_publishers`, `dao_publishers`
+- `allowed_publishers`
 - `channels` (whitelisted channel names)
 - `max_artifacts`, `max_urls_per_art`, `max_sigs_per_art`, `max_notes_len`
 - `publish_fee_ulmn`, `max_pending_ttl`
-- `reject_refund_bps` (basis points refunded on rejection)
 - `require_validation_for_stable` (or any other channel that governance designates)
 
 Governance adjusts these via `MsgUpdateParams`.
@@ -59,4 +55,3 @@ Governance adjusts these via `MsgUpdateParams`.
 - Only DAO/authority addresses may validate, reject, or toggle emergency mode.
 - When `require_validation_for_stable=true`, clients must wait for `MsgValidateRelease` before serving the release on the
   `stable` channel.
-- Yanking does not delete history; clients can choose whether to honor yanked releases.

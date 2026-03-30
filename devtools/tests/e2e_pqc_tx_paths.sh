@@ -8,6 +8,7 @@ CHAIN_ID=${CHAIN_ID:-pqc-txpaths-e2e}
 KEYRING=${KEYRING:-test}
 SCHEME=${SCHEME:-dilithium3}
 TX_FEES=${TX_FEES:-0ulmn}
+EDIT_VALIDATOR_TX_FEES=${EDIT_VALIDATOR_TX_FEES:-1000000ulmn}
 
 RPC_HOST=${RPC_HOST:-127.0.0.1}
 if [ -z "${RPC_PORT:-}" ]; then
@@ -247,7 +248,7 @@ wait_ready 2
 export NODE="tcp://${RPC_HOST}:${RPC_PORT}"
 export RPC
 pqc_policy_must_be_required "$RPC"
-export BIN KEYRING HOME_DIR SCHEME TX_FEES NODE RPC CHAIN_ID
+export BIN KEYRING HOME_DIR SCHEME TX_FEES EDIT_VALIDATOR_TX_FEES NODE RPC CHAIN_ID
 
 echo "==> Linking PQC accounts on-chain (BOOTSTRAP, NEWVAL, GRANTEE)"
 setup_pqc_signer "$BOOTSTRAP"
@@ -451,7 +452,7 @@ run_tx_ok "staking edit-validator" \
 	--keyring-backend "$KEYRING" \
 	--home "$HOME_DIR" \
 	--yes \
-	--fees "$TX_FEES"
+	--fees "$EDIT_VALIDATOR_TX_FEES"
 
 VAL_JSON=$("$BIN" q staking validator "$VALOPER_NEWVAL" --home "$HOME_DIR" -o json)
 ONCHAIN_MONIKER=$(echo "$VAL_JSON" | jq -r '.validator.description.moniker // .description.moniker // empty')

@@ -4,7 +4,8 @@
 
 `x/tokenomics` controls Lumen’s monetary policy (block rewards, halving cadence, supply cap) and the network-wide tax
 rate used by ante decorators (e.g., send-tax). It also enforces dust guards (`min_send_ulmn`) and distributes tax revenue
-to validators. All transactions are gasless—module fees and taxes fund validators.
+to validators. Most native transactions are gasless, but the chain still has selected fee-bearing paths such as IBC
+transactions and `staking.MsgEditValidator`.
 
 ## Transactions (`lumend tx tokenomics …`)
 

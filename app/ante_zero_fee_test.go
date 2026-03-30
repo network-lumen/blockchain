@@ -10,6 +10,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	signingtypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 	"github.com/stretchr/testify/require"
@@ -81,5 +82,26 @@ func TestSelectiveFeeDecoratorRequiresPositiveFeeForIBCTransfer(t *testing.T) {
 	require.Contains(t, err.Error(), "ibc tx fee denom must be")
 
 	_, err = decorator.AnteHandle(ctx, mockFeeTx{msgs: []sdk.Msg{msg}, fee: sdk.NewCoins(sdk.NewInt64Coin("ulmn", 1))}, false, nextAnte)
+	require.NoError(t, err)
+}
+
+func TestSelectiveFeeDecoratorRequiresExactFeeForEditValidator(t *testing.T) {
+	ctx := sdk.NewContext(nil, tmproto.Header{}, false, log.NewNopLogger())
+	decorator := NewSelectiveFeeDecorator()
+	msg := &stakingtypes.MsgEditValidator{}
+
+	_, err := decorator.AnteHandle(ctx, mockFeeTx{msgs: []sdk.Msg{msg}, fee: sdk.NewCoins()}, false, nextAnte)
+	require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
+	require.Contains(t, err.Error(), "edit-validator tx must pay exactly 1000000ulmn")
+
+	_, err = decorator.AnteHandle(ctx, mockFeeTx{msgs: []sdk.Msg{msg}, fee: sdk.NewCoins(sdk.NewInt64Coin("uatom", editValidatorFixedFeeUlmn))}, false, nextAnte)
+	require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
+	require.Contains(t, err.Error(), "edit-validator tx must pay exactly 1000000ulmn")
+
+	_, err = decorator.AnteHandle(ctx, mockFeeTx{msgs: []sdk.Msg{msg}, fee: sdk.NewCoins(sdk.NewInt64Coin("ulmn", editValidatorFixedFeeUlmn-1))}, false, nextAnte)
+	require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
+	require.Contains(t, err.Error(), "edit-validator tx must pay exactly 1000000ulmn")
+
+	_, err = decorator.AnteHandle(ctx, mockFeeTx{msgs: []sdk.Msg{msg}, fee: sdk.NewCoins(sdk.NewInt64Coin("ulmn", editValidatorFixedFeeUlmn))}, false, nextAnte)
 	require.NoError(t, err)
 }

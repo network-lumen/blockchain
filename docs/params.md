@@ -40,7 +40,7 @@ This page lists the configurable knobs exposed by the chain. Governance can only
 
 `GET /lumen/release/params`
 
-- `allowed_publishers` – addresses authorised to publish/mirror/yank
+- `allowed_publishers` – addresses authorised to publish releases
 - `dao_publishers` – addresses allowed to toggle emergency flags
 - `channels` – permitted release channels (e.g. `stable`, `beta`)
 - `max_artifacts`, `max_urls_per_art`, `max_sigs_per_art`, `max_notes_len`
