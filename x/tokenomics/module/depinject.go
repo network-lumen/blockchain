@@ -2,6 +2,7 @@ package tokenomics
 
 import (
 	"context"
+	"fmt"
 
 	"cosmossdk.io/core/address"
 	"cosmossdk.io/core/appmodule"
@@ -92,6 +93,13 @@ func (d distributionAdapter) WithdrawValidatorCommission(ctx context.Context, va
 
 func (d distributionAdapter) FundCommunityPool(ctx context.Context, amount sdk.Coins, depositor sdk.AccAddress) error {
 	return d.dk.FundCommunityPool(ctx, amount, depositor)
+}
+
+func (d distributionAdapter) CommunityPoolSpend(ctx context.Context, recipient sdk.AccAddress, amount sdk.Coins) error {
+	if d.dk.HasExternalCommunityPool() {
+		return fmt.Errorf("external community pool is enabled")
+	}
+	return d.dk.DistributeFromFeePool(ctx, amount, recipient)
 }
 
 type stakingAdapter struct{ sk *stakingkeeper.Keeper }

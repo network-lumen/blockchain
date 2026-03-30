@@ -58,14 +58,17 @@ func (m *bankMock) SendCoinsFromModuleToModule(_ context.Context, senderModule, 
 }
 
 type distributionMock struct {
-	calls              []sdk.ValAddress
-	communityPoolMints []sdk.Coins
+	calls               []sdk.ValAddress
+	communityPoolMints  []sdk.Coins
+	communityPoolSpends []accountTransfer
+	spendErr            error
 }
 
 func newDistributionMock() *distributionMock {
 	return &distributionMock{
-		calls:              []sdk.ValAddress{},
-		communityPoolMints: []sdk.Coins{},
+		calls:               []sdk.ValAddress{},
+		communityPoolMints:  []sdk.Coins{},
+		communityPoolSpends: []accountTransfer{},
 	}
 }
 
@@ -76,6 +79,19 @@ func (m *distributionMock) WithdrawValidatorCommission(_ context.Context, valAdd
 
 func (m *distributionMock) FundCommunityPool(_ context.Context, amount sdk.Coins, _ sdk.AccAddress) error {
 	m.communityPoolMints = append(m.communityPoolMints, amount)
+	return nil
+}
+
+type accountTransfer struct {
+	to  sdk.AccAddress
+	amt sdk.Coins
+}
+
+func (m *distributionMock) CommunityPoolSpend(_ context.Context, recipient sdk.AccAddress, amount sdk.Coins) error {
+	if m.spendErr != nil {
+		return m.spendErr
+	}
+	m.communityPoolSpends = append(m.communityPoolSpends, accountTransfer{to: recipient, amt: amount})
 	return nil
 }
 

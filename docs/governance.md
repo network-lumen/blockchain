@@ -39,15 +39,15 @@ parameter mutation and require a binary upgrade instead.
 
 ## Community pool spend
 
-Lumen does not expose a normal DAO-controlled spend path from the community pool today.
+Lumen keeps `x/distribution` immutable, but exposes a dedicated DAO-only escape hatch for community-pool spends:
+`/lumen.tokenomics.v1.MsgCommunityPoolSpend`.
 
-- The upstream SDK `x/distribution` module still contains `MsgCommunityPoolSpend`.
-- Proposal submission requires every embedded message signer to be the `gov` module account.
-- Lumen configures `x/distribution` with a separate internal immutable authority address instead of the `gov` module
-  address.
+- The message is governed by the `gov` module authority.
+- It debits the native distribution community pool without reopening the rest of `x/distribution` parameter mutation.
+- The recipient must be a valid account address and the amount must be a non-empty, strictly positive `sdk.Coins` set.
 
-That means a standard governance proposal cannot satisfy both constraints at once, so community pool funds can be
-funded but are not spendable through a normal on-chain DAO flow.
+Standard `cosmos.distribution.v1beta1.MsgCommunityPoolSpend` proposals remain unusable under Lumen's immutable
+distribution authority model; use the tokenomics message instead.
 
 ## Submitting proposals
 

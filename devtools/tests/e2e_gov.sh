@@ -659,6 +659,34 @@ community_pool_amount_ulmn() {
   '
 }
 
+assert_decimal_delta() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+from decimal import Decimal
+import sys
+before = Decimal(sys.argv[1])
+after = Decimal(sys.argv[2])
+cmp = sys.argv[3]
+amount = Decimal(sys.argv[4])
+label = sys.argv[5]
+delta = after - before
+ok = False
+if cmp == "==":
+    ok = delta == amount
+elif cmp == ">=":
+    ok = delta >= amount
+elif cmp == "<=":
+    ok = delta <= amount
+elif cmp == ">":
+    ok = delta > amount
+elif cmp == "<":
+    ok = delta < amount
+else:
+    raise SystemExit(f"invalid comparator {cmp} for {label}")
+if not ok:
+    raise SystemExit(f"unexpected decimal delta for {label}: {delta} (expected {cmp} {amount})")
+PY
+}
+
 scenario_dns_fee_effect() {
   local entry="$1"
   apply_requires "$entry"
@@ -842,6 +870,59 @@ scenario_pqc_ibc_relayer_allowlist() {
   fi
 }
 
+scenario_community_pool_spend() {
+  local entry="$1"
+  local fund_amount spend_amount recipient before_recipient before_pool after_fund_pool
+  local tx hash code msg pid after_recipient after_pool spend_ulmn
+
+  fund_amount=$(echo "$entry" | jq -r '.fund_amount // "2500000ulmn"')
+  spend_amount=$(echo "$entry" | jq -r '.spend_amount // "1000000ulmn"')
+  recipient=$(echo "$entry" | jq -r '.recipient // "$VOTER2"')
+  recipient=$(resolve_placeholder "$recipient")
+
+  before_recipient=$(gov_balance_ulmn "$recipient")
+  before_pool=$(community_pool_amount_ulmn)
+
+  tx=$("$BIN" tx distribution fund-community-pool "$fund_amount" \
+    --from validator \
+    --chain-id "$CHAIN_ID" \
+    --node "$NODE" \
+    --keyring-backend "$KEYRING" \
+    --home "$HOME_DIR" \
+    --fees "$TX_FEES" \
+    --yes -o json)
+  hash=$(echo "$tx" | jq -r '.txhash // empty')
+  if [ -z "$hash" ] || [ "$hash" = "null" ]; then
+    echo "community pool funding tx missing hash" >&2
+    exit 1
+  fi
+  code=$(gov_wait_tx "$hash" || true)
+  if [ -z "$code" ] || [ "$code" != "0" ]; then
+    echo "community pool funding tx failed (code=${code:-?})" >&2
+    exit 1
+  fi
+
+  after_fund_pool=$(community_pool_amount_ulmn)
+  assert_decimal_delta "$before_pool" "$after_fund_pool" "==" "$(coin_amount "$fund_amount")" "community pool funding"
+
+  msg=$(jq -cn \
+    --arg auth "$GOV_AUTHORITY" \
+    --arg recipient "$recipient" \
+    --arg amount "$(coin_amount "$spend_amount")" \
+    '{"@type":"/lumen.tokenomics.v1.MsgCommunityPoolSpend", authority:$auth, recipient:$recipient, amount:[{denom:"ulmn", amount:$amount}]}' )
+  gov_submit_single_msg_proposal "$msg" "Spend community pool" "transfer DAO-managed community funds" "$(gov_current_min_deposit)"
+  pid="$GOV_LAST_PROPOSAL_ID"
+  gov_cast_vote "$pid" validator yes
+  gov_wait_status "$pid" "PROPOSAL_STATUS_PASSED"
+
+  after_recipient=$(gov_balance_ulmn "$recipient")
+  after_pool=$(community_pool_amount_ulmn)
+  spend_ulmn=$(coin_amount "$spend_amount")
+
+  gov_expect_balance_delta "$before_recipient" "$after_recipient" "==" "$spend_ulmn" "community pool spend recipient credit"
+  assert_decimal_delta "$after_fund_pool" "$after_pool" "==" "-$spend_ulmn" "community pool spend debit"
+}
+
 run_param_case() {
   local entry="$1"
   local name type
@@ -925,6 +1006,7 @@ run_scenario_case() {
     pqc_disabled) scenario_pqc_disabled "$entry" ;;
     weighted_split) scenario_weighted_split "$entry" ;;
     pqc_ibc_relayer_allowlist) scenario_pqc_ibc_relayer_allowlist "$entry" ;;
+    community_pool_spend) scenario_community_pool_spend "$entry" ;;
     *)
       echo "unsupported scenario $scenario" >&2
       exit 1

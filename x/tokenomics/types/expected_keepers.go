@@ -18,6 +18,7 @@ type BankKeeper interface {
 type DistributionKeeper interface {
 	WithdrawValidatorCommission(ctx context.Context, valAddr sdk.ValAddress) (sdk.Coins, error)
 	FundCommunityPool(ctx context.Context, amount sdk.Coins, depositor sdk.AccAddress) error
+	CommunityPoolSpend(ctx context.Context, recipient sdk.AccAddress, amount sdk.Coins) error
 }
 
 type StakingKeeper interface {

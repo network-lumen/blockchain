@@ -13,6 +13,8 @@ transactions and `staking.MsgEditValidator`.
 - `update-gov-min-deposit` – Governance-only; updates `x/gov`'s `min_deposit` only. The handler is intentionally
   narrow: exactly one `ulmn` coin, amount `> 0`, amount `<= 1000000000000ulmn`, and the resulting `x/gov` params must
   still pass SDK validation.
+- `community-pool-spend` – Governance-only; transfers coins from the distribution community pool to a recipient through
+  a dedicated tokenomics message, without reopening the rest of `x/distribution`.
 - `update-slashing-downtime-params` – Governance-only; updates slashing downtime controls (jail duration + downtime slashing fraction).
 - `update-slashing-liveness-params` – Governance-only; updates slashing liveness controls (signed blocks window + minimum signed ratio).
 
@@ -51,5 +53,7 @@ The module also exposes `TotalMinted` through the keeper (queried indirectly by 
   rate is used when modules seed escrow (e.g., gateways).
 - The dedicated `update-gov-min-deposit` path is the only supported way to make `gov.params.min_deposit` DAO-upgradable
   without reopening the rest of `x/gov` parameter mutation.
+- The dedicated `community-pool-spend` path is the only supported way to move funds out of the native distribution
+  community pool via governance while keeping `x/distribution` itself immutable.
 - The keeper mints LMN into the module account and immediately forwards them to `FeeCollector` before distribution.
 - `min_send_ulmn` prevents dust spam by rejecting microsends before they hit module logic.
