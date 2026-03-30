@@ -10,6 +10,9 @@ transactions and `staking.MsgEditValidator`.
 ## Transactions (`lumend tx tokenomics …`)
 
 - `update-params` – Governance-only; sets the parameter set described below. Authority is the governance module address.
+- `update-gov-min-deposit` – Governance-only; updates `x/gov`'s `min_deposit` only. The handler is intentionally
+  narrow: exactly one `ulmn` coin, amount `> 0`, amount `<= 1000000000000ulmn`, and the resulting `x/gov` params must
+  still pass SDK validation.
 - `update-slashing-downtime-params` – Governance-only; updates slashing downtime controls (jail duration + downtime slashing fraction).
 - `update-slashing-liveness-params` – Governance-only; updates slashing liveness controls (signed blocks window + minimum signed ratio).
 
@@ -46,5 +49,7 @@ The module also exposes `TotalMinted` through the keeper (queried indirectly by 
   rate match expectations.
 - Ante decorators (send-tax) call `GetTxTaxRateBps()` to apply the current tax rate to `MsgSend` transactions; the same
   rate is used when modules seed escrow (e.g., gateways).
+- The dedicated `update-gov-min-deposit` path is the only supported way to make `gov.params.min_deposit` DAO-upgradable
+  without reopening the rest of `x/gov` parameter mutation.
 - The keeper mints LMN into the module account and immediately forwards them to `FeeCollector` before distribution.
 - `min_send_ulmn` prevents dust spam by rejecting microsends before they hit module logic.

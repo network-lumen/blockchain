@@ -2,10 +2,10 @@
 
 Lumen wires the upstream Cosmos SDK `x/gov` module directly into the application. DAO authority is deliberately scoped:
 only the DNS, gateways, release, and non-fundamental tokenomics knobs accept `MsgUpdateParams`. In addition, the DAO
-can schedule upgrades via `x/upgrade`, `x/tokenomics` exposes targeted controls for slashing liveness/downtime, and
-`x/pqc` exposes dedicated relayer-allowlist messages for IBC operations. Core SDK modules (`x/auth`, `x/bank`,
-`x/staking`, `x/distribution`, `x/consensus`, and `x/gov`) reject governance attempts and require a binary upgrade
-instead.
+can schedule upgrades via `x/upgrade`, `x/tokenomics` exposes targeted controls for governance `min_deposit` and
+slashing liveness/downtime, and `x/pqc` exposes dedicated relayer-allowlist messages for IBC operations. Core SDK
+modules (`x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, and `x/gov`) reject direct governance
+parameter mutation and require a binary upgrade instead.
 
 ## Module wiring & defaults
 
@@ -20,21 +20,34 @@ instead.
 - **Distribution params:** the Cosmos distribution module is initialised with `community_tax = 0` and keeps the proposer
   reward fields untouched. Because `x/distribution` is wired to the immutable authority, governance proposals cannot
   raise the community tax; only module-specific flows (e.g. DNS/Gateways) fund the community pool.
-- **Default parameters (fixed):** quorum `0.67`, threshold `0.75`, veto `0.334`, expedited threshold `0.85`,
-  `max_deposit_period/voting_period = 172800s`, `expedited_voting_period = 86400s`, and deposits of
-  `10,000,000 ulmn` (regular) / `50,000,000 ulmn` (expedited). These values are hard-coded; proposals attempting to
-  change them will fail because `x/gov` no longer accepts `MsgUpdateParams`. Duration fields always use Go/protobuf
-  literals such as `"60s"` or `"172800s"`. The current params live under `app_state.gov.params` and are queryable via
-  `lumend q gov params`.
+- **Default parameters (fixed except noted):** quorum `0.67`, threshold `0.75`, veto `0.334`, expedited threshold
+  `0.85`, `max_deposit_period/voting_period = 172800s`, `expedited_voting_period = 86400s`, and deposits of
+  `10,000,000 ulmn` (regular) / `50,000,000 ulmn` (expedited). `x/gov` itself no longer accepts
+  `cosmos.gov.v1.MsgUpdateParams`; the only exposed governance deposit knob is the custom
+  `lumen.tokenomics.v1.MsgUpdateGovMinDeposit`, which updates `gov.params.min_deposit` only. Duration fields always use
+  Go/protobuf literals such as `"60s"` or `"172800s"`. The current params live under `app_state.gov.params` and are
+  queryable via `lumend q gov params`.
 
 ## Immutable vs governable surface
 
 - ✅ Governable: `x/dns`, `x/gateways`, `x/release`, tokenomics' soft knobs (`tx_tax_rate`, `min_send_ulmn`,
-  `distribution_interval_blocks`), `x/upgrade` (software upgrade plans), and the dedicated `x/pqc`
-  `MsgAddIBCRelayer` / `MsgRemoveIBCRelayer` flows.
+  `distribution_interval_blocks`), the targeted tokenomics message `MsgUpdateGovMinDeposit`, `x/upgrade` (software
+  upgrade plans), and the dedicated `x/pqc` `MsgAddIBCRelayer` / `MsgRemoveIBCRelayer` flows.
 - ❌ Immutable: `x/auth`, `x/bank`, `x/staking`, `x/distribution`, `x/consensus`, `x/gov`, `x/pqc.MsgUpdateParams`,
   and the tokenomics supply/currency fields (`denom`, `decimals`, `supply_cap_lumn`, `halving_interval_blocks`,
   `initial_reward_per_block_lumn`). Governance proposals that touch these areas will be rejected.
+
+## Community pool spend
+
+Lumen does not expose a normal DAO-controlled spend path from the community pool today.
+
+- The upstream SDK `x/distribution` module still contains `MsgCommunityPoolSpend`.
+- Proposal submission requires every embedded message signer to be the `gov` module account.
+- Lumen configures `x/distribution` with a separate internal immutable authority address instead of the `gov` module
+  address.
+
+That means a standard governance proposal cannot satisfy both constraints at once, so community pool funds can be
+funded but are not spendable through a normal on-chain DAO flow.
 
 ## Submitting proposals
 
