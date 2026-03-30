@@ -29,6 +29,7 @@ import (
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
@@ -90,6 +91,7 @@ type App struct {
 	BankKeeper     bankkeeper.Keeper
 	StakingKeeper  *stakingkeeper.Keeper
 	DistrKeeper    distrkeeper.Keeper
+	GovKeeper      *govkeeper.Keeper
 	SlashingKeeper slashingkeeper.Keeper
 	UpgradeKeeper  *upgradekeeper.Keeper
 
@@ -162,6 +164,7 @@ func New(
 		&app.BankKeeper,
 		&app.StakingKeeper,
 		&app.DistrKeeper,
+		&app.GovKeeper,
 		&app.SlashingKeeper,
 		&app.UpgradeKeeper,
 		&app.DnsKeeper,
@@ -250,6 +253,13 @@ func BlockedAddresses() map[string]bool {
 func (app *App) buildAnteHandler() sdk.AnteHandler {
 	ak := app.AuthKeeper
 	bk := app.BankKeeper
+	txGuard := newTxGuardDecorator(
+		ak.AddressCodec(),
+		app.StakingKeeper.ValidatorAddressCodec(),
+		govVoteReaderAdapter{gk: app.GovKeeper},
+		distributionGuardReaderAdapter{dk: app.DistrKeeper},
+		app.TokenomicsKeeper,
+	)
 
 	return sdk.ChainAnteDecorators(
 		authante.NewSetUpContextDecorator(),
@@ -257,6 +267,7 @@ func (app *App) buildAnteHandler() sdk.AnteHandler {
 		NewSelectiveFeeDecorator(),
 		(&RateLimitDecorator{}).Init(ak).WithGatewaysKeeper(&app.GatewaysKeeper),
 		authante.NewValidateBasicDecorator(),
+		txGuard,
 		authante.NewTxTimeoutHeightDecorator(),
 		authante.NewValidateMemoDecorator(ak),
 		authante.NewConsumeGasForTxSizeDecorator(ak),
@@ -271,5 +282,13 @@ func (app *App) buildAnteHandler() sdk.AnteHandler {
 }
 
 func (app *App) buildPostHandler() sdk.PostHandler {
-	return NewSendTaxPostHandler(app.AuthKeeper, app.BankKeeper, app.TokenomicsKeeper)
+	sendTax := NewSendTaxPostHandler(app.AuthKeeper, app.BankKeeper, app.TokenomicsKeeper)
+	txGuard := newTxGuardPostHandler(app.TokenomicsKeeper)
+	return func(ctx sdk.Context, tx sdk.Tx, simulate bool, success bool) (sdk.Context, error) {
+		newCtx, err := sendTax(ctx, tx, simulate, success)
+		if err != nil {
+			return newCtx, err
+		}
+		return txGuard(newCtx, tx, simulate, success)
+	}
 }

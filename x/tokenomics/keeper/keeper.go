@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"lumen/x/tokenomics/types"
@@ -21,9 +22,11 @@ type Keeper struct {
 	addressCodec address.Codec
 	authority    []byte
 
-	Schema      collections.Schema
-	Params      collections.Item[types.Params]
-	TotalMinted collections.Item[string]
+	Schema                 collections.Schema
+	Params                 collections.Item[types.Params]
+	TotalMinted            collections.Item[string]
+	GovVoteLastHeight      collections.Map[collections.Pair[uint64, string], uint64]
+	WithdrawAddrLastHeight collections.Map[string, uint64]
 
 	bank     types.BankKeeper
 	distr    types.DistributionKeeper
@@ -50,6 +53,20 @@ func NewKeeper(
 		authority:    authority,
 		Params:       collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		TotalMinted:  collections.NewItem(sb, types.TotalMintedKey, "total_minted_ulmn", collections.StringValue),
+		GovVoteLastHeight: collections.NewMap(
+			sb,
+			types.GovVoteLastHeightKey,
+			"gov_vote_last_height",
+			collections.PairKeyCodec(collections.Uint64Key, collections.StringKey),
+			collections.Uint64Value,
+		),
+		WithdrawAddrLastHeight: collections.NewMap(
+			sb,
+			types.WithdrawAddrLastHeightKey,
+			"withdraw_addr_last_height",
+			collections.StringKey,
+			collections.Uint64Value,
+		),
 	}
 
 	schema, err := sb.Build()
@@ -121,6 +138,36 @@ func (k Keeper) SetTotalMintedUlmn(ctx context.Context, amt sdkmath.Int) error {
 		return fmt.Errorf("total minted cannot be negative")
 	}
 	return k.TotalMinted.Set(ctx, amt.String())
+}
+
+func (k Keeper) GetGovVoteLastHeight(ctx context.Context, proposalID uint64, voter string) (uint64, bool, error) {
+	height, err := k.GovVoteLastHeight.Get(ctx, collections.Join(proposalID, voter))
+	if err == nil {
+		return height, true, nil
+	}
+	if errors.Is(err, collections.ErrNotFound) {
+		return 0, false, nil
+	}
+	return 0, false, err
+}
+
+func (k Keeper) SetGovVoteLastHeight(ctx context.Context, proposalID uint64, voter string, height uint64) error {
+	return k.GovVoteLastHeight.Set(ctx, collections.Join(proposalID, voter), height)
+}
+
+func (k Keeper) GetWithdrawAddrLastHeight(ctx context.Context, delegator string) (uint64, bool, error) {
+	height, err := k.WithdrawAddrLastHeight.Get(ctx, delegator)
+	if err == nil {
+		return height, true, nil
+	}
+	if errors.Is(err, collections.ErrNotFound) {
+		return 0, false, nil
+	}
+	return 0, false, err
+}
+
+func (k Keeper) SetWithdrawAddrLastHeight(ctx context.Context, delegator string, height uint64) error {
+	return k.WithdrawAddrLastHeight.Set(ctx, delegator, height)
 }
 
 func (k Keeper) HasBankKeeper() bool {

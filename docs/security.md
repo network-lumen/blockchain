@@ -19,6 +19,12 @@
 - **Release spam:** only addresses listed in `Params.allowed_publishers` may publish releases. Tune
   `publish_fee_ulmn` and `max_pending_ttl` to discourage abusive submissions.
 
+- **Governance vote churn:** revotes on the same proposal are throttled by a per-`(proposal_id, voter)` cooldown of
+  10 blocks. The first vote remains allowed without a cooldown record.
+
+- **Distribution churn:** `MsgSetWithdrawAddress` rejects no-op updates and applies a 20-block cooldown per delegator.
+  `MsgWithdrawDelegatorReward` rejects zero-reward withdrawals.
+
 - **REST exposure:** place a TLS-enabled reverse proxy with per-IP rate limiting in front of `:2327` if the API is exposed to the public internet.
 
 - **Keys:** avoid the test keyring backend on production nodes. Prefer OS keyrings, KMS, or HSM integration for validator and publisher keys.
