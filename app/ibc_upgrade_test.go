@@ -46,5 +46,6 @@ func TestIBCStoresMissingAtLatestVersion(t *testing.T) {
 func TestIsIBCCompatibleUpgradePlan(t *testing.T) {
 	require.True(t, isIBCCompatibleUpgradePlan("v1.5.0"))
 	require.True(t, isIBCCompatibleUpgradePlan("v1.5.2"))
+	require.True(t, isIBCCompatibleUpgradePlan("v1.6.0"))
 	require.False(t, isIBCCompatibleUpgradePlan("v1.4.3"))
 }

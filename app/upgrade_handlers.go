@@ -32,6 +32,7 @@ func (app *App) RegisterUpgradeHandlers() {
 
 	app.registerIBCUpgradeHandler(ibcUpgradeName)
 	app.registerIBCUpgradeHandler("v1.5.2")
+	app.registerIBCUpgradeHandler("v1.6.0")
 }
 
 func (app *App) registerIBCUpgradeHandler(name string) {

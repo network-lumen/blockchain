@@ -573,7 +573,7 @@ debug_log "block_span=$block_span expected_interval_reward=$expected_interval_re
 add_result "block_reward_interval" "$expected_interval_reward" "$REWARD_SUM" "block_reward_events"
 
 pqc_args validator
-WITHDRAW_JSON=$("$BIN" tx distribution withdraw-rewards "$VALOPER" --from validator "${PQC_ARGS[@]}" "${TX_ARGS[@]}" | tee /tmp/withdraw_tx.json)
+WITHDRAW_JSON=$("$BIN" tx distribution withdraw-rewards "$VALOPER" --from validator --gas 400000 "${PQC_ARGS[@]}" "${TX_ARGS[@]}" | tee /tmp/withdraw_tx.json)
 check_tx_code_zero "$WITHDRAW_JSON" "withdraw rewards"
 WITHDRAW_HASH=$(echo "$WITHDRAW_JSON" | jq -r '.txhash // empty')
 wait_tx "$WITHDRAW_HASH"

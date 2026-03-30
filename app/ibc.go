@@ -34,6 +34,7 @@ const ibcUpgradeName = "v1.5.0"
 var ibcCompatibleUpgradeNames = map[string]struct{}{
 	ibcUpgradeName: {},
 	"v1.5.2":       {},
+	"v1.6.0":       {},
 }
 
 type legacyIBCSubspace struct{}
