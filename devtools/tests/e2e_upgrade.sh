@@ -17,7 +17,7 @@ BIN_OLD="${BIN_OLD:-""}"
 : "${LUMEN_BUILD_TAGS:=dev}"
 HOME_DIR="${HOME}/.lumen"
 
-OLD_REF="${OLD_REF:-320727d}"
+OLD_REF="${OLD_REF:-e699fd3673f8803b8419c29e6a2b62c91642b4c0}"
 PLAN_NAME="${PLAN_NAME:-v1.6.0}"
 BIN_NEW_VERSION="${BIN_NEW_VERSION:-$PLAN_NAME}"
 
@@ -95,6 +95,11 @@ build_old() {
     return
   fi
   step "Build old lumend ($OLD_REF) into temp dir"
+  if ! git -C "$DIR" rev-parse --verify "${OLD_REF}^{commit}" >/dev/null 2>&1; then
+    echo "missing OLD_REF in local checkout: $OLD_REF" >&2
+    echo "hint: fetch full history or set a reachable OLD_REF" >&2
+    exit 1
+  fi
   local wt
   wt="$(mktemp -d -t lumen-upgrade-wt-XXXXXX)"
   git -C "$DIR" worktree add --detach "$wt" "$OLD_REF" >/dev/null
